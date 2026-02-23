@@ -118,5 +118,29 @@ void main() {
       expect(list1, equals(list2));
       expect(list1, isNot(equals(list3)));
     });
+
+    test('defaults to medium priority', () {
+      final list = makeList();
+      expect(list.priority, Priority.medium);
+    });
+
+    test('accepts explicit priority', () {
+      final list = PriorityList(
+        id: 'id',
+        name: 'Test',
+        colorPreset: ColorPreset.blue,
+        priority: Priority.critical,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(list.priority, Priority.critical);
+    });
+
+    test('copyWith updates priority', () {
+      final list = makeList();
+      final updated = list.copyWith(priority: Priority.low);
+      expect(updated.priority, Priority.low);
+      expect(updated.name, list.name);
+    });
   });
 }

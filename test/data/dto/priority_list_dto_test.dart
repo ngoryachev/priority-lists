@@ -14,6 +14,7 @@ void main() {
         'id': 'list-1',
         'name': 'My List',
         'colorValue': ColorPreset.blue.colorValue,
+        'priority': 2,
         'items': [
           {
             'id': 'item-1',
@@ -34,7 +35,25 @@ void main() {
       expect(result['id'], json['id']);
       expect(result['name'], json['name']);
       expect(result['colorValue'], json['colorValue']);
+      expect(result['priority'], 2);
       expect((result['items'] as List).length, 1);
+    });
+
+    test('fromJson without priority defaults to medium (migration)', () {
+      final json = {
+        'id': 'list-1',
+        'name': 'Old List',
+        'colorValue': ColorPreset.blue.colorValue,
+        'items': [],
+        'createdAt': '2024-01-15T10:30:00.000',
+        'updatedAt': '2024-01-15T10:30:00.000',
+      };
+
+      final dto = PriorityListDto.fromJson(json);
+      expect(dto.priority, Priority.medium.value);
+
+      final entity = dto.toEntity();
+      expect(entity.priority, Priority.medium);
     });
 
     test('fromEntity and toEntity round-trip', () {
@@ -42,6 +61,7 @@ void main() {
         id: 'list-1',
         name: 'My List',
         colorPreset: ColorPreset.green,
+        priority: Priority.high,
         items: [
           PriorityItem(
             id: 'item-1',
@@ -61,6 +81,7 @@ void main() {
       expect(restored.id, list.id);
       expect(restored.name, list.name);
       expect(restored.colorPreset, list.colorPreset);
+      expect(restored.priority, Priority.high);
       expect(restored.items.length, 1);
       expect(restored.items.first.title, 'Task');
       expect(restored.items.first.priority, Priority.critical);

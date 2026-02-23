@@ -1,10 +1,12 @@
 import 'color_preset.dart';
+import 'priority.dart';
 import 'priority_item.dart';
 
 class PriorityList {
   final String id;
   final String name;
   final ColorPreset colorPreset;
+  final Priority priority;
   final List<PriorityItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -13,6 +15,7 @@ class PriorityList {
     required this.id,
     required this.name,
     required this.colorPreset,
+    this.priority = Priority.medium,
     List<PriorityItem>? items,
     required this.createdAt,
     required this.updatedAt,
@@ -45,6 +48,7 @@ class PriorityList {
   PriorityList copyWith({
     String? name,
     ColorPreset? colorPreset,
+    Priority? priority,
     List<PriorityItem>? items,
     DateTime? updatedAt,
   }) {
@@ -52,6 +56,7 @@ class PriorityList {
       id: id,
       name: name ?? this.name,
       colorPreset: colorPreset ?? this.colorPreset,
+      priority: priority ?? this.priority,
       items: items ?? this.items,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

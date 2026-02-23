@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/color_preset.dart';
+import '../../domain/models/priority.dart';
 import 'color_picker_dialog.dart';
+import 'priority_picker_widget.dart';
 
 class ListFormResult {
   final String name;
   final ColorPreset colorPreset;
+  final Priority priority;
 
-  ListFormResult({required this.name, required this.colorPreset});
+  ListFormResult({
+    required this.name,
+    required this.colorPreset,
+    required this.priority,
+  });
 }
 
 class ListFormDialog extends StatefulWidget {
   final String? initialName;
   final ColorPreset initialColor;
+  final Priority initialPriority;
 
   const ListFormDialog({
     super.key,
     this.initialName,
     this.initialColor = ColorPreset.blue,
+    this.initialPriority = Priority.medium,
   });
 
   @override
@@ -27,6 +36,7 @@ class ListFormDialog extends StatefulWidget {
 class _ListFormDialogState extends State<ListFormDialog> {
   late final TextEditingController _nameController;
   late ColorPreset _selectedColor;
+  late Priority _selectedPriority;
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -34,6 +44,7 @@ class _ListFormDialogState extends State<ListFormDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName ?? '');
     _selectedColor = widget.initialColor;
+    _selectedPriority = widget.initialPriority;
   }
 
   @override
@@ -67,6 +78,13 @@ class _ListFormDialogState extends State<ListFormDialog> {
                 }
                 return null;
               },
+            ),
+            const SizedBox(height: 16),
+            const Text('Priority'),
+            const SizedBox(height: 8),
+            PriorityPickerWidget(
+              selected: _selectedPriority,
+              onChanged: (p) => setState(() => _selectedPriority = p),
             ),
             const SizedBox(height: 16),
             InkWell(
@@ -114,6 +132,7 @@ class _ListFormDialogState extends State<ListFormDialog> {
                 ListFormResult(
                   name: _nameController.text.trim(),
                   colorPreset: _selectedColor,
+                  priority: _selectedPriority,
                 ),
               );
             }

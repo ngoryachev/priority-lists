@@ -1,4 +1,5 @@
 import '../../domain/models/color_preset.dart';
+import '../../domain/models/priority.dart';
 import '../../domain/models/priority_list.dart';
 import 'priority_item_dto.dart';
 
@@ -6,6 +7,7 @@ class PriorityListDto {
   final String id;
   final String name;
   final int colorValue;
+  final int priority;
   final List<PriorityItemDto> items;
   final String createdAt;
   final String updatedAt;
@@ -14,6 +16,7 @@ class PriorityListDto {
     required this.id,
     required this.name,
     required this.colorValue,
+    required this.priority,
     required this.items,
     required this.createdAt,
     required this.updatedAt,
@@ -24,6 +27,8 @@ class PriorityListDto {
       id: json['id'] as String,
       name: json['name'] as String,
       colorValue: json['colorValue'] as int,
+      // Migration: old files without priority default to medium (3)
+      priority: (json['priority'] as int?) ?? Priority.medium.value,
       items: (json['items'] as List<dynamic>)
           .map((item) => PriorityItemDto.fromJson(item as Map<String, dynamic>))
           .toList(),
@@ -37,6 +42,7 @@ class PriorityListDto {
       'id': id,
       'name': name,
       'colorValue': colorValue,
+      'priority': priority,
       'items': items.map((item) => item.toJson()).toList(),
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -48,6 +54,7 @@ class PriorityListDto {
       id: list.id,
       name: list.name,
       colorValue: list.colorPreset.colorValue,
+      priority: list.priority.value,
       items: list.items.map((item) => PriorityItemDto.fromEntity(item)).toList(),
       createdAt: list.createdAt.toIso8601String(),
       updatedAt: list.updatedAt.toIso8601String(),
@@ -59,6 +66,7 @@ class PriorityListDto {
       id: id,
       name: name,
       colorPreset: ColorPreset.fromColorValue(colorValue),
+      priority: Priority.fromValue(priority),
       items: items.map((item) => item.toEntity()).toList(),
       createdAt: DateTime.parse(createdAt),
       updatedAt: DateTime.parse(updatedAt),

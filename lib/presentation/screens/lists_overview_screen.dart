@@ -54,11 +54,12 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       );
     }
 
+    final sortedLists = vm.sortedLists;
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: vm.lists.length,
+      itemCount: sortedLists.length,
       itemBuilder: (context, index) {
-        final list = vm.lists[index];
+        final list = sortedLists[index];
         return ListCard(
           list: list,
           onTap: () => _openList(context, list),
@@ -92,7 +93,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       builder: (_) => const ListFormDialog(),
     );
     if (result != null) {
-      await vm.createList(result.name, result.colorPreset);
+      await vm.createList(result.name, result.colorPreset, result.priority);
     }
   }
 
@@ -103,6 +104,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       builder: (_) => ListFormDialog(
         initialName: priorityList.name,
         initialColor: priorityList.colorPreset,
+        initialPriority: priorityList.priority,
       ),
     );
     if (result != null) {
@@ -110,6 +112,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
         priorityList.copyWith(
           name: result.name,
           colorPreset: result.colorPreset,
+          priority: result.priority,
           updatedAt: DateTime.now(),
         ),
       );

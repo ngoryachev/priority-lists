@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/models/color_preset.dart';
+import '../../domain/models/priority.dart';
 import '../../domain/models/priority_list.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 
@@ -17,6 +18,8 @@ class ListsOverviewViewModel extends ChangeNotifier {
       : _uuid = uuid ?? const Uuid();
 
   List<PriorityList> get lists => _lists;
+  List<PriorityList> get sortedLists => List.of(_lists)
+    ..sort((a, b) => a.priority.value.compareTo(b.priority.value));
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -35,12 +38,13 @@ class ListsOverviewViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> createList(String name, ColorPreset colorPreset) async {
+  Future<void> createList(String name, ColorPreset colorPreset, Priority priority) async {
     final now = DateTime.now();
     final list = PriorityList(
       id: _uuid.v4(),
       name: name,
       colorPreset: colorPreset,
+      priority: priority,
       createdAt: now,
       updatedAt: now,
     );
