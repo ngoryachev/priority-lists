@@ -12,17 +12,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy files to VPS
-        uses: appleboy/scp-action@v0.1.7
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "supabase/"
-          target: "/opt/priority-lists/"
+          script: |
+            mkdir -p /opt/priority-lists/supabase
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Copy files to VPS
+        run: |
+          eval $(ssh-agent -s)
+          echo "${{ secrets.VPS_SSH_KEY }}" | ssh-add -
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          rsync -avz --delete \
+            --exclude='.env' \
+            supabase/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/priority-lists/supabase/
+
+      - name: Start services
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
