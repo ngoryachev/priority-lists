@@ -13,20 +13,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to VPS
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.VPS_SSH_KEY }}
+          name: deploy_key
+          known_hosts: unnecessary
+          if_key_exists: replace
+
+      - name: Add known hosts
+        run: ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-
-          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
-
           rsync -avz --delete --exclude='.env' \
-            -e "$SSH_CMD" \
+            -e "ssh -i ~/.ssh/deploy_key" \
             supabase/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/priority-lists/supabase/
 
-          $SSH_CMD ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
             'cd /opt/priority-lists/supabase && docker compose pull && docker compose up -d --remove-orphans'
-
-          rm -f ~/.ssh/deploy_key
