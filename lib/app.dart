@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'data/services/auth_service.dart';
 import 'domain/repositories/priority_list_repository.dart';
-import 'presentation/screens/lists_overview_screen.dart';
-import 'presentation/view_models/lists_overview_view_model.dart';
+import 'presentation/view_models/auth_view_model.dart';
+import 'presentation/widgets/auth_gate.dart';
 
 class PriorityListsApp extends StatelessWidget {
-  final PriorityListRepository repository;
+  final PriorityListRepository localRepository;
+  final AuthService authService;
 
-  const PriorityListsApp({super.key, required this.repository});
+  const PriorityListsApp({
+    super.key,
+    required this.localRepository,
+    required this.authService,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<PriorityListRepository>.value(value: repository),
         ChangeNotifierProvider(
-          create: (_) => ListsOverviewViewModel(repository),
+          create: (_) => AuthViewModel(authService),
         ),
+        Provider<AuthService>.value(value: authService),
       ],
       child: MaterialApp(
         title: 'Priority Lists',
@@ -30,7 +36,7 @@ class PriorityListsApp extends StatelessWidget {
           useMaterial3: true,
           brightness: Brightness.dark,
         ),
-        home: const ListsOverviewScreen(),
+        home: AuthGate(localRepository: localRepository),
       ),
     );
   }
