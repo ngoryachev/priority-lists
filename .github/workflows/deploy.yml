@@ -13,32 +13,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            mkdir -p /opt/priority-lists/supabase
-
-      - name: Copy files to VPS
+      - name: Debug SSH key
         run: |
+          echo "=== Key info ==="
+          echo "${{ secrets.VPS_SSH_KEY }}" | head -1
+          echo "${{ secrets.VPS_SSH_KEY }}" | tail -1
+          echo "${{ secrets.VPS_SSH_KEY }}" | wc -l
+          KEY_END=$(echo "${{ secrets.VPS_SSH_KEY }}" | tail -c 20)
+          echo "Key ends with: ...$KEY_END"
+          echo ""
+          echo "=== ssh-add ==="
           eval $(ssh-agent -s)
-          echo "${{ secrets.VPS_SSH_KEY }}" | ssh-add -
+          echo "${{ secrets.VPS_SSH_KEY }}" | ssh-add - 2>&1
+          ssh-add -l
+          echo ""
+          echo "=== ssh -vvv ==="
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-          rsync -avz --delete \
-            --exclude='.env' \
-            supabase/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/priority-lists/supabase/
+          ssh -vvv -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "echo ok" 2>&1 || true
 
-      - name: Start services
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cd /opt/priority-lists/supabase
-            docker compose pull
-            docker compose up -d --remove-orphans
+      - name: Deploy
+        run: |
+          rsync -avz --delete --exclude='.env' \
+            supabase/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/priority-lists/supabase/
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            'cd /opt/priority-lists/supabase && docker compose pull && docker compose up -d --remove-orphans'
