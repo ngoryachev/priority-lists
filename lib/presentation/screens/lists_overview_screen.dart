@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/repositories/priority_list_repository.dart';
+import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../view_models/lists_overview_view_model.dart';
 import '../widgets/list_card.dart';
@@ -30,6 +31,13 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Priority Lists'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign Out',
+            onPressed: () => context.read<AuthViewModel>().signOut(),
+          ),
+        ],
       ),
       body: _buildBody(vm),
       floatingActionButton: FloatingActionButton(
