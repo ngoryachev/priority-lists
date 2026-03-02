@@ -4,6 +4,7 @@ import '../../domain/models/priority_list.dart';
 
 class ListCard extends StatelessWidget {
   final PriorityList list;
+  final double height;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -11,6 +12,7 @@ class ListCard extends StatelessWidget {
   const ListCard({
     super.key,
     required this.list,
+    required this.height,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -20,7 +22,9 @@ class ListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(list.colorPreset.colorValue);
 
-    return Card(
+    return SizedBox(
+      height: height,
+      child: Card(
       color: color.withValues(alpha: 0.15),
       child: InkWell(
         onTap: onTap,
@@ -85,6 +89,7 @@ class ListCard extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

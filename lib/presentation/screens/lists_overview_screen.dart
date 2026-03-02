@@ -68,8 +68,11 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       itemCount: sortedLists.length,
       itemBuilder: (context, index) {
         final list = sortedLists[index];
+        final screenHeight = MediaQuery.of(context).size.height;
+        final cardHeight = screenHeight * list.priority.screenHeightFraction;
         return ListCard(
           list: list,
+          height: cardHeight,
           onTap: () => _openList(context, list),
           onEdit: () => _showEditDialog(context, vm, list),
           onDelete: () => _confirmDelete(context, vm, list.id, list.name),
