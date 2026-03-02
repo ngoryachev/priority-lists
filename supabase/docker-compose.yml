@@ -12,6 +12,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./volumes/db/init/000_roles.sql:/docker-entrypoint-initdb.d/migrations/98-roles.sql:ro
+      - ./volumes/db/init/001_initial_schema.sql:/docker-entrypoint-initdb.d/migrations/99-schema.sql:ro
     restart: unless-stopped
 
   auth:

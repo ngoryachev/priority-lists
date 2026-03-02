@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS priority_lists (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name VARCHAR(50) NOT NULL CHECK (char_length(name) > 0),
-  color_value INTEGER NOT NULL,
+  color_value BIGINT NOT NULL,
   priority INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 4),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
