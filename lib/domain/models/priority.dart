@@ -10,6 +10,12 @@ enum Priority {
   final double screenHeightFraction;
   final String label;
 
+  /// Returns the next higher priority, or null if already critical.
+  Priority? get higher => value > 1 ? fromValue(value - 1) : null;
+
+  /// Returns the next lower priority, or null if already low.
+  Priority? get lower => value < 4 ? fromValue(value + 1) : null;
+
   static Priority fromValue(int value) =>
       Priority.values.firstWhere(
         (p) => p.value == value,

@@ -48,6 +48,14 @@ class ListDetailScreen extends StatelessWidget {
                   onEdit: () => _editItem(context, vm, item),
                   onDelete: () => _confirmDeleteItem(
                       context, vm, item.id, item.title),
+                  onPriorityUp: item.priority.higher != null
+                      ? () => vm.updateItem(
+                          item.copyWith(priority: item.priority.higher!))
+                      : null,
+                  onPriorityDown: item.priority.lower != null
+                      ? () => vm.updateItem(
+                          item.copyWith(priority: item.priority.lower!))
+                      : null,
                 );
               },
             ),

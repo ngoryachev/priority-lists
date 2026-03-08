@@ -8,6 +8,8 @@ class ListCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onPriorityUp;
+  final VoidCallback? onPriorityDown;
 
   const ListCard({
     super.key,
@@ -16,6 +18,8 @@ class ListCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    this.onPriorityUp,
+    this.onPriorityDown,
   });
 
   @override
@@ -76,6 +80,16 @@ class ListCard extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+                onPressed: onPriorityUp,
+                tooltip: 'Increase priority',
+              ),
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                onPressed: onPriorityDown,
+                tooltip: 'Decrease priority',
               ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 20),

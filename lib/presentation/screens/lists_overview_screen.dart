@@ -76,6 +76,18 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           onTap: () => _openList(context, list),
           onEdit: () => _showEditDialog(context, vm, list),
           onDelete: () => _confirmDelete(context, vm, list.id, list.name),
+          onPriorityUp: list.priority.higher != null
+              ? () => vm.updateList(list.copyWith(
+                    priority: list.priority.higher!,
+                    updatedAt: DateTime.now(),
+                  ))
+              : null,
+          onPriorityDown: list.priority.lower != null
+              ? () => vm.updateList(list.copyWith(
+                    priority: list.priority.lower!,
+                    updatedAt: DateTime.now(),
+                  ))
+              : null,
         );
       },
     );

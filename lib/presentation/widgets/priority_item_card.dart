@@ -8,6 +8,8 @@ class PriorityItemCard extends StatelessWidget {
   final double height;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onPriorityUp;
+  final VoidCallback? onPriorityDown;
 
   const PriorityItemCard({
     super.key,
@@ -15,6 +17,8 @@ class PriorityItemCard extends StatelessWidget {
     required this.height,
     required this.onEdit,
     required this.onDelete,
+    this.onPriorityUp,
+    this.onPriorityDown,
   });
 
   Color _priorityColor() {
@@ -62,6 +66,18 @@ class PriorityItemCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+                      onPressed: onPriorityUp,
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Increase priority',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      onPressed: onPriorityDown,
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Decrease priority',
+                    ),
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 20),
                       onPressed: onEdit,
