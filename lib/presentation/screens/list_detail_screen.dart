@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../view_models/list_detail_view_model.dart';
+import '../../domain/models/priority.dart';
 import '../widgets/item_form_dialog.dart';
 import '../widgets/list_form_dialog.dart';
-import '../widgets/priority_item_card.dart';
+import '../widgets/priority_card.dart';
 
 class ListDetailScreen extends StatelessWidget {
   const ListDetailScreen({super.key});
@@ -38,13 +39,12 @@ class ListDetailScreen extends StatelessWidget {
               itemCount: sortedItems.length,
               itemBuilder: (context, index) {
                 final item = sortedItems[index];
-                final screenHeight = MediaQuery.of(context).size.height;
-                final itemHeight =
-                    screenHeight * item.priority.screenHeightFraction;
 
-                return PriorityItemCard(
-                  item: item,
-                  height: itemHeight,
+                return PriorityCard(
+                  title: item.title,
+                  badgeLabel: item.priority.label,
+                  color: _priorityColor(item.priority),
+                  subtitle: item.description,
                   onEdit: () => _editItem(context, vm, item),
                   onDelete: () => _confirmDeleteItem(
                       context, vm, item.id, item.title),
@@ -65,6 +65,15 @@ class ListDetailScreen extends StatelessWidget {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  static Color _priorityColor(Priority priority) {
+    return switch (priority) {
+      Priority.critical => Colors.red.shade400,
+      Priority.high => Colors.orange.shade400,
+      Priority.medium => Colors.blue.shade400,
+      Priority.low => Colors.grey.shade400,
+    };
   }
 
   Future<void> _addItem(BuildContext context, ListDetailViewModel vm) async {

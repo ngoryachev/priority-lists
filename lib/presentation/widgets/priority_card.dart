@@ -1,43 +1,41 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/models/priority.dart';
-import '../../domain/models/priority_item.dart';
-
-class PriorityItemCard extends StatelessWidget {
-  final PriorityItem item;
-  final double height;
+class PriorityCard extends StatelessWidget {
+  final String title;
+  final String badgeLabel;
+  final Color color;
+  final String? subtitle;
+  final Color? backgroundColor;
+  final double? fixedHeight;
+  final VoidCallback? onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
 
-  const PriorityItemCard({
+  const PriorityCard({
     super.key,
-    required this.item,
-    required this.height,
+    required this.title,
+    required this.badgeLabel,
+    required this.color,
+    this.subtitle,
+    this.backgroundColor,
+    this.fixedHeight,
+    this.onTap,
     required this.onEdit,
     required this.onDelete,
     this.onPriorityUp,
     this.onPriorityDown,
   });
 
-  Color _priorityColor() {
-    return switch (item.priority) {
-      Priority.critical => Colors.red.shade400,
-      Priority.high => Colors.orange.shade400,
-      Priority.medium => Colors.blue.shade400,
-      Priority.low => Colors.grey.shade400,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final color = _priorityColor();
-
-    return SizedBox(
-      height: height,
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    Widget card = Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: backgroundColor,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
             border: Border(left: BorderSide(color: color, width: 5)),
@@ -57,7 +55,7 @@ class PriorityItemCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        item.priority.label,
+                        badgeLabel,
                         style: TextStyle(
                           color: color,
                           fontSize: 12,
@@ -92,23 +90,22 @@ class PriorityItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  item.title,
+                  title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.description.isNotEmpty) ...[
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Expanded(
-                    child: Text(
-                      item.description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
-                      overflow: TextOverflow.fade,
-                    ),
+                  Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 5,
                   ),
                 ],
               ],
@@ -117,5 +114,10 @@ class PriorityItemCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (fixedHeight != null) {
+      return SizedBox(height: fixedHeight, child: card);
+    }
+    return card;
   }
 }

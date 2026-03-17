@@ -5,8 +5,8 @@ import '../../domain/repositories/priority_list_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../view_models/lists_overview_view_model.dart';
-import '../widgets/list_card.dart';
 import '../widgets/list_form_dialog.dart';
+import '../widgets/priority_card.dart';
 import 'list_detail_screen.dart';
 
 class ListsOverviewScreen extends StatefulWidget {
@@ -70,9 +70,14 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
         final list = sortedLists[index];
         final screenHeight = MediaQuery.of(context).size.height;
         final cardHeight = screenHeight * list.priority.screenHeightFraction;
-        return ListCard(
-          list: list,
-          height: cardHeight,
+        final listColor = Color(list.colorPreset.colorValue);
+        return PriorityCard(
+          title: list.name,
+          badgeLabel: list.priority.label,
+          color: listColor,
+          backgroundColor: listColor.withValues(alpha: 0.15),
+          fixedHeight: cardHeight,
+          subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
           onTap: () => _openList(context, list),
           onEdit: () => _showEditDialog(context, vm, list),
           onDelete: () => _confirmDelete(context, vm, list.id, list.name),
