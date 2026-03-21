@@ -6,6 +6,7 @@ import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../view_models/lists_overview_view_model.dart';
 import '../widgets/list_form_dialog.dart';
+import '../widgets/bubble_view/bubble_view.dart';
 import '../widgets/priority_card.dart';
 import 'list_detail_screen.dart';
 
@@ -17,6 +18,8 @@ class ListsOverviewScreen extends StatefulWidget {
 }
 
 class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
+  bool _showBubbleView = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +35,11 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       appBar: AppBar(
         title: const Text('Priority Lists'),
         actions: [
+          IconButton(
+            icon: Icon(_showBubbleView ? Icons.view_list : Icons.bubble_chart),
+            tooltip: _showBubbleView ? 'List View' : 'Bubble View',
+            onPressed: () => setState(() => _showBubbleView = !_showBubbleView),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign Out',
@@ -63,6 +71,15 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     }
 
     final sortedLists = vm.sortedLists;
+
+    if (_showBubbleView) {
+      return BubbleView(
+        lists: sortedLists,
+        onTap: (list) => _openList(context, list),
+        onUpdateList: (updated) => vm.updateList(updated),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(8),
       itemCount: sortedLists.length,
