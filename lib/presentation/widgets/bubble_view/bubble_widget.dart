@@ -22,7 +22,6 @@ class BubbleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showControls = diameter >= 100;
     final showCount = diameter >= 80;
     final fontSize = (diameter * 0.11).clamp(10.0, 18.0);
     final iconSize = (diameter * 0.15).clamp(14.0, 22.0);
@@ -49,8 +48,8 @@ class BubbleWidget extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (showControls && onPriorityUp != null)
-                _buildIconButton(Icons.remove, onPriorityUp!, iconSize),
+              if (onPriorityUp != null)
+                _buildIconButton(Icons.add, onPriorityUp!, iconSize),
               Flexible(
                 child: Text(
                   name,
@@ -74,8 +73,8 @@ class BubbleWidget extends StatelessWidget {
                     color: Colors.grey.shade600,
                   ),
                 ),
-              if (showControls && onPriorityDown != null)
-                _buildIconButton(Icons.add, onPriorityDown!, iconSize),
+              if (onPriorityDown != null)
+                _buildIconButton(Icons.remove, onPriorityDown!, iconSize),
             ],
           ),
         ),

@@ -28,6 +28,8 @@ class PriorityCard extends StatelessWidget {
     this.onPriorityDown,
   });
 
+  bool get _isCompact => fixedHeight != null && fixedHeight! < 150;
+
   @override
   Widget build(BuildContext context) {
     Widget card = Card(
@@ -48,22 +50,23 @@ class PriorityCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        badgeLabel,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                    if (!_isCompact)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          badgeLabel,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.keyboard_arrow_up, size: 20),
@@ -102,7 +105,7 @@ class PriorityCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                if (!_isCompact && subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Flexible(
                     child: Text(
