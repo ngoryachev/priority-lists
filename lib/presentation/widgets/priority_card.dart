@@ -8,8 +8,8 @@ class PriorityCard extends StatelessWidget {
   final Color? backgroundColor;
   final double? fixedHeight;
   final VoidCallback? onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
 
@@ -22,8 +22,8 @@ class PriorityCard extends StatelessWidget {
     this.backgroundColor,
     this.fixedHeight,
     this.onTap,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
     this.onPriorityUp,
     this.onPriorityDown,
   });
@@ -33,6 +33,7 @@ class PriorityCard extends StatelessWidget {
     Widget card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       color: backgroundColor,
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -76,36 +77,42 @@ class PriorityCard extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Decrease priority',
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      onPressed: onEdit,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      onPressed: onDelete,
-                      visualDensity: VisualDensity.compact,
-                    ),
+                    if (onEdit != null)
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        onPressed: onEdit,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (onDelete != null)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: onDelete,
+                        visualDensity: VisualDensity.compact,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Flexible(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 5,
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 5,
+                    ),
                   ),
                 ],
               ],

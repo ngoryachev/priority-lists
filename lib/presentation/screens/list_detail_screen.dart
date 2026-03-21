@@ -26,6 +26,10 @@ class ListDetailScreen extends StatelessWidget {
             icon: const Icon(Icons.edit_outlined),
             onPressed: () => _editList(context, vm),
           ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _confirmDeleteList(context, vm),
+          ),
         ],
       ),
       body: sortedItems.isEmpty
@@ -129,6 +133,34 @@ class ListDetailScreen extends StatelessWidget {
     );
     if (confirmed == true) {
       await vm.deleteItem(id);
+    }
+  }
+
+  Future<void> _confirmDeleteList(
+      BuildContext context, ListDetailViewModel vm) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete List'),
+        content: Text('Delete "${vm.list.name}" and all its items?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await vm.deleteList();
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 

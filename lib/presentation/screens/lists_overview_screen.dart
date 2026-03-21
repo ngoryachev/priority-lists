@@ -48,7 +48,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   }
 
   Widget _buildBody(ListsOverviewViewModel vm) {
-    if (vm.isLoading) {
+    if (vm.isLoading && vm.lists.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -69,7 +69,8 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       itemBuilder: (context, index) {
         final list = sortedLists[index];
         final screenHeight = MediaQuery.of(context).size.height;
-        final cardHeight = screenHeight * list.priority.screenHeightFraction;
+        const minCardHeight = 120.0;
+        final cardHeight = (screenHeight * list.priority.screenHeightFraction).clamp(minCardHeight, double.infinity);
         final listColor = Color(list.colorPreset.colorValue);
         return PriorityCard(
           title: list.name,
@@ -79,8 +80,6 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           fixedHeight: cardHeight,
           subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
           onTap: () => _openList(context, list),
-          onEdit: () => _showEditDialog(context, vm, list),
-          onDelete: () => _confirmDelete(context, vm, list.id, list.name),
           onPriorityUp: list.priority.higher != null
               ? () => vm.updateList(list.copyWith(
                     priority: list.priority.higher!,
@@ -125,50 +124,4 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     }
   }
 
-  Future<void> _showEditDialog(
-      BuildContext context, ListsOverviewViewModel vm, priorityList) async {
-    final result = await showDialog<ListFormResult>(
-      context: context,
-      builder: (_) => ListFormDialog(
-        initialName: priorityList.name,
-        initialColor: priorityList.colorPreset,
-        initialPriority: priorityList.priority,
-      ),
-    );
-    if (result != null) {
-      await vm.updateList(
-        priorityList.copyWith(
-          name: result.name,
-          colorPreset: result.colorPreset,
-          priority: result.priority,
-          updatedAt: DateTime.now(),
-        ),
-      );
-    }
-  }
-
-  Future<void> _confirmDelete(
-      BuildContext context, ListsOverviewViewModel vm, String id, String name) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete List'),
-        content: Text('Delete "$name" and all its items?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await vm.deleteList(id);
-    }
-  }
 }

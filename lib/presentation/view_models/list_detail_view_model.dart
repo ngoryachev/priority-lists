@@ -52,6 +52,10 @@ class ListDetailViewModel extends ChangeNotifier {
     await _save();
   }
 
+  Future<void> deleteList() async {
+    await _repository.deleteList(_list.id);
+  }
+
   Future<void> _save() async {
     await _repository.saveList(_list);
     notifyListeners();
