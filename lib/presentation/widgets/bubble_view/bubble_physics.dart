@@ -78,6 +78,10 @@ class BubblePhysics {
     _elapsed += dt;
 
     for (final body in bodies.values) {
+      // Buoyancy — larger bubbles float up
+      final buoyancy = body.radius * 0.15;
+      body.vy -= buoyancy * dt;
+
       // Sinusoidal drift
       body.vx += sin(_elapsed * body.driftSpeed + body.driftPhase) * _driftForce * dt;
       body.vy += cos(_elapsed * body.driftSpeed * 0.8 + body.driftPhase + 1.5) * _driftForce * dt;
