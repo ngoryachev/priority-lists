@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/scheduler.dart' hide Priority;
 
 import '../../../domain/models/priority.dart';
 import 'bubble_physics.dart' as bp;
