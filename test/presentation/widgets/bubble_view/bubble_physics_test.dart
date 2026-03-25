@@ -1,25 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:priority_lists/domain/models/color_preset.dart';
 import 'package:priority_lists/domain/models/priority.dart';
-import 'package:priority_lists/domain/models/priority_list.dart';
 import 'package:priority_lists/presentation/widgets/bubble_view/bubble_physics.dart'
     as bp;
 
 bp.Size _canvas = const bp.Size(400, 800);
 
-PriorityList _makeList(String id, {Priority priority = Priority.medium}) {
-  final now = DateTime.now();
-  return PriorityList(
-    id: id,
-    name: 'List $id',
-    colorPreset: ColorPreset.blue,
-    priority: priority,
-    createdAt: now,
-    updatedAt: now,
-  );
-}
+Map<String, Priority> _entries(Map<String, Priority> map) => map;
 
 void main() {
   group('BubblePhysics', () {
@@ -32,9 +20,8 @@ void main() {
       );
     });
 
-    test('syncWithLists creates bodies for each list', () {
-      final lists = [_makeList('a'), _makeList('b'), _makeList('c')];
-      physics.syncWithLists(lists);
+    test('sync creates bodies for each entry', () {
+      physics.sync(_entries({'a': Priority.medium, 'b': Priority.high, 'c': Priority.low}));
 
       expect(physics.bodies.length, 3);
       expect(physics.bodies.containsKey('a'), true);
@@ -42,31 +29,31 @@ void main() {
       expect(physics.bodies.containsKey('c'), true);
     });
 
-    test('syncWithLists removes deleted lists', () {
-      physics.syncWithLists([_makeList('a'), _makeList('b')]);
+    test('sync removes deleted entries', () {
+      physics.sync(_entries({'a': Priority.medium, 'b': Priority.medium}));
       expect(physics.bodies.length, 2);
 
-      physics.syncWithLists([_makeList('a')]);
+      physics.sync(_entries({'a': Priority.medium}));
       expect(physics.bodies.length, 1);
       expect(physics.bodies.containsKey('b'), false);
     });
 
-    test('syncWithLists updates targetRadius on priority change', () {
-      physics.syncWithLists([_makeList('a', priority: Priority.low)]);
+    test('sync updates targetRadius on priority change', () {
+      physics.sync(_entries({'a': Priority.low}));
       final oldTarget = physics.bodies['a']!.targetRadius;
 
-      physics.syncWithLists([_makeList('a', priority: Priority.critical)]);
+      physics.sync(_entries({'a': Priority.critical}));
       final newTarget = physics.bodies['a']!.targetRadius;
 
       expect(newTarget, greaterThan(oldTarget));
     });
 
-    test('syncWithLists preserves position of existing bodies', () {
-      physics.syncWithLists([_makeList('a')]);
+    test('sync preserves position of existing bodies', () {
+      physics.sync(_entries({'a': Priority.medium}));
       physics.bodies['a']!.x = 100;
       physics.bodies['a']!.y = 200;
 
-      physics.syncWithLists([_makeList('a')]);
+      physics.sync(_entries({'a': Priority.medium}));
       expect(physics.bodies['a']!.x, 100);
       expect(physics.bodies['a']!.y, 200);
     });
@@ -84,8 +71,7 @@ void main() {
     });
 
     test('step keeps bodies within canvas bounds', () {
-      physics.syncWithLists([_makeList('a')]);
-      // Push body out of bounds
+      physics.sync(_entries({'a': Priority.medium}));
       physics.bodies['a']!.x = -50;
       physics.bodies['a']!.y = 900;
 
@@ -101,8 +87,7 @@ void main() {
     });
 
     test('step resolves collisions between overlapping bodies', () {
-      physics.syncWithLists([_makeList('a'), _makeList('b')]);
-      // Place them on top of each other
+      physics.sync(_entries({'a': Priority.medium, 'b': Priority.medium}));
       physics.bodies['a']!.x = 200;
       physics.bodies['a']!.y = 400;
       physics.bodies['b']!.x = 200;
@@ -122,7 +107,7 @@ void main() {
     });
 
     test('step applies drift so positions change over time', () {
-      physics.syncWithLists([_makeList('a')]);
+      physics.sync(_entries({'a': Priority.medium}));
       final startX = physics.bodies['a']!.x;
       final startY = physics.bodies['a']!.y;
 
@@ -136,7 +121,7 @@ void main() {
     });
 
     test('radius lerps toward targetRadius over time', () {
-      physics.syncWithLists([_makeList('a', priority: Priority.low)]);
+      physics.sync(_entries({'a': Priority.low}));
       final body = physics.bodies['a']!;
       body.targetRadius = body.radius * 2;
       final startRadius = body.radius;

@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import '../../../domain/models/priority.dart';
-import '../../../domain/models/priority_list.dart';
 
 class BubbleBody {
   final String id;
@@ -37,6 +36,7 @@ class BubblePhysics {
   static const double _damping = 0.97;
   static const double _radiusLerpSpeed = 0.08;
   static const double _collisionPush = 0.5;
+  static const double _buoyancyStrength = 1.5;
 
   BubblePhysics({required this.canvasSize, Random? random})
       : _random = random ?? Random();
@@ -48,19 +48,19 @@ class BubblePhysics {
     return baseRadius + scaled;
   }
 
-  void syncWithLists(List<PriorityList> lists) {
+  void sync(Map<String, Priority> entries) {
     final activeIds = <String>{};
 
-    for (final list in lists) {
-      activeIds.add(list.id);
-      final targetR = radiusForPriority(list.priority, canvasSize);
+    for (final entry in entries.entries) {
+      activeIds.add(entry.key);
+      final targetR = radiusForPriority(entry.value, canvasSize);
 
-      if (bodies.containsKey(list.id)) {
-        bodies[list.id]!.targetRadius = targetR;
+      if (bodies.containsKey(entry.key)) {
+        bodies[entry.key]!.targetRadius = targetR;
       } else {
         final pos = _findNonOverlappingPosition(targetR);
-        bodies[list.id] = BubbleBody(
-          id: list.id,
+        bodies[entry.key] = BubbleBody(
+          id: entry.key,
           x: pos.x,
           y: pos.y,
           radius: targetR,
@@ -79,7 +79,7 @@ class BubblePhysics {
 
     for (final body in bodies.values) {
       // Buoyancy — larger bubbles float up
-      final buoyancy = body.radius * 0.15;
+      final buoyancy = body.radius * _buoyancyStrength;
       body.vy -= buoyancy * dt;
 
       // Sinusoidal drift

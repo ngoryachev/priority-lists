@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../domain/models/priority.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
@@ -18,7 +19,8 @@ class ListsOverviewScreen extends StatefulWidget {
 }
 
 class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
-  bool _showBubbleView = false;
+  bool _showBubbleView = true;
+  bool _hideLow = false;
 
   @override
   void initState() {
@@ -35,6 +37,11 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       appBar: AppBar(
         title: const Text('Priority Lists'),
         actions: [
+          IconButton(
+            icon: Icon(_hideLow ? Icons.visibility_off : Icons.visibility),
+            tooltip: _hideLow ? 'Show Low' : 'Hide Low',
+            onPressed: () => setState(() => _hideLow = !_hideLow),
+          ),
           IconButton(
             icon: Icon(_showBubbleView ? Icons.view_list : Icons.bubble_chart),
             tooltip: _showBubbleView ? 'List View' : 'Bubble View',
@@ -55,6 +62,14 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     );
   }
 
+  List<dynamic> _filteredLists(ListsOverviewViewModel vm) {
+    final lists = vm.sortedLists;
+    if (_hideLow) {
+      return lists.where((l) => l.priority != Priority.low).toList();
+    }
+    return lists;
+  }
+
   Widget _buildBody(ListsOverviewViewModel vm) {
     if (vm.isLoading && vm.lists.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -70,13 +85,32 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       );
     }
 
-    final sortedLists = vm.sortedLists;
+    final sortedLists = _filteredLists(vm);
 
     if (_showBubbleView) {
       return BubbleView(
-        lists: sortedLists,
-        onTap: (list) => _openList(context, list),
-        onUpdateList: (updated) => vm.updateList(updated),
+        entries: sortedLists
+            .map((list) => BubbleEntry(
+                  id: list.id,
+                  name: list.name,
+                  color: Color(list.colorPreset.colorValue),
+                  priority: list.priority,
+                  subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
+                  onTap: () => _openList(context, list, useBubbleView: true),
+                  onPriorityUp: list.priority.higher != null
+                      ? () => vm.updateList(list.copyWith(
+                            priority: list.priority.higher!,
+                            updatedAt: DateTime.now(),
+                          ))
+                      : null,
+                  onPriorityDown: list.priority.lower != null
+                      ? () => vm.updateList(list.copyWith(
+                            priority: list.priority.lower!,
+                            updatedAt: DateTime.now(),
+                          ))
+                      : null,
+                ))
+            .toList(),
       );
     }
 
@@ -96,7 +130,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           backgroundColor: listColor.withValues(alpha: 0.15),
           fixedHeight: cardHeight,
           subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
-          onTap: () => _openList(context, list),
+          onTap: () => _openList(context, list, useBubbleView: false),
           onPriorityUp: list.priority.higher != null
               ? () => vm.updateList(list.copyWith(
                     priority: list.priority.higher!,
@@ -114,14 +148,14 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     );
   }
 
-  Future<void> _openList(BuildContext context, priorityList) async {
+  Future<void> _openList(BuildContext context, priorityList, {required bool useBubbleView}) async {
     final repository = context.read<PriorityListRepository>();
     final vm = context.read<ListsOverviewViewModel>();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
           create: (_) => ListDetailViewModel(repository, priorityList),
-          child: const ListDetailScreen(),
+          child: ListDetailScreen(initialBubbleView: useBubbleView),
         ),
       ),
     );
@@ -140,5 +174,4 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       await vm.createList(result.name, result.colorPreset, result.priority);
     }
   }
-
 }

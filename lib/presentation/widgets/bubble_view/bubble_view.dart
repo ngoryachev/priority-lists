@@ -1,20 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import '../../../domain/models/priority_list.dart';
+import '../../../domain/models/priority.dart';
 import 'bubble_physics.dart' as bp;
 import 'bubble_widget.dart';
 
+class BubbleEntry {
+  final String id;
+  final String name;
+  final Color color;
+  final Priority priority;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final VoidCallback? onPriorityUp;
+  final VoidCallback? onPriorityDown;
+
+  const BubbleEntry({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.priority,
+    this.subtitle,
+    this.onTap,
+    this.onPriorityUp,
+    this.onPriorityDown,
+  });
+}
+
 class BubbleView extends StatefulWidget {
-  final List<PriorityList> lists;
-  final void Function(PriorityList) onTap;
-  final void Function(PriorityList updated) onUpdateList;
+  final List<BubbleEntry> entries;
 
   const BubbleView({
     super.key,
-    required this.lists,
-    required this.onTap,
-    required this.onUpdateList,
+    required this.entries,
   });
 
   @override
@@ -45,14 +63,13 @@ class _BubbleViewState extends State<BubbleView>
         ? 0.016
         : (elapsed - _lastTick).inMicroseconds / 1e6;
     _lastTick = elapsed;
-    // Cap dt to avoid physics explosions after pauses
     _physics!.step(dt.clamp(0, 0.05));
     setState(() {});
   }
 
-  PriorityList? _listById(String id) {
-    for (final list in widget.lists) {
-      if (list.id == id) return list;
+  BubbleEntry? _entryById(String id) {
+    for (final e in widget.entries) {
+      if (e.id == id) return e;
     }
     return null;
   }
@@ -68,35 +85,29 @@ class _BubbleViewState extends State<BubbleView>
         } else {
           _physics!.canvasSize = size;
         }
-        _physics!.syncWithLists(widget.lists);
+
+        final entries = <String, Priority>{};
+        for (final e in widget.entries) {
+          entries[e.id] = e.priority;
+        }
+        _physics!.sync(entries);
 
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
             for (final body in _physics!.bodies.values)
-              if (_listById(body.id) case final list?)
+              if (_entryById(body.id) case final entry?)
                 Positioned(
                   left: body.x - body.radius,
                   top: body.y - body.radius,
                   child: BubbleWidget(
-                    name: list.name,
-                    color: Color(list.colorPreset.colorValue),
+                    name: entry.name,
+                    color: entry.color,
                     diameter: body.radius * 2,
-                    itemCountText:
-                        '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
-                    onTap: () => widget.onTap(list),
-                    onPriorityUp: list.priority.higher != null
-                        ? () => widget.onUpdateList(list.copyWith(
-                              priority: list.priority.higher!,
-                              updatedAt: DateTime.now(),
-                            ))
-                        : null,
-                    onPriorityDown: list.priority.lower != null
-                        ? () => widget.onUpdateList(list.copyWith(
-                              priority: list.priority.lower!,
-                              updatedAt: DateTime.now(),
-                            ))
-                        : null,
+                    itemCountText: entry.subtitle ?? '',
+                    onTap: entry.onTap ?? () {},
+                    onPriorityUp: entry.onPriorityUp,
+                    onPriorityDown: entry.onPriorityDown,
                   ),
                 ),
           ],
