@@ -22,7 +22,6 @@ class BubbleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showCount = diameter >= 80;
     final fontSize = (diameter * 0.11).clamp(10.0, 18.0);
     final iconSize = (diameter * 0.15).clamp(14.0, 22.0);
 
@@ -65,14 +64,6 @@ class BubbleWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              if (showCount)
-                Text(
-                  itemCountText,
-                  style: TextStyle(
-                    fontSize: fontSize * 0.75,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
               if (onPriorityDown != null)
                 _buildIconButton(Icons.remove, onPriorityDown!, iconSize),
             ],
