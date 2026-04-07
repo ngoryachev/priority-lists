@@ -5,6 +5,7 @@ import '../../domain/models/priority.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
+import '../view_models/filter_view_model.dart';
 import '../view_models/lists_overview_view_model.dart';
 import '../widgets/list_form_dialog.dart';
 import '../widgets/bubble_view/bubble_view.dart';
@@ -20,7 +21,6 @@ class ListsOverviewScreen extends StatefulWidget {
 
 class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   bool _showBubbleView = true;
-  bool _hideLow = false;
 
   static Color _priorityColor(Priority priority) {
     return switch (priority) {
@@ -41,15 +41,16 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<ListsOverviewViewModel>();
+    final filter = context.watch<FilterViewModel>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Priority Lists'),
         actions: [
           IconButton(
-            icon: Icon(_hideLow ? Icons.visibility_off : Icons.visibility),
-            tooltip: _hideLow ? 'Show Low' : 'Hide Low',
-            onPressed: () => setState(() => _hideLow = !_hideLow),
+            icon: Icon(filter.hideLow ? Icons.visibility_off : Icons.visibility),
+            tooltip: filter.hideLow ? 'Show Low' : 'Hide Low',
+            onPressed: () => filter.toggleHideLow(),
           ),
           IconButton(
             icon: Icon(_showBubbleView ? Icons.view_list : Icons.bubble_chart),
@@ -63,7 +64,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           ),
         ],
       ),
-      body: _buildBody(vm),
+      body: _buildBody(vm, filter),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateDialog(context, vm),
         child: const Icon(Icons.add),
@@ -71,15 +72,15 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     );
   }
 
-  List<dynamic> _filteredLists(ListsOverviewViewModel vm) {
+  List<dynamic> _filteredLists(ListsOverviewViewModel vm, FilterViewModel filter) {
     final lists = vm.sortedLists;
-    if (_hideLow) {
+    if (filter.hideLow) {
       return lists.where((l) => l.priority != Priority.low).toList();
     }
     return lists;
   }
 
-  Widget _buildBody(ListsOverviewViewModel vm) {
+  Widget _buildBody(ListsOverviewViewModel vm, FilterViewModel filter) {
     if (vm.isLoading && vm.lists.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -94,7 +95,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       );
     }
 
-    final sortedLists = _filteredLists(vm);
+    final sortedLists = _filteredLists(vm, filter);
 
     if (_showBubbleView) {
       return BubbleView(

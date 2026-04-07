@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../view_models/filter_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../../domain/models/priority.dart';
 import '../widgets/item_form_dialog.dart';
@@ -19,7 +20,6 @@ class ListDetailScreen extends StatefulWidget {
 
 class _ListDetailScreenState extends State<ListDetailScreen> {
   late bool _showBubbleView;
-  bool _hideLow = false;
 
   @override
   void initState() {
@@ -30,6 +30,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<ListDetailViewModel>();
+    final filter = context.watch<FilterViewModel>();
     final list = vm.list;
     final listColor = _priorityColor(list.priority);
 
@@ -39,9 +40,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         backgroundColor: listColor.withValues(alpha: 0.15),
         actions: [
           IconButton(
-            icon: Icon(_hideLow ? Icons.visibility_off : Icons.visibility),
-            tooltip: _hideLow ? 'Show Low' : 'Hide Low',
-            onPressed: () => setState(() => _hideLow = !_hideLow),
+            icon: Icon(filter.hideLow ? Icons.visibility_off : Icons.visibility),
+            tooltip: filter.hideLow ? 'Show Low' : 'Hide Low',
+            onPressed: () => filter.toggleHideLow(),
           ),
           IconButton(
             icon: Icon(_showBubbleView ? Icons.view_list : Icons.bubble_chart),
@@ -68,8 +69,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   }
 
   Widget _buildBody(ListDetailViewModel vm) {
+    final filter = context.watch<FilterViewModel>();
     var sortedItems = vm.sortedItems;
-    if (_hideLow) {
+    if (filter.hideLow) {
       sortedItems = sortedItems.where((i) => i.priority != Priority.low).toList();
     }
 
