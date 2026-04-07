@@ -22,6 +22,15 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   bool _showBubbleView = true;
   bool _hideLow = false;
 
+  static Color _priorityColor(Priority priority) {
+    return switch (priority) {
+      Priority.critical => Colors.red.shade400,
+      Priority.high => Colors.orange.shade400,
+      Priority.medium => Colors.blue.shade400,
+      Priority.low => Colors.grey.shade400,
+    };
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,7 +102,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
             .map((list) => BubbleEntry(
                   id: list.id,
                   name: list.name,
-                  color: Color(list.colorPreset.colorValue),
+                  color: _priorityColor(list.priority),
                   priority: list.priority,
                   subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
                   onTap: () => _openList(context, list, useBubbleView: true),
@@ -122,7 +131,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
         final screenHeight = MediaQuery.of(context).size.height;
         const minCardHeight = 120.0;
         final cardHeight = (screenHeight * list.priority.screenHeightFraction).clamp(minCardHeight, double.infinity);
-        final listColor = Color(list.colorPreset.colorValue);
+        final listColor = _priorityColor(list.priority);
         return PriorityCard(
           title: list.name,
           badgeLabel: list.priority.label,

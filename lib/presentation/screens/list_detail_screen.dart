@@ -31,7 +31,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<ListDetailViewModel>();
     final list = vm.list;
-    final listColor = Color(list.colorPreset.colorValue);
+    final listColor = _priorityColor(list.priority);
 
     return Scaffold(
       appBar: AppBar(
