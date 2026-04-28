@@ -52,7 +52,7 @@ class SupabasePriorityListRepository implements PriorityListRepository {
     await _client.from('priority_items').delete().eq('list_id', list.id);
 
     if (list.items.isNotEmpty) {
-      await _client.from('priority_items').insert(
+      await _client.from('priority_items').upsert(
             list.items
                 .map((item) => {
                       'id': item.id,
