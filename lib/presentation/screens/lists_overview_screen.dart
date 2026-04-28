@@ -141,6 +141,9 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           fixedHeight: cardHeight,
           subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
           onTap: () => _openList(context, list, useBubbleView: false),
+          onMoveInto: sortedLists.length > 1
+              ? () => _showMoveIntoDialog(context, vm, list)
+              : null,
           onPriorityUp: list.priority.higher != null
               ? () => vm.updateList(list.copyWith(
                     priority: list.priority.higher!,
@@ -171,6 +174,49 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     );
     if (mounted) {
       vm.loadLists();
+    }
+  }
+
+  Future<void> _showMoveIntoDialog(
+      BuildContext context, ListsOverviewViewModel vm, dynamic sourceList) async {
+    final targets = vm.sortedLists.where((l) => l.id != sourceList.id).toList();
+    if (targets.isEmpty) return;
+
+    final selected = await showDialog<dynamic>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Move "${sourceList.name}" into...'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: targets.length,
+            itemBuilder: (context, index) {
+              final target = targets[index];
+              final color = _priorityColor(target.priority);
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: color.withValues(alpha: 0.2),
+                  child: Icon(Icons.list, color: color),
+                ),
+                title: Text(target.name),
+                subtitle: Text('${target.items.length} item${target.items.length == 1 ? '' : 's'}'),
+                onTap: () => Navigator.of(context).pop(target),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (selected != null) {
+      await vm.moveListIntoList(sourceList.id, selected.id);
     }
   }
 

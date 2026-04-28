@@ -46,6 +46,25 @@ class ListDetailViewModel extends ChangeNotifier {
     await _save();
   }
 
+  Future<void> extractItemToList(String itemId) async {
+    final item = _list.items.firstWhere((i) => i.id == itemId);
+    final now = DateTime.now();
+
+    _list = _list.removeItem(itemId).copyWith(updatedAt: now);
+    await _repository.saveList(_list);
+
+    final newList = PriorityList(
+      id: _uuid.v4(),
+      name: item.title,
+      colorPreset: ColorPreset.blue,
+      priority: item.priority,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _repository.saveList(newList);
+    notifyListeners();
+  }
+
   Future<void> updateListDetails(String name, ColorPreset colorPreset) async {
     final now = DateTime.now();
     _list = _list.copyWith(name: name, colorPreset: colorPreset, updatedAt: now);

@@ -125,6 +125,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           onEdit: () => _editItem(context, vm, item),
           onDelete: () => _confirmDeleteItem(
               context, vm, item.id, item.title),
+          onExtract: () => _confirmExtractItem(context, vm, item.id, item.title),
           onPriorityUp: item.priority.higher != null
               ? () => vm.updateItem(
                   item.copyWith(priority: item.priority.higher!))
@@ -175,6 +176,30 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           priority: result.priority,
         ),
       );
+    }
+  }
+
+  Future<void> _confirmExtractItem(
+      BuildContext context, ListDetailViewModel vm, String id, String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Extract to Top Level'),
+        content: Text('Extract "$title" as a separate list?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Extract'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await vm.extractItemToList(id);
     }
   }
 

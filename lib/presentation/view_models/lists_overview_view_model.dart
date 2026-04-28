@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/models/color_preset.dart';
 import '../../domain/models/priority.dart';
+import '../../domain/models/priority_item.dart';
 import '../../domain/models/priority_list.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 
@@ -59,6 +60,32 @@ class ListsOverviewViewModel extends ChangeNotifier {
 
   Future<void> updateList(PriorityList list) async {
     await _repository.saveList(list);
+    await loadLists();
+  }
+
+  Future<void> moveListIntoList(String sourceListId, String targetListId) async {
+    final allLists = await _repository.getAllLists();
+    final sourceList = allLists.firstWhere((l) => l.id == sourceListId);
+    var targetList = allLists.firstWhere((l) => l.id == targetListId);
+
+    final now = DateTime.now();
+
+    final newItem = PriorityItem(
+      id: _uuid.v4(),
+      title: sourceList.name,
+      priority: sourceList.priority,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    targetList = targetList.addItem(newItem);
+    for (final item in sourceList.items) {
+      targetList = targetList.addItem(item);
+    }
+    targetList = targetList.copyWith(updatedAt: now);
+
+    await _repository.saveList(targetList);
+    await _repository.deleteList(sourceListId);
     await loadLists();
   }
 }

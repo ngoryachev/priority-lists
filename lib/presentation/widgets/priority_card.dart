@@ -12,6 +12,8 @@ class PriorityCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
+  final VoidCallback? onExtract;
+  final VoidCallback? onMoveInto;
 
   const PriorityCard({
     super.key,
@@ -26,6 +28,8 @@ class PriorityCard extends StatelessWidget {
     this.onDelete,
     this.onPriorityUp,
     this.onPriorityDown,
+    this.onExtract,
+    this.onMoveInto,
   });
 
   bool get _isCompact => fixedHeight != null && fixedHeight! < 150;
@@ -80,6 +84,20 @@ class PriorityCard extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Decrease priority',
                     ),
+                    if (onExtract != null)
+                      IconButton(
+                        icon: const Icon(Icons.open_in_new, size: 20),
+                        onPressed: onExtract,
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Extract to top level',
+                      ),
+                    if (onMoveInto != null)
+                      IconButton(
+                        icon: const Icon(Icons.move_to_inbox, size: 20),
+                        onPressed: onMoveInto,
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Move into list',
+                      ),
                     if (onEdit != null)
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 20),
