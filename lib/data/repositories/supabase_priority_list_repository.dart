@@ -49,24 +49,38 @@ class SupabasePriorityListRepository implements PriorityListRepository {
       'updated_at': list.updatedAt.toUtc().toIso8601String(),
     });
 
-    await _client.from('priority_items').delete().eq('list_id', list.id);
-
-    if (list.items.isNotEmpty) {
-      await _client.from('priority_items').upsert(
-            list.items
-                .map((item) => {
-                      'id': item.id,
-                      'list_id': list.id,
-                      'user_id': _userId,
-                      'title': item.title,
-                      'description': item.description,
-                      'priority': item.priority.value,
-                      'created_at': item.createdAt.toUtc().toIso8601String(),
-                      'updated_at': item.updatedAt.toUtc().toIso8601String(),
-                    })
-                .toList(),
-          );
+    // If the list has no items, drop everything still referencing it.
+    if (list.items.isEmpty) {
+      await _client.from('priority_items').delete().eq('list_id', list.id);
+      return;
     }
+
+    // Upsert the current items FIRST (inserts new ones, updates existing ones,
+    // and re-parents items moved in from another list). Doing this before any
+    // delete means the list is never left empty if a later step fails — which
+    // is what previously wiped the destination list on move-into.
+    await _client.from('priority_items').upsert(
+          list.items
+              .map((item) => {
+                    'id': item.id,
+                    'list_id': list.id,
+                    'user_id': _userId,
+                    'title': item.title,
+                    'description': item.description,
+                    'priority': item.priority.value,
+                    'created_at': item.createdAt.toUtc().toIso8601String(),
+                    'updated_at': item.updatedAt.toUtc().toIso8601String(),
+                  })
+              .toList(),
+        );
+
+    // Then remove only the items that are no longer part of this list.
+    final keepIds = list.items.map((item) => item.id).join(',');
+    await _client
+        .from('priority_items')
+        .delete()
+        .eq('list_id', list.id)
+        .not('id', 'in', '($keepIds)');
   }
 
   @override
