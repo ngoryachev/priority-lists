@@ -31,8 +31,17 @@ class BubbleWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final fontSize = (diameter * 0.11).clamp(10.0, 18.0);
     final iconSize = (diameter * 0.15).clamp(14.0, 22.0);
+    final iconSlot = iconSize + 8;
     final levelButtonSize = (diameter * 0.13).clamp(14.0, 22.0);
     final levelFontSize = (levelButtonSize * 0.62).clamp(9.0, 13.0);
+    final levelRowHeight = levelButtonSize;
+
+    // Reserve vertical bands for the controls so the centered title doesn't
+    // collide with the +/- buttons or the 1-4 row.
+    final topInset = onPriorityUp != null ? iconSlot : 0.0;
+    final bottomInset =
+        (onPriorityDown != null ? iconSlot : 0.0) +
+            (onSetPriority != null ? levelRowHeight + diameter * 0.04 : 0.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -53,49 +62,72 @@ class BubbleWidget extends StatelessWidget {
         ),
         child: Padding(
           padding: EdgeInsets.all(diameter * 0.1),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Stack so the centred title stays visible at any bubble size and
+          // the +/- buttons / 1-4 row overlay without flexing into it.
+          child: Stack(
             children: [
-              if (onPriorityUp != null)
-                _buildIconButton(Icons.add, onPriorityUp!, iconSize),
-              Flexible(
-                child: Text(
-                  name,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: fontSize,
-                    color: color.computeLuminance() > 0.5
-                        ? Colors.black87
-                        : color,
+              Padding(
+                padding: EdgeInsets.only(top: topInset, bottom: bottomInset),
+                child: Center(
+                  child: Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSize,
+                      color: color.computeLuminance() > 0.5
+                          ? Colors.black87
+                          : color,
+                    ),
                   ),
                 ),
               ),
-              if (onSetPriority != null) ...[
-                SizedBox(height: diameter * 0.04),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final p in Priority.values)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: diameter * 0.01),
-                        child: _LevelButton(
-                          priority: p,
-                          isActive: currentPriority == p,
-                          size: levelButtonSize,
-                          fontSize: levelFontSize,
-                          onTap: () => onSetPriority!(p),
-                        ),
-                      ),
-                  ],
+              if (onPriorityUp != null)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _buildIconButton(Icons.add, onPriorityUp!, iconSize),
+                  ),
                 ),
-              ],
+              if (onSetPriority != null)
+                Positioned(
+                  bottom: onPriorityDown != null ? iconSlot : 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final p in Priority.values)
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: diameter * 0.01),
+                            child: _LevelButton(
+                              priority: p,
+                              isActive: currentPriority == p,
+                              size: levelButtonSize,
+                              fontSize: levelFontSize,
+                              onTap: () => onSetPriority!(p),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               if (onPriorityDown != null)
-                _buildIconButton(Icons.remove, onPriorityDown!, iconSize),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _buildIconButton(
+                        Icons.remove, onPriorityDown!, iconSize),
+                  ),
+                ),
             ],
           ),
         ),
