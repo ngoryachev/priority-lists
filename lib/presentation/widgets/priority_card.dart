@@ -56,102 +56,111 @@ class PriorityCard extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // The priority-level row is overlaid via Stack so it doesn't eat
+            // vertical space inside the Column — important for compact cards
+            // (low/medium) where the Column is already tight.
+            child: Stack(
               children: [
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            badgeLabel,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+                          onPressed: onPriorityUp,
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Increase priority',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                          onPressed: onPriorityDown,
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Decrease priority',
+                        ),
+                        if (onExtract != null)
+                          IconButton(
+                            icon: const Icon(Icons.open_in_new, size: 20),
+                            onPressed: onExtract,
+                            visualDensity: VisualDensity.compact,
+                            tooltip: 'Extract to top level',
+                          ),
+                        if (onMoveInto != null)
+                          IconButton(
+                            icon: const Icon(Icons.move_to_inbox, size: 20),
+                            onPressed: onMoveInto,
+                            visualDensity: VisualDensity.compact,
+                            tooltip: 'Move into list',
+                          ),
+                        if (onEdit != null)
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: onEdit,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        if (onDelete != null)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: onDelete,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Flexible(
                       child: Text(
-                        badgeLabel,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (!_isCompact &&
+                        subtitle != null &&
+                        subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Flexible(
+                        child: Text(
+                          subtitle!,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 5,
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_up, size: 20),
-                      onPressed: onPriorityUp,
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Increase priority',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                      onPressed: onPriorityDown,
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Decrease priority',
-                    ),
-                    if (onExtract != null)
-                      IconButton(
-                        icon: const Icon(Icons.open_in_new, size: 20),
-                        onPressed: onExtract,
-                        visualDensity: VisualDensity.compact,
-                        tooltip: 'Extract to top level',
-                      ),
-                    if (onMoveInto != null)
-                      IconButton(
-                        icon: const Icon(Icons.move_to_inbox, size: 20),
-                        onPressed: onMoveInto,
-                        visualDensity: VisualDensity.compact,
-                        tooltip: 'Move into list',
-                      ),
-                    if (onEdit != null)
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        onPressed: onEdit,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    if (onDelete != null)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: onDelete,
-                        visualDensity: VisualDensity.compact,
-                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 8),
-                Flexible(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (!_isCompact && subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Flexible(
-                    child: Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 5,
-                    ),
-                  ),
-                ],
-                if (onSetPriority != null) ...[
-                  const Spacer(),
-                  Align(
-                    alignment: Alignment.bottomRight,
+                if (onSetPriority != null)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
                     child: _PriorityLevelRow(
                       current: currentPriority,
                       onSelect: onSetPriority!,
                     ),
                   ),
-                ],
               ],
             ),
           ),
