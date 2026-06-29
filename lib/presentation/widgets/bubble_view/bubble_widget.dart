@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../domain/models/priority.dart';
+import '../../utils/priority_colors.dart';
+
 class BubbleWidget extends StatelessWidget {
   final String name;
   final Color color;
@@ -8,6 +11,8 @@ class BubbleWidget extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
+  final Priority? currentPriority;
+  final ValueChanged<Priority>? onSetPriority;
 
   const BubbleWidget({
     super.key,
@@ -18,12 +23,16 @@ class BubbleWidget extends StatelessWidget {
     required this.onTap,
     this.onPriorityUp,
     this.onPriorityDown,
+    this.currentPriority,
+    this.onSetPriority,
   });
 
   @override
   Widget build(BuildContext context) {
     final fontSize = (diameter * 0.11).clamp(10.0, 18.0);
     final iconSize = (diameter * 0.15).clamp(14.0, 22.0);
+    final levelButtonSize = (diameter * 0.13).clamp(14.0, 22.0);
+    final levelFontSize = (levelButtonSize * 0.62).clamp(9.0, 13.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -64,6 +73,27 @@ class BubbleWidget extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onSetPriority != null) ...[
+                SizedBox(height: diameter * 0.04),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final p in Priority.values)
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: diameter * 0.01),
+                        child: _LevelButton(
+                          priority: p,
+                          isActive: currentPriority == p,
+                          size: levelButtonSize,
+                          fontSize: levelFontSize,
+                          onTap: () => onSetPriority!(p),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               if (onPriorityDown != null)
                 _buildIconButton(Icons.remove, onPriorityDown!, iconSize),
             ],
@@ -85,6 +115,52 @@ class BubbleWidget extends StatelessWidget {
         onPressed: onPressed,
         color: color,
         visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+
+class _LevelButton extends StatelessWidget {
+  final Priority priority;
+  final bool isActive;
+  final double size;
+  final double fontSize;
+  final VoidCallback onTap;
+
+  const _LevelButton({
+    required this.priority,
+    required this.isActive,
+    required this.size,
+    required this.fontSize,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = priorityColor(priority);
+    return Material(
+      color: isActive ? color : color.withValues(alpha: 0.15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(color: color, width: isActive ? 0 : 1),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Center(
+            child: Text(
+              '${priority.value}',
+              style: TextStyle(
+                color: isActive ? Colors.white : color,
+                fontWeight: FontWeight.bold,
+                fontSize: fontSize,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

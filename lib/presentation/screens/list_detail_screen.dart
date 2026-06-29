@@ -3,11 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../view_models/filter_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
-import '../../domain/models/priority.dart';
+import '../utils/priority_colors.dart';
 import '../widgets/item_form_dialog.dart';
 import '../widgets/list_form_dialog.dart';
 import '../widgets/bubble_view/bubble_view.dart';
 import '../widgets/priority_card.dart';
+import '../widgets/priority_filter_bar.dart';
 
 class ListDetailScreen extends StatefulWidget {
   final bool initialBubbleView;
@@ -30,20 +31,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<ListDetailViewModel>();
-    final filter = context.watch<FilterViewModel>();
     final list = vm.list;
-    final listColor = _priorityColor(list.priority);
+    final listColor = priorityColor(list.priority);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(list.name),
         backgroundColor: listColor.withValues(alpha: 0.15),
         actions: [
-          IconButton(
-            icon: Icon(filter.hideLow ? Icons.visibility_off : Icons.visibility),
-            tooltip: filter.hideLow ? 'Show Low' : 'Hide Low',
-            onPressed: () => filter.toggleHideLow(),
-          ),
+          const PriorityFilterBar(),
           IconButton(
             icon: Icon(_showBubbleView ? Icons.view_list : Icons.bubble_chart),
             tooltip: _showBubbleView ? 'List View' : 'Bubble View',
@@ -70,10 +66,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
   Widget _buildBody(ListDetailViewModel vm) {
     final filter = context.watch<FilterViewModel>();
-    var sortedItems = vm.sortedItems;
-    if (filter.hideLow) {
-      sortedItems = sortedItems.where((i) => i.priority != Priority.low).toList();
-    }
+    final sortedItems =
+        vm.sortedItems.where((i) => filter.isVisible(i.priority)).toList();
 
     if (sortedItems.isEmpty) {
       return const Center(
@@ -90,7 +84,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
             .map((item) => BubbleEntry(
                   id: item.id,
                   name: item.title,
-                  color: _priorityColor(item.priority),
+                  color: priorityColor(item.priority),
                   priority: item.priority,
                   subtitle: item.description.isNotEmpty ? item.description : null,
                   onTap: () => _editItem(context, vm, item),
@@ -102,6 +96,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                       ? () => vm.updateItem(
                           item.copyWith(priority: item.priority.lower!))
                       : null,
+                  onSetPriority: (p) =>
+                      vm.updateItem(item.copyWith(priority: p)),
                 ))
             .toList(),
       );
@@ -119,9 +115,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         return PriorityCard(
           title: item.title,
           badgeLabel: item.priority.label,
-          color: _priorityColor(item.priority),
+          color: priorityColor(item.priority),
           fixedHeight: cardHeight,
           subtitle: item.description,
+          currentPriority: item.priority,
           onEdit: () => _editItem(context, vm, item),
           onDelete: () => _confirmDeleteItem(
               context, vm, item.id, item.title),
@@ -134,18 +131,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               ? () => vm.updateItem(
                   item.copyWith(priority: item.priority.lower!))
               : null,
+          onSetPriority: (p) => vm.updateItem(item.copyWith(priority: p)),
         );
       },
     );
-  }
-
-  static Color _priorityColor(Priority priority) {
-    return switch (priority) {
-      Priority.critical => Colors.red.shade400,
-      Priority.high => Colors.orange.shade400,
-      Priority.medium => Colors.blue.shade400,
-      Priority.low => Colors.grey.shade400,
-    };
   }
 
   Future<void> _addItem(BuildContext context, ListDetailViewModel vm) async {

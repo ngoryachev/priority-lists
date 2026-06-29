@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../domain/models/priority.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/lists_overview_view_model.dart';
+import '../utils/priority_colors.dart';
 import '../widgets/list_form_dialog.dart';
 import '../widgets/bubble_view/bubble_view.dart';
 import '../widgets/priority_card.dart';
+import '../widgets/priority_filter_bar.dart';
 import 'list_detail_screen.dart';
 
 class ListsOverviewScreen extends StatefulWidget {
@@ -21,15 +22,6 @@ class ListsOverviewScreen extends StatefulWidget {
 
 class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   bool _showBubbleView = true;
-
-  static Color _priorityColor(Priority priority) {
-    return switch (priority) {
-      Priority.critical => Colors.red.shade400,
-      Priority.high => Colors.orange.shade400,
-      Priority.medium => Colors.blue.shade400,
-      Priority.low => Colors.grey.shade400,
-    };
-  }
 
   @override
   void initState() {
@@ -47,11 +39,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
       appBar: AppBar(
         title: const Text('Priority Lists'),
         actions: [
-          IconButton(
-            icon: Icon(filter.hideLow ? Icons.visibility_off : Icons.visibility),
-            tooltip: filter.hideLow ? 'Show Low' : 'Hide Low',
-            onPressed: () => filter.toggleHideLow(),
-          ),
+          const PriorityFilterBar(),
           IconButton(
             icon: Icon(_showBubbleView ? Icons.view_list : Icons.bubble_chart),
             tooltip: _showBubbleView ? 'List View' : 'Bubble View',
@@ -72,12 +60,9 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     );
   }
 
-  List<dynamic> _filteredLists(ListsOverviewViewModel vm, FilterViewModel filter) {
-    final lists = vm.sortedLists;
-    if (filter.hideLow) {
-      return lists.where((l) => l.priority != Priority.low).toList();
-    }
-    return lists;
+  List<dynamic> _filteredLists(
+      ListsOverviewViewModel vm, FilterViewModel filter) {
+    return vm.sortedLists.where((l) => filter.isVisible(l.priority)).toList();
   }
 
   Widget _buildBody(ListsOverviewViewModel vm, FilterViewModel filter) {
@@ -103,7 +88,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
             .map((list) => BubbleEntry(
                   id: list.id,
                   name: list.name,
-                  color: _priorityColor(list.priority),
+                  color: priorityColor(list.priority),
                   priority: list.priority,
                   subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
                   onTap: () => _openList(context, list, useBubbleView: true),
@@ -119,6 +104,10 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
                             updatedAt: DateTime.now(),
                           ))
                       : null,
+                  onSetPriority: (p) => vm.updateList(list.copyWith(
+                        priority: p,
+                        updatedAt: DateTime.now(),
+                      )),
                 ))
             .toList(),
       );
@@ -132,7 +121,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
         final screenHeight = MediaQuery.of(context).size.height;
         const minCardHeight = 120.0;
         final cardHeight = (screenHeight * list.priority.screenHeightFraction).clamp(minCardHeight, double.infinity);
-        final listColor = _priorityColor(list.priority);
+        final listColor = priorityColor(list.priority);
         return PriorityCard(
           title: list.name,
           badgeLabel: list.priority.label,
@@ -140,6 +129,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           backgroundColor: listColor.withValues(alpha: 0.15),
           fixedHeight: cardHeight,
           subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
+          currentPriority: list.priority,
           onTap: () => _openList(context, list, useBubbleView: false),
           onMoveInto: sortedLists.length > 1
               ? () => _showMoveIntoDialog(context, vm, list)
@@ -156,6 +146,10 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
                     updatedAt: DateTime.now(),
                   ))
               : null,
+          onSetPriority: (p) => vm.updateList(list.copyWith(
+            priority: p,
+            updatedAt: DateTime.now(),
+          )),
         );
       },
     );
@@ -193,7 +187,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
             itemCount: targets.length,
             itemBuilder: (context, index) {
               final target = targets[index];
-              final color = _priorityColor(target.priority);
+              final color = priorityColor(target.priority);
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: color.withValues(alpha: 0.2),

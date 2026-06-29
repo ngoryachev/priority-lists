@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/models/priority.dart';
+import '../utils/priority_colors.dart';
+
 class PriorityCard extends StatelessWidget {
   final String title;
   final String badgeLabel;
@@ -7,11 +10,13 @@ class PriorityCard extends StatelessWidget {
   final String? subtitle;
   final Color? backgroundColor;
   final double? fixedHeight;
+  final Priority? currentPriority;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
+  final ValueChanged<Priority>? onSetPriority;
   final VoidCallback? onExtract;
   final VoidCallback? onMoveInto;
 
@@ -23,11 +28,13 @@ class PriorityCard extends StatelessWidget {
     this.subtitle,
     this.backgroundColor,
     this.fixedHeight,
+    this.currentPriority,
     this.onTap,
     this.onEdit,
     this.onDelete,
     this.onPriorityUp,
     this.onPriorityDown,
+    this.onSetPriority,
     this.onExtract,
     this.onMoveInto,
   });
@@ -54,23 +61,22 @@ class PriorityCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    if (!_isCompact)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          badgeLabel,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badgeLabel,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                    ),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.keyboard_arrow_up, size: 20),
@@ -136,6 +142,16 @@ class PriorityCard extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (onSetPriority != null) ...[
+                  const Spacer(),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: _PriorityLevelRow(
+                      current: currentPriority,
+                      onSelect: onSetPriority!,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -147,5 +163,74 @@ class PriorityCard extends StatelessWidget {
       return SizedBox(height: fixedHeight, child: card);
     }
     return card;
+  }
+}
+
+/// Row of four square buttons "1" / "2" / "3" / "4" that directly assign a
+/// [Priority] without going through up/down increments.
+class _PriorityLevelRow extends StatelessWidget {
+  final Priority? current;
+  final ValueChanged<Priority> onSelect;
+
+  const _PriorityLevelRow({required this.current, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final p in Priority.values)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: _PriorityLevelButton(
+              priority: p,
+              isActive: current == p,
+              onTap: () => onSelect(p),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PriorityLevelButton extends StatelessWidget {
+  final Priority priority;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _PriorityLevelButton({
+    required this.priority,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = priorityColor(priority);
+    return Material(
+      color: isActive ? color : color.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: color, width: isActive ? 0 : 1),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: Text(
+              '${priority.value}',
+              style: TextStyle(
+                color: isActive ? Colors.white : color,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

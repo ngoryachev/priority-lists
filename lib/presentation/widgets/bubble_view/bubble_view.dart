@@ -14,6 +14,7 @@ class BubbleEntry {
   final VoidCallback? onTap;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
+  final ValueChanged<Priority>? onSetPriority;
 
   const BubbleEntry({
     required this.id,
@@ -24,6 +25,7 @@ class BubbleEntry {
     this.onTap,
     this.onPriorityUp,
     this.onPriorityDown,
+    this.onSetPriority,
   });
 }
 
@@ -108,6 +110,8 @@ class _BubbleViewState extends State<BubbleView>
                     onTap: entry.onTap ?? () {},
                     onPriorityUp: entry.onPriorityUp,
                     onPriorityDown: entry.onPriorityDown,
+                    currentPriority: entry.priority,
+                    onSetPriority: entry.onSetPriority,
                   ),
                 ),
           ],
