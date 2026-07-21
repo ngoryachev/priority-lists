@@ -67,6 +67,8 @@ services:
       - "8000:80"
     volumes:
       - ./volumes/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Flutter web build; absolute path so the CI rsync --delete of supabase/ can't wipe it
+      - /opt/priority-lists/web:/usr/share/nginx/html:ro
     depends_on:
       - auth
       - rest

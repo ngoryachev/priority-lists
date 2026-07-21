@@ -7,6 +7,7 @@ import '../view_models/list_detail_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/lists_overview_view_model.dart';
 import '../utils/priority_colors.dart';
+import '../widgets/centered_body.dart';
 import '../widgets/list_form_dialog.dart';
 import '../widgets/bubble_view/bubble_view.dart';
 import '../widgets/priority_card.dart';
@@ -52,7 +53,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           ),
         ],
       ),
-      body: _buildBody(vm, filter),
+      body: CenteredBody(child: _buildBody(vm, filter)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateDialog(context, vm),
         child: const Icon(Icons.add),

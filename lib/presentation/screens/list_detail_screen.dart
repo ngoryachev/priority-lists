@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../utils/priority_colors.dart';
+import '../widgets/centered_body.dart';
 import '../widgets/item_form_dialog.dart';
 import '../widgets/list_form_dialog.dart';
 import '../widgets/bubble_view/bubble_view.dart';
@@ -55,7 +56,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           ),
         ],
       ),
-      body: _buildBody(vm),
+      body: CenteredBody(child: _buildBody(vm)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addItem(context, vm),
         backgroundColor: listColor,

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/repositories/priority_list_repository.dart';
@@ -14,6 +15,10 @@ class MigrationService {
   });
 
   Future<void> migrateIfNeeded() async {
+    // No file system on web: the pre-auth repository is in-memory,
+    // so there is never local data to migrate.
+    if (kIsWeb) return;
+
     if (await _isMigrationCompleted()) return;
 
     final localLists = await localRepository.getAllLists();
