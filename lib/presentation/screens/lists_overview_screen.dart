@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models/priority.dart';
+import '../../domain/models/priority_list.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
@@ -70,7 +71,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   /// Item titles shown as mini chips on critical/high lists so their tasks
   /// are visible from the top level. Honors the current priority filter.
   /// Null for other priorities (falls back to the "N items" subtitle).
-  List<String>? _chipLabels(dynamic list, FilterViewModel filter) {
+  List<String>? _chipLabels(PriorityList list, FilterViewModel filter) {
     if (list.priority != Priority.critical && list.priority != Priority.high) {
       return null;
     }
@@ -78,7 +79,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
         .where((i) => filter.isVisible(i.priority))
         .toList()
       ..sort((a, b) => a.priority.value.compareTo(b.priority.value));
-    return items.map<String>((i) => i.title).toList();
+    return items.map((i) => i.title).toList();
   }
 
   Widget _buildBody(ListsOverviewViewModel vm, FilterViewModel filter) {

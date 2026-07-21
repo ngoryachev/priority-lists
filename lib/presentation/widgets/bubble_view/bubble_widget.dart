@@ -72,36 +72,44 @@ class BubbleWidget extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(top: topInset, bottom: bottomInset),
                 child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        name,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: fontSize,
-                          color: color.computeLuminance() > 0.5
-                              ? Colors.black87
-                              : color,
-                        ),
-                      ),
-                      if (chipLabels != null && chipLabels!.isNotEmpty) ...[
-                        SizedBox(height: diameter * 0.03),
-                        Flexible(
-                          child: ItemChips(
-                            labels: chipLabels!,
-                            color: color,
-                            maxChips: diameter > 220 ? 4 : 2,
-                            maxTitleChars: 12,
-                            fontSize: (diameter * 0.06).clamp(8.0, 10.0),
-                            alignment: WrapAlignment.center,
+                  // scaleDown keeps title+chips inside the bubble at any
+                  // diameter instead of overflowing the reserved band.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: diameter * 0.8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: fontSize,
+                              color: color.computeLuminance() > 0.5
+                                  ? Colors.black87
+                                  : color,
+                            ),
                           ),
-                        ),
-                      ],
-                    ],
+                          if (diameter >= 120 &&
+                              chipLabels != null &&
+                              chipLabels!.isNotEmpty) ...[
+                            SizedBox(height: diameter * 0.03),
+                            ItemChips(
+                              labels: chipLabels!,
+                              color: color,
+                              maxChips: diameter > 220 ? 4 : 2,
+                              maxTitleChars: 12,
+                              fontSize: (diameter * 0.06).clamp(8.0, 10.0),
+                              alignment: WrapAlignment.center,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
