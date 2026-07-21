@@ -11,6 +11,9 @@ class BubbleEntry {
   final Color color;
   final Priority priority;
   final String? subtitle;
+
+  /// When non-empty, rendered as mini chips under the bubble title.
+  final List<String>? chipLabels;
   final VoidCallback? onTap;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
@@ -22,6 +25,7 @@ class BubbleEntry {
     required this.color,
     required this.priority,
     this.subtitle,
+    this.chipLabels,
     this.onTap,
     this.onPriorityUp,
     this.onPriorityDown,
@@ -107,6 +111,7 @@ class _BubbleViewState extends State<BubbleView>
                     color: entry.color,
                     diameter: body.radius * 2,
                     itemCountText: entry.subtitle ?? '',
+                    chipLabels: entry.chipLabels,
                     onTap: entry.onTap ?? () {},
                     onPriorityUp: entry.onPriorityUp,
                     onPriorityDown: entry.onPriorityDown,

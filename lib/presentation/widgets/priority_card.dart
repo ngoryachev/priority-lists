@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/priority.dart';
 import '../utils/priority_colors.dart';
+import 'item_chips.dart';
 
 class PriorityCard extends StatelessWidget {
   final String title;
   final String badgeLabel;
   final Color color;
   final String? subtitle;
+
+  /// When non-empty, rendered as mini chips in place of [subtitle].
+  final List<String>? chipLabels;
   final Color? backgroundColor;
   final double? fixedHeight;
   final Priority? currentPriority;
@@ -26,6 +30,7 @@ class PriorityCard extends StatelessWidget {
     required this.badgeLabel,
     required this.color,
     this.subtitle,
+    this.chipLabels,
     this.backgroundColor,
     this.fixedHeight,
     this.currentPriority,
@@ -135,6 +140,16 @@ class PriorityCard extends StatelessWidget {
                       ),
                     ),
                     if (!_isCompact &&
+                        chipLabels != null &&
+                        chipLabels!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Flexible(
+                        child: ItemChips(
+                          labels: chipLabels!,
+                          color: color,
+                        ),
+                      ),
+                    ] else if (!_isCompact &&
                         subtitle != null &&
                         subtitle!.isNotEmpty) ...[
                       const SizedBox(height: 4),

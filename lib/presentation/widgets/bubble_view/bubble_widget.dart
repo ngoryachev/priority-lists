@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/models/priority.dart';
 import '../../utils/priority_colors.dart';
+import '../item_chips.dart';
 
 class BubbleWidget extends StatelessWidget {
   final String name;
   final Color color;
   final double diameter;
   final String itemCountText;
+  final List<String>? chipLabels;
   final VoidCallback onTap;
   final VoidCallback? onPriorityUp;
   final VoidCallback? onPriorityDown;
@@ -20,6 +22,7 @@ class BubbleWidget extends StatelessWidget {
     required this.color,
     required this.diameter,
     required this.itemCountText,
+    this.chipLabels,
     required this.onTap,
     this.onPriorityUp,
     this.onPriorityDown,
@@ -69,18 +72,36 @@ class BubbleWidget extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(top: topInset, bottom: bottomInset),
                 child: Center(
-                  child: Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: fontSize,
-                      color: color.computeLuminance() > 0.5
-                          ? Colors.black87
-                          : color,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSize,
+                          color: color.computeLuminance() > 0.5
+                              ? Colors.black87
+                              : color,
+                        ),
+                      ),
+                      if (chipLabels != null && chipLabels!.isNotEmpty) ...[
+                        SizedBox(height: diameter * 0.03),
+                        Flexible(
+                          child: ItemChips(
+                            labels: chipLabels!,
+                            color: color,
+                            maxChips: diameter > 220 ? 4 : 2,
+                            maxTitleChars: 12,
+                            fontSize: (diameter * 0.06).clamp(8.0, 10.0),
+                            alignment: WrapAlignment.center,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

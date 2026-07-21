@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../domain/models/priority.dart';
 import '../../domain/repositories/priority_list_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
@@ -66,6 +67,20 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     return vm.sortedLists.where((l) => filter.isVisible(l.priority)).toList();
   }
 
+  /// Item titles shown as mini chips on critical/high lists so their tasks
+  /// are visible from the top level. Honors the current priority filter.
+  /// Null for other priorities (falls back to the "N items" subtitle).
+  List<String>? _chipLabels(dynamic list, FilterViewModel filter) {
+    if (list.priority != Priority.critical && list.priority != Priority.high) {
+      return null;
+    }
+    final items = list.items
+        .where((i) => filter.isVisible(i.priority))
+        .toList()
+      ..sort((a, b) => a.priority.value.compareTo(b.priority.value));
+    return items.map<String>((i) => i.title).toList();
+  }
+
   Widget _buildBody(ListsOverviewViewModel vm, FilterViewModel filter) {
     if (vm.isLoading && vm.lists.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -92,6 +107,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
                   color: priorityColor(list.priority),
                   priority: list.priority,
                   subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
+                  chipLabels: _chipLabels(list, filter),
                   onTap: () => _openList(context, list, useBubbleView: true),
                   onPriorityUp: list.priority.higher != null
                       ? () => vm.updateList(list.copyWith(
@@ -130,6 +146,7 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           backgroundColor: listColor.withValues(alpha: 0.15),
           fixedHeight: cardHeight,
           subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
+          chipLabels: _chipLabels(list, filter),
           currentPriority: list.priority,
           onTap: () => _openList(context, list, useBubbleView: false),
           onMoveInto: sortedLists.length > 1
