@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../domain/models/priority_list.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/list_detail_view_model.dart';
 import '../utils/priority_colors.dart';
@@ -124,6 +125,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           onDelete: () => _confirmDeleteItem(
               context, vm, item.id, item.title),
           onExtract: () => _confirmExtractItem(context, vm, item.id, item.title),
+          onMoveInto: () => _showMoveItemDialog(context, vm, item.id, item.title),
           onPriorityUp: item.priority.higher != null
               ? () => vm.updateItem(
                   item.copyWith(priority: item.priority.higher!))
@@ -190,6 +192,59 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     );
     if (confirmed == true) {
       await vm.extractItemToList(id);
+    }
+  }
+
+  /// Moves an item under a different parent list. Mirrors the "move into list"
+  /// action available on top-level lists in the overview screen.
+  Future<void> _showMoveItemDialog(
+      BuildContext context, ListDetailViewModel vm, String id, String title) async {
+    final targets = await vm.loadMoveTargets();
+    if (!context.mounted) return;
+
+    if (targets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No other lists to move into.')),
+      );
+      return;
+    }
+
+    final selected = await showDialog<PriorityList>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Move "$title" into...'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: targets.length,
+            itemBuilder: (context, index) {
+              final target = targets[index];
+              final color = priorityColor(target.priority);
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: color.withValues(alpha: 0.2),
+                  child: Icon(Icons.list, color: color),
+                ),
+                title: Text(target.name),
+                subtitle: Text(
+                    '${target.items.length} item${target.items.length == 1 ? '' : 's'}'),
+                onTap: () => Navigator.of(context).pop(target),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (selected != null) {
+      await vm.moveItemToList(id, selected.id);
     }
   }
 

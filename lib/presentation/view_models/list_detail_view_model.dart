@@ -65,6 +65,32 @@ class ListDetailViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// All lists except the one being viewed — the possible destinations for
+  /// [moveItemToList], ordered like the overview screen.
+  Future<List<PriorityList>> loadMoveTargets() async {
+    final all = await _repository.getAllLists();
+    return all.where((l) => l.id != _list.id).toList()
+      ..sort((a, b) => a.priority.value.compareTo(b.priority.value));
+  }
+
+  Future<void> moveItemToList(String itemId, String targetListId) async {
+    final item = _list.items.firstWhere((i) => i.id == itemId);
+    final target = await _repository.getListById(targetListId);
+    if (target == null) return;
+
+    final now = DateTime.now();
+
+    // Save the destination FIRST: that re-parents the item row. Only then drop
+    // it from the source, so a failure in between duplicates the item instead
+    // of losing it — and the source save can no longer delete a moved row.
+    await _repository.saveList(
+      target.addItem(item.copyWith(updatedAt: now)).copyWith(updatedAt: now),
+    );
+
+    _list = _list.removeItem(itemId).copyWith(updatedAt: now);
+    await _save();
+  }
+
   Future<void> updateListDetails(String name, ColorPreset colorPreset) async {
     final now = DateTime.now();
     _list = _list.copyWith(name: name, colorPreset: colorPreset, updatedAt: now);
