@@ -24,7 +24,8 @@ class ListsOverviewScreen extends StatefulWidget {
 }
 
 class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
-  bool _showBubbleView = true;
+  /// The overview opens as a plain list; the bubble canvas is opt-in.
+  bool _showBubbleView = false;
 
   @override
   void initState() {

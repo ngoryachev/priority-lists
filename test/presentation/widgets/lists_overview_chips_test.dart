@@ -83,6 +83,10 @@ void main() {
     final repo = await _seededRepository();
     await tester.pumpWidget(_wrap(repo));
     await tester.pump(); // loadLists microtask
+
+    // The overview opens as a list, so switch to the bubble canvas first.
+    await tester.tap(find.byIcon(Icons.bubble_chart));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 100)); // physics ticks
 
     expect(tester.takeException(), isNull);
@@ -108,11 +112,6 @@ void main() {
 
     final repo = await _seededRepository();
     await tester.pumpWidget(_wrap(repo));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    // Switch to list view.
-    await tester.tap(find.byIcon(Icons.view_list));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
