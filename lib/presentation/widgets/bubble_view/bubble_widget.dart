@@ -44,7 +44,7 @@ class BubbleWidget extends StatelessWidget {
     final topInset = onPriorityUp != null ? iconSlot : 0.0;
     final bottomInset =
         (onPriorityDown != null ? iconSlot : 0.0) +
-            (onSetPriority != null ? levelRowHeight + diameter * 0.04 : 0.0);
+        (onSetPriority != null ? levelRowHeight + diameter * 0.04 : 0.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -94,7 +94,9 @@ class BubbleWidget extends StatelessWidget {
                                   : color,
                             ),
                           ),
-                          if (diameter >= 120 &&
+                          // 110 keeps chips on medium bubbles, whose diameter
+                          // is ~0.32 of the canvas' short side.
+                          if (diameter >= 110 &&
                               chipLabels != null &&
                               chipLabels!.isNotEmpty) ...[
                             SizedBox(height: diameter * 0.03),
@@ -134,7 +136,8 @@ class BubbleWidget extends StatelessWidget {
                         for (final p in Priority.values)
                           Padding(
                             padding: EdgeInsets.symmetric(
-                                horizontal: diameter * 0.01),
+                              horizontal: diameter * 0.01,
+                            ),
                             child: _LevelButton(
                               priority: p,
                               isActive: currentPriority == p,
@@ -154,7 +157,10 @@ class BubbleWidget extends StatelessWidget {
                   right: 0,
                   child: Center(
                     child: _buildIconButton(
-                        Icons.remove, onPriorityDown!, iconSize),
+                      Icons.remove,
+                      onPriorityDown!,
+                      iconSize,
+                    ),
                   ),
                 ),
             ],
@@ -165,7 +171,10 @@ class BubbleWidget extends StatelessWidget {
   }
 
   Widget _buildIconButton(
-      IconData icon, VoidCallback onPressed, double iconSize) {
+    IconData icon,
+    VoidCallback onPressed,
+    double iconSize,
+  ) {
     return SizedBox(
       height: iconSize + 8,
       width: iconSize + 8,

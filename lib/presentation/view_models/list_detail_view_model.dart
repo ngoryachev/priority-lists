@@ -14,12 +14,16 @@ class ListDetailViewModel extends ChangeNotifier {
   PriorityList _list;
 
   ListDetailViewModel(this._repository, this._list, {Uuid? uuid})
-      : _uuid = uuid ?? const Uuid();
+    : _uuid = uuid ?? const Uuid();
 
   PriorityList get list => _list;
   List<PriorityItem> get sortedItems => _list.sortedItems;
 
-  Future<void> addItem(String title, String description, Priority priority) async {
+  Future<void> addItem(
+    String title,
+    String description,
+    Priority priority,
+  ) async {
     final now = DateTime.now();
     final item = PriorityItem(
       id: _uuid.v4(),
@@ -93,7 +97,11 @@ class ListDetailViewModel extends ChangeNotifier {
 
   Future<void> updateListDetails(String name, ColorPreset colorPreset) async {
     final now = DateTime.now();
-    _list = _list.copyWith(name: name, colorPreset: colorPreset, updatedAt: now);
+    _list = _list.copyWith(
+      name: name,
+      colorPreset: colorPreset,
+      updatedAt: now,
+    );
     await _save();
   }
 

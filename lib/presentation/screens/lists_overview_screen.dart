@@ -64,20 +64,21 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   }
 
   List<dynamic> _filteredLists(
-      ListsOverviewViewModel vm, FilterViewModel filter) {
+    ListsOverviewViewModel vm,
+    FilterViewModel filter,
+  ) {
     return vm.sortedLists.where((l) => filter.isVisible(l.priority)).toList();
   }
 
-  /// Item titles shown as mini chips on critical/high lists so their tasks
-  /// are visible from the top level. Honors the current priority filter.
-  /// Null for other priorities (falls back to the "N items" subtitle).
+  /// Item titles shown as mini chips on critical/high/medium lists so their
+  /// tasks are visible from the top level. Honors the current priority filter.
+  /// Null for low lists, whose tiles are too short to fit chips (falls back to
+  /// the "N items" subtitle).
   List<String>? _chipLabels(PriorityList list, FilterViewModel filter) {
-    if (list.priority != Priority.critical && list.priority != Priority.high) {
+    if (list.priority == Priority.low) {
       return null;
     }
-    final items = list.items
-        .where((i) => filter.isVisible(i.priority))
-        .toList()
+    final items = list.items.where((i) => filter.isVisible(i.priority)).toList()
       ..sort((a, b) => a.priority.value.compareTo(b.priority.value));
     return items.map((i) => i.title).toList();
   }
@@ -93,7 +94,10 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
 
     if (vm.lists.isEmpty) {
       return const Center(
-        child: Text('No lists yet.\nTap + to create one.', textAlign: TextAlign.center),
+        child: Text(
+          'No lists yet.\nTap + to create one.',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 
@@ -102,31 +106,37 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
     if (_showBubbleView) {
       return BubbleView(
         entries: sortedLists
-            .map((list) => BubbleEntry(
-                  id: list.id,
-                  name: list.name,
-                  color: priorityColor(list.priority),
-                  priority: list.priority,
-                  subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
-                  chipLabels: _chipLabels(list, filter),
-                  onTap: () => _openList(context, list, useBubbleView: true),
-                  onPriorityUp: list.priority.higher != null
-                      ? () => vm.updateList(list.copyWith(
-                            priority: list.priority.higher!,
-                            updatedAt: DateTime.now(),
-                          ))
-                      : null,
-                  onPriorityDown: list.priority.lower != null
-                      ? () => vm.updateList(list.copyWith(
-                            priority: list.priority.lower!,
-                            updatedAt: DateTime.now(),
-                          ))
-                      : null,
-                  onSetPriority: (p) => vm.updateList(list.copyWith(
-                        priority: p,
-                        updatedAt: DateTime.now(),
-                      )),
-                ))
+            .map(
+              (list) => BubbleEntry(
+                id: list.id,
+                name: list.name,
+                color: priorityColor(list.priority),
+                priority: list.priority,
+                subtitle:
+                    '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
+                chipLabels: _chipLabels(list, filter),
+                onTap: () => _openList(context, list, useBubbleView: true),
+                onPriorityUp: list.priority.higher != null
+                    ? () => vm.updateList(
+                        list.copyWith(
+                          priority: list.priority.higher!,
+                          updatedAt: DateTime.now(),
+                        ),
+                      )
+                    : null,
+                onPriorityDown: list.priority.lower != null
+                    ? () => vm.updateList(
+                        list.copyWith(
+                          priority: list.priority.lower!,
+                          updatedAt: DateTime.now(),
+                        ),
+                      )
+                    : null,
+                onSetPriority: (p) => vm.updateList(
+                  list.copyWith(priority: p, updatedAt: DateTime.now()),
+                ),
+              ),
+            )
             .toList(),
       );
     }
@@ -138,7 +148,8 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
         final list = sortedLists[index];
         final screenHeight = MediaQuery.of(context).size.height;
         const minCardHeight = 120.0;
-        final cardHeight = (screenHeight * list.priority.screenHeightFraction).clamp(minCardHeight, double.infinity);
+        final cardHeight = (screenHeight * list.priority.screenHeightFraction)
+            .clamp(minCardHeight, double.infinity);
         final listColor = priorityColor(list.priority);
         return PriorityCard(
           title: list.name,
@@ -146,23 +157,27 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           color: listColor,
           backgroundColor: listColor.withValues(alpha: 0.15),
           fixedHeight: cardHeight,
-          subtitle: '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
+          subtitle:
+              '${list.items.length} item${list.items.length == 1 ? '' : 's'}',
           chipLabels: _chipLabels(list, filter),
           currentPriority: list.priority,
           onTap: () => _openList(context, list, useBubbleView: false),
           onMoveInto: sortedLists.length > 1
               ? () => _showMoveIntoDialog(context, vm, list)
               : null,
-          onSetPriority: (p) => vm.updateList(list.copyWith(
-            priority: p,
-            updatedAt: DateTime.now(),
-          )),
+          onSetPriority: (p) => vm.updateList(
+            list.copyWith(priority: p, updatedAt: DateTime.now()),
+          ),
         );
       },
     );
   }
 
-  Future<void> _openList(BuildContext context, priorityList, {required bool useBubbleView}) async {
+  Future<void> _openList(
+    BuildContext context,
+    priorityList, {
+    required bool useBubbleView,
+  }) async {
     final repository = context.read<PriorityListRepository>();
     final vm = context.read<ListsOverviewViewModel>();
     await Navigator.of(context).push(
@@ -179,7 +194,10 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   }
 
   Future<void> _showMoveIntoDialog(
-      BuildContext context, ListsOverviewViewModel vm, dynamic sourceList) async {
+    BuildContext context,
+    ListsOverviewViewModel vm,
+    dynamic sourceList,
+  ) async {
     final targets = vm.sortedLists.where((l) => l.id != sourceList.id).toList();
     if (targets.isEmpty) return;
 
@@ -201,7 +219,9 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
                   child: Icon(Icons.list, color: color),
                 ),
                 title: Text(target.name),
-                subtitle: Text('${target.items.length} item${target.items.length == 1 ? '' : 's'}'),
+                subtitle: Text(
+                  '${target.items.length} item${target.items.length == 1 ? '' : 's'}',
+                ),
                 onTap: () => Navigator.of(context).pop(target),
               );
             },
@@ -222,7 +242,9 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
   }
 
   Future<void> _showCreateDialog(
-      BuildContext context, ListsOverviewViewModel vm) async {
+    BuildContext context,
+    ListsOverviewViewModel vm,
+  ) async {
     final result = await showDialog<ListFormResult>(
       context: context,
       builder: (_) => const ListFormDialog(),

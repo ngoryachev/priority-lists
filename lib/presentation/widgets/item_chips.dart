@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Compact chips with truncated item titles, shown on critical/high lists
-/// so their tasks are visible right from the top level.
+/// Compact chips with truncated item titles, shown on every list tile tall
+/// enough to fit them so their tasks are visible right from the top level.
 class ItemChips extends StatelessWidget {
   final List<String> labels;
   final Color color;

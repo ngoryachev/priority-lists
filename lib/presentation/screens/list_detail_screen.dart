@@ -68,8 +68,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
   Widget _buildBody(ListDetailViewModel vm) {
     final filter = context.watch<FilterViewModel>();
-    final sortedItems =
-        vm.sortedItems.where((i) => filter.isVisible(i.priority)).toList();
+    final sortedItems = vm.sortedItems
+        .where((i) => filter.isVisible(i.priority))
+        .toList();
 
     if (sortedItems.isEmpty) {
       return const Center(
@@ -83,24 +84,27 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     if (_showBubbleView) {
       return BubbleView(
         entries: sortedItems
-            .map((item) => BubbleEntry(
-                  id: item.id,
-                  name: item.title,
-                  color: priorityColor(item.priority),
-                  priority: item.priority,
-                  subtitle: item.description.isNotEmpty ? item.description : null,
-                  onTap: () => _editItem(context, vm, item),
-                  onPriorityUp: item.priority.higher != null
-                      ? () => vm.updateItem(
-                          item.copyWith(priority: item.priority.higher!))
-                      : null,
-                  onPriorityDown: item.priority.lower != null
-                      ? () => vm.updateItem(
-                          item.copyWith(priority: item.priority.lower!))
-                      : null,
-                  onSetPriority: (p) =>
-                      vm.updateItem(item.copyWith(priority: p)),
-                ))
+            .map(
+              (item) => BubbleEntry(
+                id: item.id,
+                name: item.title,
+                color: priorityColor(item.priority),
+                priority: item.priority,
+                subtitle: item.description.isNotEmpty ? item.description : null,
+                onTap: () => _editItem(context, vm, item),
+                onPriorityUp: item.priority.higher != null
+                    ? () => vm.updateItem(
+                        item.copyWith(priority: item.priority.higher!),
+                      )
+                    : null,
+                onPriorityDown: item.priority.lower != null
+                    ? () => vm.updateItem(
+                        item.copyWith(priority: item.priority.lower!),
+                      )
+                    : null,
+                onSetPriority: (p) => vm.updateItem(item.copyWith(priority: p)),
+              ),
+            )
             .toList(),
       );
     }
@@ -122,10 +126,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           subtitle: item.description,
           currentPriority: item.priority,
           onEdit: () => _editItem(context, vm, item),
-          onDelete: () => _confirmDeleteItem(
-              context, vm, item.id, item.title),
-          onExtract: () => _confirmExtractItem(context, vm, item.id, item.title),
-          onMoveInto: () => _showMoveItemDialog(context, vm, item.id, item.title),
+          onDelete: () => _confirmDeleteItem(context, vm, item.id, item.title),
+          onExtract: () =>
+              _confirmExtractItem(context, vm, item.id, item.title),
+          onMoveInto: () =>
+              _showMoveItemDialog(context, vm, item.id, item.title),
           onSetPriority: (p) => vm.updateItem(item.copyWith(priority: p)),
         );
       },
@@ -143,7 +148,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   }
 
   Future<void> _editItem(
-      BuildContext context, ListDetailViewModel vm, item) async {
+    BuildContext context,
+    ListDetailViewModel vm,
+    item,
+  ) async {
     final result = await showDialog<ItemFormResult>(
       context: context,
       builder: (_) => ItemFormDialog(
@@ -164,7 +172,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   }
 
   Future<void> _confirmExtractItem(
-      BuildContext context, ListDetailViewModel vm, String id, String title) async {
+    BuildContext context,
+    ListDetailViewModel vm,
+    String id,
+    String title,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -190,7 +202,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   /// Moves an item under a different parent list. Mirrors the "move into list"
   /// action available on top-level lists in the overview screen.
   Future<void> _showMoveItemDialog(
-      BuildContext context, ListDetailViewModel vm, String id, String title) async {
+    BuildContext context,
+    ListDetailViewModel vm,
+    String id,
+    String title,
+  ) async {
     final targets = await vm.loadMoveTargets();
     if (!context.mounted) return;
 
@@ -220,7 +236,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                 ),
                 title: Text(target.name),
                 subtitle: Text(
-                    '${target.items.length} item${target.items.length == 1 ? '' : 's'}'),
+                  '${target.items.length} item${target.items.length == 1 ? '' : 's'}',
+                ),
                 onTap: () => Navigator.of(context).pop(target),
               );
             },
@@ -241,7 +258,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   }
 
   Future<void> _confirmDeleteItem(
-      BuildContext context, ListDetailViewModel vm, String id, String title) async {
+    BuildContext context,
+    ListDetailViewModel vm,
+    String id,
+    String title,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -266,7 +287,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   }
 
   Future<void> _confirmDeleteList(
-      BuildContext context, ListDetailViewModel vm) async {
+    BuildContext context,
+    ListDetailViewModel vm,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

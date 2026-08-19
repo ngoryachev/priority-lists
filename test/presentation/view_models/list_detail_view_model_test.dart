@@ -57,7 +57,10 @@ void main() {
       final item = makeItem('i1', Priority.low);
       final vm = ListDetailViewModel(mockRepository, makeList(items: [item]));
 
-      final updated = item.copyWith(title: 'Updated', priority: Priority.critical);
+      final updated = item.copyWith(
+        title: 'Updated',
+        priority: Priority.critical,
+      );
       await vm.updateItem(updated);
 
       expect(vm.list.items.first.title, 'Updated');
@@ -78,11 +81,16 @@ void main() {
 
     test('sortedItems returns items sorted by priority', () async {
       when(() => mockRepository.saveList(any())).thenAnswer((_) async {});
-      final vm = ListDetailViewModel(mockRepository, makeList(items: [
-        makeItem('low', Priority.low),
-        makeItem('critical', Priority.critical),
-        makeItem('medium', Priority.medium),
-      ]));
+      final vm = ListDetailViewModel(
+        mockRepository,
+        makeList(
+          items: [
+            makeItem('low', Priority.low),
+            makeItem('critical', Priority.critical),
+            makeItem('medium', Priority.medium),
+          ],
+        ),
+      );
 
       final sorted = vm.sortedItems;
       expect(sorted[0].id, 'critical');
@@ -90,42 +98,50 @@ void main() {
       expect(sorted[2].id, 'low');
     });
 
-    test('moveItemToList saves the item into the target before dropping it',
-        () async {
-      final saved = <PriorityList>[];
-      when(() => mockRepository.saveList(any())).thenAnswer((invocation) async {
-        saved.add(invocation.positionalArguments.first as PriorityList);
-      });
-      final target = PriorityList(
-        id: 'list-2',
-        name: 'Target',
-        colorPreset: ColorPreset.red,
-        createdAt: now,
-        updatedAt: now,
-      );
-      when(() => mockRepository.getListById('list-2'))
-          .thenAnswer((_) async => target);
+    test(
+      'moveItemToList saves the item into the target before dropping it',
+      () async {
+        final saved = <PriorityList>[];
+        when(() => mockRepository.saveList(any())).thenAnswer((
+          invocation,
+        ) async {
+          saved.add(invocation.positionalArguments.first as PriorityList);
+        });
+        final target = PriorityList(
+          id: 'list-2',
+          name: 'Target',
+          colorPreset: ColorPreset.red,
+          createdAt: now,
+          updatedAt: now,
+        );
+        when(
+          () => mockRepository.getListById('list-2'),
+        ).thenAnswer((_) async => target);
 
-      final item = makeItem('i1', Priority.high);
-      final vm = ListDetailViewModel(mockRepository, makeList(items: [item]));
+        final item = makeItem('i1', Priority.high);
+        final vm = ListDetailViewModel(mockRepository, makeList(items: [item]));
 
-      await vm.moveItemToList('i1', 'list-2');
+        await vm.moveItemToList('i1', 'list-2');
 
-      expect(saved, hasLength(2));
-      expect(saved.first.id, 'list-2');
-      expect(saved.first.items.single.id, 'i1');
-      expect(saved.last.id, 'list-1');
-      expect(saved.last.items, isEmpty);
-      expect(vm.list.items, isEmpty);
-    });
+        expect(saved, hasLength(2));
+        expect(saved.first.id, 'list-2');
+        expect(saved.first.items.single.id, 'i1');
+        expect(saved.last.id, 'list-1');
+        expect(saved.last.items, isEmpty);
+        expect(vm.list.items, isEmpty);
+      },
+    );
 
     test('moveItemToList keeps the item when the target is gone', () async {
       when(() => mockRepository.saveList(any())).thenAnswer((_) async {});
-      when(() => mockRepository.getListById('missing'))
-          .thenAnswer((_) async => null);
+      when(
+        () => mockRepository.getListById('missing'),
+      ).thenAnswer((_) async => null);
 
       final vm = ListDetailViewModel(
-          mockRepository, makeList(items: [makeItem('i1', Priority.high)]));
+        mockRepository,
+        makeList(items: [makeItem('i1', Priority.high)]),
+      );
 
       await vm.moveItemToList('i1', 'missing');
 
@@ -133,27 +149,31 @@ void main() {
       verifyNever(() => mockRepository.saveList(any()));
     });
 
-    test('loadMoveTargets excludes the current list and sorts by priority',
-        () async {
-      PriorityList other(String id, Priority p) => PriorityList(
-            id: id,
-            name: id,
-            colorPreset: ColorPreset.blue,
-            priority: p,
-            createdAt: now,
-            updatedAt: now,
-          );
-      when(() => mockRepository.getAllLists()).thenAnswer((_) async => [
+    test(
+      'loadMoveTargets excludes the current list and sorts by priority',
+      () async {
+        PriorityList other(String id, Priority p) => PriorityList(
+          id: id,
+          name: id,
+          colorPreset: ColorPreset.blue,
+          priority: p,
+          createdAt: now,
+          updatedAt: now,
+        );
+        when(() => mockRepository.getAllLists()).thenAnswer(
+          (_) async => [
             other('low', Priority.low),
             makeList(),
             other('critical', Priority.critical),
-          ]);
-      final vm = ListDetailViewModel(mockRepository, makeList());
+          ],
+        );
+        final vm = ListDetailViewModel(mockRepository, makeList());
 
-      final targets = await vm.loadMoveTargets();
+        final targets = await vm.loadMoveTargets();
 
-      expect(targets.map((l) => l.id), ['critical', 'low']);
-    });
+        expect(targets.map((l) => l.id), ['critical', 'low']);
+      },
+    );
 
     test('updateListDetails changes name and color', () async {
       when(() => mockRepository.saveList(any())).thenAnswer((_) async {});
