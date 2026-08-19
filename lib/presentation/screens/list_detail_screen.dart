@@ -126,14 +126,6 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               context, vm, item.id, item.title),
           onExtract: () => _confirmExtractItem(context, vm, item.id, item.title),
           onMoveInto: () => _showMoveItemDialog(context, vm, item.id, item.title),
-          onPriorityUp: item.priority.higher != null
-              ? () => vm.updateItem(
-                  item.copyWith(priority: item.priority.higher!))
-              : null,
-          onPriorityDown: item.priority.lower != null
-              ? () => vm.updateItem(
-                  item.copyWith(priority: item.priority.lower!))
-              : null,
           onSetPriority: (p) => vm.updateItem(item.copyWith(priority: p)),
         );
       },

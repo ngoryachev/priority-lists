@@ -18,8 +18,6 @@ class PriorityCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
-  final VoidCallback? onPriorityUp;
-  final VoidCallback? onPriorityDown;
   final ValueChanged<Priority>? onSetPriority;
   final VoidCallback? onExtract;
   final VoidCallback? onMoveInto;
@@ -37,8 +35,6 @@ class PriorityCard extends StatelessWidget {
     this.onTap,
     this.onEdit,
     this.onDelete,
-    this.onPriorityUp,
-    this.onPriorityDown,
     this.onSetPriority,
     this.onExtract,
     this.onMoveInto,
@@ -87,45 +83,46 @@ class PriorityCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.keyboard_arrow_up, size: 20),
-                          onPressed: onPriorityUp,
-                          visualDensity: VisualDensity.compact,
-                          tooltip: 'Increase priority',
+                        // Expanded (not Spacer + Flexible, which would split
+                        // the free space) hands the actions everything left of
+                        // the badge; reverse keeps them right-aligned and lets
+                        // them scroll instead of overflowing when a large text
+                        // scale leaves the row too narrow.
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            reverse: true,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (onExtract != null)
+                                  _CardAction(
+                                    icon: Icons.open_in_new,
+                                    onPressed: onExtract,
+                                    tooltip: 'Extract to top level',
+                                  ),
+                                if (onMoveInto != null)
+                                  _CardAction(
+                                    icon: Icons.move_to_inbox,
+                                    onPressed: onMoveInto,
+                                    tooltip: 'Move into list',
+                                  ),
+                                if (onEdit != null)
+                                  _CardAction(
+                                    icon: Icons.edit_outlined,
+                                    onPressed: onEdit,
+                                    tooltip: 'Edit',
+                                  ),
+                                if (onDelete != null)
+                                  _CardAction(
+                                    icon: Icons.delete_outline,
+                                    onPressed: onDelete,
+                                    tooltip: 'Delete',
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                          onPressed: onPriorityDown,
-                          visualDensity: VisualDensity.compact,
-                          tooltip: 'Decrease priority',
-                        ),
-                        if (onExtract != null)
-                          IconButton(
-                            icon: const Icon(Icons.open_in_new, size: 20),
-                            onPressed: onExtract,
-                            visualDensity: VisualDensity.compact,
-                            tooltip: 'Extract to top level',
-                          ),
-                        if (onMoveInto != null)
-                          IconButton(
-                            icon: const Icon(Icons.move_to_inbox, size: 20),
-                            onPressed: onMoveInto,
-                            visualDensity: VisualDensity.compact,
-                            tooltip: 'Move into list',
-                          ),
-                        if (onEdit != null)
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: onEdit,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        if (onDelete != null)
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: onDelete,
-                            visualDensity: VisualDensity.compact,
-                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -187,6 +184,29 @@ class PriorityCard extends StatelessWidget {
       return SizedBox(height: fixedHeight, child: card);
     }
     return card;
+  }
+}
+
+/// Compact icon button used for the card's action row.
+class _CardAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String tooltip;
+
+  const _CardAction({
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      onPressed: onPressed,
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+    );
   }
 }
 

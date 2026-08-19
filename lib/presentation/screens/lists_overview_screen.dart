@@ -153,18 +153,6 @@ class _ListsOverviewScreenState extends State<ListsOverviewScreen> {
           onMoveInto: sortedLists.length > 1
               ? () => _showMoveIntoDialog(context, vm, list)
               : null,
-          onPriorityUp: list.priority.higher != null
-              ? () => vm.updateList(list.copyWith(
-                    priority: list.priority.higher!,
-                    updatedAt: DateTime.now(),
-                  ))
-              : null,
-          onPriorityDown: list.priority.lower != null
-              ? () => vm.updateList(list.copyWith(
-                    priority: list.priority.lower!,
-                    updatedAt: DateTime.now(),
-                  ))
-              : null,
           onSetPriority: (p) => vm.updateList(list.copyWith(
             priority: p,
             updatedAt: DateTime.now(),
