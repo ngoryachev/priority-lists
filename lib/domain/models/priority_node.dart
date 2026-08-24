@@ -19,6 +19,11 @@ class PriorityNode {
   final String description;
   final Priority priority;
 
+  /// Manual rank among siblings. Sorting is (priority, position, createdAt):
+  /// position only ever breaks ties inside one priority group, so raising a
+  /// node's priority still moves it to the top of the level.
+  final int position;
+
   /// Optional accent colour. Null means "inherit from the ancestor chain".
   final ColorPreset? colorPreset;
 
@@ -31,6 +36,7 @@ class PriorityNode {
     required this.title,
     this.description = '',
     required this.priority,
+    this.position = 0,
     this.colorPreset,
     required this.createdAt,
     required this.updatedAt,
@@ -56,6 +62,7 @@ class PriorityNode {
     String? title,
     String? description,
     Priority? priority,
+    int? position,
     ColorPreset? colorPreset,
     bool clearColorPreset = false,
     DateTime? updatedAt,
@@ -66,6 +73,7 @@ class PriorityNode {
       title: title ?? this.title,
       description: description ?? this.description,
       priority: priority ?? this.priority,
+      position: position ?? this.position,
       colorPreset: clearColorPreset ? null : (colorPreset ?? this.colorPreset),
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -82,6 +90,7 @@ class PriorityNode {
       title: title,
       description: description,
       priority: priority,
+      position: position,
       colorPreset: colorPreset,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

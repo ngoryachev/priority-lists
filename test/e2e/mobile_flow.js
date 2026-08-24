@@ -4,7 +4,7 @@
 const os = require('os');
 const path = require('path');
 const { devices, chromium } = require('playwright');
-const { dump, texts, ensureAccount } = require('./lib');
+const { dump, texts, ensureAccount, resetTree } = require('./lib');
 
 const URL = 'http://65.21.0.66:8000/';
 const EMAIL = process.env.E2E_EMAIL || 'e2e-mobile@example.com';
@@ -92,6 +92,7 @@ async function overflowsHorizontally(page) {
 
 (async () => {
   await ensureAccount(EMAIL, PASSWORD);
+  await resetTree(EMAIL, PASSWORD);
   const browser = await chromium.launch({ channel: 'chrome' });
   const phone = devices['Pixel 7'];
   const context = await browser.newContext({ ...phone });

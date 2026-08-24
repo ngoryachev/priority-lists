@@ -21,6 +21,11 @@ class PriorityCard extends StatelessWidget {
   final Color? backgroundColor;
   final double? fixedHeight;
   final Priority? currentPriority;
+
+  /// Position in the enclosing [ReorderableListView]. When set, the card shows
+  /// a drag handle; null outside a reorderable list.
+  final int? dragIndex;
+
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -39,6 +44,7 @@ class PriorityCard extends StatelessWidget {
     this.backgroundColor,
     this.fixedHeight,
     this.currentPriority,
+    this.dragIndex,
     this.onTap,
     this.onEdit,
     this.onDelete,
@@ -75,19 +81,25 @@ class PriorityCard extends StatelessWidget {
             border: Border(left: BorderSide(color: color, width: 5)),
           ),
           child: Padding(
-            padding: EdgeInsets.all(_isShort ? 12 : 16),
+            padding: EdgeInsets.all(
+              _isCompact
+                  ? 10
+                  : _isShort
+                  ? 12
+                  : 16,
+            ),
             // The priority-level row is overlaid via Stack so it doesn't eat
             // vertical space inside the Column — important for compact cards
             // (low/medium) where the Column is already tight.
             child: Stack(
               children: [
                 Padding(
-                  // Keep the column clear of the overlaid 1-4 row; without it
-                  // the last chips render underneath those buttons.
+                  // Keep the column clear of the overlaid 1-4 row. This holds
+                  // on compact tiles too: skipping it there let the buttons sit
+                  // on top of the title, so tapping a short card's name set a
+                  // priority instead of opening the node.
                   padding: EdgeInsets.only(
-                    bottom: onSetPriority != null && !_isCompact
-                        ? _levelRowHeight
-                        : 0,
+                    bottom: onSetPriority != null ? _levelRowHeight : 0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,6 +169,27 @@ class PriorityCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  if (dragIndex != null)
+                                    ReorderableDragStartListener(
+                                      index: dragIndex!,
+                                      // Tooltip doubles as the handle's
+                                      // accessible name; a bare Icon would
+                                      // reach a screen reader as nothing.
+                                      child: Tooltip(
+                                        message: 'Drag to reorder',
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 8,
+                                          ),
+                                          child: Icon(
+                                            Icons.drag_indicator,
+                                            size: 20,
+                                            color: color.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   if (onExtract != null)
                                     _CardAction(
                                       icon: Icons.open_in_new,
@@ -191,9 +224,15 @@ class PriorityCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           title,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                          maxLines: 2,
+                          // A compact tile has room for the badge row, one
+                          // line of title and the 1-4 row — the large style
+                          // simply gets clipped there.
+                          style:
+                              (_isCompact
+                                      ? Theme.of(context).textTheme.titleMedium
+                                      : Theme.of(context).textTheme.titleLarge)
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: _isCompact ? 1 : 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),

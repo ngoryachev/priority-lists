@@ -30,7 +30,7 @@ class NodeTree {
     }
 
     for (final siblings in childrenByParent.values) {
-      siblings.sort(_byPriorityThenAge);
+      siblings.sort(_bySiblingOrder);
     }
 
     return NodeTree._(all, byId, childrenByParent);
@@ -38,11 +38,13 @@ class NodeTree {
 
   factory NodeTree.empty() => NodeTree(const []);
 
-  /// Most urgent first; ties keep the order they were created in so the list
-  /// does not reshuffle on every edit.
-  static int _byPriorityThenAge(PriorityNode a, PriorityNode b) {
+  /// Most urgent first, then the manual order the user dragged into, and
+  /// finally age — so siblings never reshuffle on their own.
+  static int _bySiblingOrder(PriorityNode a, PriorityNode b) {
     final byPriority = a.priority.value.compareTo(b.priority.value);
     if (byPriority != 0) return byPriority;
+    final byPosition = a.position.compareTo(b.position);
+    if (byPosition != 0) return byPosition;
     return a.createdAt.compareTo(b.createdAt);
   }
 

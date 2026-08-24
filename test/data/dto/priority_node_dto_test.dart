@@ -15,6 +15,7 @@ void main() {
         'title': 'Task',
         'description': 'details',
         'priority': 2,
+        'position': 4,
         'colorValue': ColorPreset.blue.colorValue,
         'createdAt': '2024-01-15T10:30:00.000',
         'updatedAt': '2024-01-15T10:30:00.000',
@@ -29,6 +30,7 @@ void main() {
       expect(entity.title, 'Task');
       expect(entity.description, 'details');
       expect(entity.priority, Priority.high);
+      expect(entity.position, 4);
       expect(entity.colorPreset, ColorPreset.blue);
     });
 
@@ -65,6 +67,8 @@ void main() {
       expect(entity.description, '');
       // Missing priority defaults to medium, as the old DTO did.
       expect(entity.priority, Priority.medium);
+      // No stored order either: 0 leaves such nodes sorted by age.
+      expect(entity.position, 0);
       expect(entity.parentId, isNull);
     });
 

@@ -25,11 +25,7 @@ class NodeScreen extends StatefulWidget {
   final String? parentId;
   final bool initialBubbleView;
 
-  const NodeScreen({
-    super.key,
-    this.parentId,
-    this.initialBubbleView = false,
-  });
+  const NodeScreen({super.key, this.parentId, this.initialBubbleView = false});
 
   /// Route for drilling into [nodeId]; the name is what breadcrumbs pop back to.
   ///
@@ -140,7 +136,9 @@ class _NodeScreenState extends State<NodeScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addChild(vm, node),
         backgroundColor: accent,
-        tooltip: node == null ? 'Add top-level node' : 'Add inside "${node.title}"',
+        tooltip: node == null
+            ? 'Add top-level node'
+            : 'Add inside "${node.title}"',
         child: const Icon(Icons.add),
       ),
     );
@@ -189,13 +187,13 @@ class _NodeScreenState extends State<NodeScreen> {
               onTap: () => _openNode(child, bubbleView: true),
               onPriorityUp: child.priority.higher != null
                   ? () => vm.updateNode(
-                        child.copyWith(priority: child.priority.higher!),
-                      )
+                      child.copyWith(priority: child.priority.higher!),
+                    )
                   : null,
               onPriorityDown: child.priority.lower != null
                   ? () => vm.updateNode(
-                        child.copyWith(priority: child.priority.lower!),
-                      )
+                      child.copyWith(priority: child.priority.lower!),
+                    )
                   : null,
               onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
             ),
@@ -203,35 +201,75 @@ class _NodeScreenState extends State<NodeScreen> {
       );
     }
 
-    return ListView.builder(
+    // Reorderable so siblings of one priority can be ranked by hand. Flutter
+    // gives touch devices a long-press drag and desktops explicit handles.
+    return ReorderableListView.builder(
       padding: const EdgeInsets.all(8),
       itemCount: children.length,
+      // Dragging starts from the card's own handle only. Wrapping the whole
+      // tile in a long-press drag listener steals the gesture from the card's
+      // tap, which is how you open a node — and the default handle would land
+      // on top of the action row.
+      buildDefaultDragHandles: false,
+      onReorder: (oldIndex, newIndex) => vm.reorderChildren(
+        parentId: widget.parentId,
+        visible: children,
+        oldIndex: oldIndex,
+        newIndex: newIndex,
+      ),
+      proxyDecorator: _dragProxy,
       itemBuilder: (context, index) {
         final child = children[index];
         final screenHeight = MediaQuery.of(context).size.height;
-        const minCardHeight = 120.0;
-        final cardHeight = (screenHeight * child.priority.screenHeightFraction)
+        // Enough for the badge row, a line of title and the 1-4 row; below
+        // this the title gets clipped instead of merely tight.
+        const minCardHeight = 132.0;
+        final cardHeight = (screenHeight * child.priority.cardHeightFraction)
             .clamp(minCardHeight, double.infinity);
         final color = priorityColor(child.priority);
 
-        return PriorityCard(
-          title: child.title,
-          badgeLabel: child.priority.label,
-          color: color,
-          backgroundColor: color.withValues(alpha: 0.15),
-          fixedHeight: cardHeight,
-          childCount: tree.childCount(child.id),
-          subtitle: child.description.isEmpty ? null : child.description,
-          chipLabels: _chipLabels(tree, child, filter),
-          currentPriority: child.priority,
-          onTap: () => _openNode(child, bubbleView: false),
-          onEdit: () => _editNode(vm, child),
-          onDelete: () => _confirmDelete(vm, tree, child),
-          onExtract: child.parentId != null
-              ? () => _confirmExtract(vm, child)
-              : null,
-          onMoveInto: () => _showMoveDialog(vm, tree, child),
-          onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+        return KeyedSubtree(
+          key: ValueKey(child.id),
+          child: PriorityCard(
+            title: child.title,
+            badgeLabel: child.priority.label,
+            color: color,
+            backgroundColor: color.withValues(alpha: 0.15),
+            fixedHeight: cardHeight,
+            childCount: tree.childCount(child.id),
+            subtitle: child.description.isEmpty ? null : child.description,
+            chipLabels: _chipLabels(tree, child, filter),
+            currentPriority: child.priority,
+            dragIndex: index,
+            onTap: () => _openNode(child, bubbleView: false),
+            onEdit: () => _editNode(vm, child),
+            onDelete: () => _confirmDelete(vm, tree, child),
+            onExtract: child.parentId != null
+                ? () => _confirmExtract(vm, child)
+                : null,
+            onMoveInto: () => _showMoveDialog(vm, tree, child),
+            onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Lifts the dragged tile instead of Flutter's default full-width shadow,
+  /// which looked detached from the card's own rounded shape.
+  Widget _dragProxy(Widget child, int index, Animation<double> animation) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final lift = Curves.easeInOut.transform(animation.value);
+        return Transform.scale(
+          scale: 1 + 0.03 * lift,
+          child: Material(
+            color: Colors.transparent,
+            elevation: 8 * lift,
+            borderRadius: BorderRadius.circular(12),
+            child: child,
+          ),
         );
       },
     );
@@ -263,9 +301,9 @@ class _NodeScreenState extends State<NodeScreen> {
   }
 
   void _openNode(PriorityNode node, {required bool bubbleView}) {
-    Navigator.of(context).push(
-      NodeScreen.route(context, node.id, bubbleView: bubbleView),
-    );
+    Navigator.of(
+      context,
+    ).push(NodeScreen.route(context, node.id, bubbleView: bubbleView));
   }
 
   Future<void> _addChild(NodeTreeViewModel vm, PriorityNode? parent) async {
@@ -320,7 +358,7 @@ class _NodeScreenState extends State<NodeScreen> {
           descendants == 0
               ? 'Delete "${node.title}"?'
               : 'Delete "${node.title}" and everything inside '
-                  '($descendants node${descendants == 1 ? '' : 's'})?',
+                    '($descendants node${descendants == 1 ? '' : 's'})?',
         ),
         actions: [
           TextButton(
@@ -343,10 +381,7 @@ class _NodeScreenState extends State<NodeScreen> {
     }
   }
 
-  Future<void> _confirmExtract(
-    NodeTreeViewModel vm,
-    PriorityNode node,
-  ) async {
+  Future<void> _confirmExtract(NodeTreeViewModel vm, PriorityNode node) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

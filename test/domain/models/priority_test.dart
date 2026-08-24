@@ -10,11 +10,18 @@ void main() {
       expect(Priority.low.value, 4);
     });
 
-    test('has correct screen height fractions', () {
-      expect(Priority.critical.screenHeightFraction, 0.50);
-      expect(Priority.high.screenHeightFraction, 0.30);
-      expect(Priority.medium.screenHeightFraction, 0.20);
-      expect(Priority.low.screenHeightFraction, 0.10);
+    test('critical, high and medium tiles share one height', () {
+      expect(Priority.critical.cardHeightFraction, 0.20);
+      expect(Priority.high.cardHeightFraction, 0.20);
+      expect(Priority.medium.cardHeightFraction, 0.20);
+      expect(Priority.low.cardHeightFraction, 0.10);
+    });
+
+    test('bubbles still scale by priority', () {
+      expect(Priority.critical.bubbleWeight, 0.50);
+      expect(Priority.high.bubbleWeight, 0.30);
+      expect(Priority.medium.bubbleWeight, 0.20);
+      expect(Priority.low.bubbleWeight, 0.10);
     });
 
     test('fromValue returns correct enum', () {

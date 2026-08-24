@@ -80,6 +80,7 @@ class SupabasePriorityNodeRepository implements PriorityNodeRepository {
         'title': node.title,
         'description': node.description,
         'priority': node.priority.value,
+        'position': node.position,
         'color_value': node.colorPreset?.colorValue,
         'created_at': node.createdAt.toUtc().toIso8601String(),
         'updated_at': node.updatedAt.toUtc().toIso8601String(),
@@ -91,6 +92,7 @@ class SupabasePriorityNodeRepository implements PriorityNodeRepository {
         title: json['title'] as String,
         description: json['description'] as String? ?? '',
         priority: Priority.fromValue(json['priority'] as int),
+        position: (json['position'] as num?)?.toInt() ?? 0,
         colorPreset:
             ColorPreset.tryFromColorValue((json['color_value'] as num?)?.toInt()),
         createdAt: DateTime.parse(json['created_at'] as String),

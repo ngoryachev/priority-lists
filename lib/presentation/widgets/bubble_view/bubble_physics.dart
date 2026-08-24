@@ -44,7 +44,7 @@ class BubblePhysics {
   static double radiusForPriority(Priority p, Size canvasSize) {
     final minDim = min(canvasSize.width, canvasSize.height);
     final baseRadius = minDim * 0.06;
-    final scaled = minDim * 0.16 * sqrt(p.screenHeightFraction / 0.50);
+    final scaled = minDim * 0.16 * sqrt(p.bubbleWeight / 0.50);
     return baseRadius + scaled;
   }
 

@@ -21,7 +21,8 @@ class NodeTreeViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  NodeTreeViewModel(this._repository, {Uuid? uuid}) : _uuid = uuid ?? const Uuid();
+  NodeTreeViewModel(this._repository, {Uuid? uuid})
+    : _uuid = uuid ?? const Uuid();
 
   NodeTree get tree => _tree;
   bool get isLoading => _isLoading;
@@ -73,7 +74,8 @@ class NodeTreeViewModel extends ChangeNotifier {
     final updated = node.copyWith(updatedAt: DateTime.now());
     await _write(() => _repository.saveNode(updated), () {
       _setNodes([
-        for (final n in _nodes) if (n.id == updated.id) updated else n,
+        for (final n in _nodes)
+          if (n.id == updated.id) updated else n,
       ]);
     });
   }
@@ -102,13 +104,107 @@ class NodeTreeViewModel extends ChangeNotifier {
     final moved = node.withParent(newParentId, updatedAt: DateTime.now());
     return _write(() => _repository.saveNode(moved), () {
       _setNodes([
-        for (final n in _nodes) if (n.id == moved.id) moved else n,
+        for (final n in _nodes)
+          if (n.id == moved.id) moved else n,
       ]);
     });
   }
 
   /// Everything the node may be moved into, depth-first from the roots.
   List<PriorityNode> moveTargetsFor(String id) => _tree.moveTargetsFor(id);
+
+  /// Applies a drag on one level.
+  ///
+  /// [visible] is the list as the user sees it — the priority filter may hide
+  /// siblings, and those keep their place relative to the visible node they
+  /// followed, so a filtered drag never silently reshuffles what is off-screen.
+  ///
+  /// A node dropped among a different priority adopts it, since the level is
+  /// grouped by priority and it would otherwise snap back on the next rebuild.
+  /// Landing exactly on the boundary of its own group keeps its priority.
+  Future<bool> reorderChildren({
+    required String? parentId,
+    required List<PriorityNode> visible,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    if (oldIndex < 0 || oldIndex >= visible.length) return false;
+    // ReorderableListView reports the target index before the item is removed.
+    final target = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    if (target == oldIndex) return true;
+
+    final reordered = List.of(visible);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(target.clamp(0, reordered.length), moved);
+
+    final landed = moved.copyWith(
+      priority: _priorityAfterDrop(reordered, target, moved.priority),
+    );
+    reordered[target] = landed;
+
+    final full = _weaveHiddenSiblings(parentId, visible, reordered);
+
+    final now = DateTime.now();
+    final changed = <PriorityNode>[];
+    for (var i = 0; i < full.length; i++) {
+      final node = full[i];
+      final existing = _tree.nodeById(node.id)!;
+      if (existing.position == i && existing.priority == node.priority) {
+        continue;
+      }
+      changed.add(node.copyWith(position: i, updatedAt: now));
+    }
+    if (changed.isEmpty) return true;
+
+    final byId = {for (final node in changed) node.id: node};
+    return _write(() => _repository.saveNodes(changed), () {
+      _setNodes([for (final n in _nodes) byId[n.id] ?? n]);
+    });
+  }
+
+  /// The priority a dropped node takes on: its neighbours' when they agree,
+  /// and its own when it landed on a boundary it already belongs to.
+  Priority _priorityAfterDrop(
+    List<PriorityNode> order,
+    int index,
+    Priority current,
+  ) {
+    final above = index > 0 ? order[index - 1].priority : null;
+    final below = index < order.length - 1 ? order[index + 1].priority : null;
+    if (above == null && below == null) return current;
+    if (above == null) return below == current ? current : below!;
+    if (below == null) return above == current ? current : above;
+    if (above == below) return above;
+    return current == above || current == below ? current : above;
+  }
+
+  /// Re-inserts siblings the filter hid, each straight after the visible node
+  /// it used to follow (or at the front, if it led the level).
+  List<PriorityNode> _weaveHiddenSiblings(
+    String? parentId,
+    List<PriorityNode> visibleBefore,
+    List<PriorityNode> visibleAfter,
+  ) {
+    final visibleIds = {for (final node in visibleBefore) node.id};
+    final leading = <PriorityNode>[];
+    final trailing = <String, List<PriorityNode>>{};
+
+    String? anchor;
+    for (final node in _tree.childrenOf(parentId)) {
+      if (visibleIds.contains(node.id)) {
+        anchor = node.id;
+      } else if (anchor == null) {
+        leading.add(node);
+      } else {
+        trailing.putIfAbsent(anchor, () => []).add(node);
+      }
+    }
+
+    return [
+      ...leading,
+      for (final node in visibleAfter) ...[node, ...?trailing[node.id]],
+    ];
+  }
 
   void _setNodes(List<PriorityNode> nodes) {
     _nodes = nodes;

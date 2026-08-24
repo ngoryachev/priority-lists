@@ -9,6 +9,7 @@ class PriorityNodeDto {
   final String title;
   final String description;
   final int priority;
+  final int position;
   final int? colorValue;
   final String createdAt;
   final String updatedAt;
@@ -19,6 +20,7 @@ class PriorityNodeDto {
     required this.title,
     required this.description,
     required this.priority,
+    required this.position,
     required this.colorValue,
     required this.createdAt,
     required this.updatedAt,
@@ -32,6 +34,9 @@ class PriorityNodeDto {
       title: (json['title'] ?? json['name']) as String,
       description: json['description'] as String? ?? '',
       priority: (json['priority'] as int?) ?? Priority.medium.value,
+      // Files written before manual ordering carry no position; 0 leaves them
+      // sorted by age, exactly as they were.
+      position: (json['position'] as int?) ?? 0,
       colorValue: json['colorValue'] as int?,
       createdAt: json['createdAt'] as String,
       updatedAt: json['updatedAt'] as String,
@@ -45,6 +50,7 @@ class PriorityNodeDto {
       'title': title,
       'description': description,
       'priority': priority,
+      'position': position,
       'colorValue': colorValue,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -58,6 +64,7 @@ class PriorityNodeDto {
       title: node.title,
       description: node.description,
       priority: node.priority.value,
+      position: node.position,
       colorValue: node.colorPreset?.colorValue,
       createdAt: node.createdAt.toIso8601String(),
       updatedAt: node.updatedAt.toIso8601String(),
@@ -71,6 +78,7 @@ class PriorityNodeDto {
       title: title,
       description: description,
       priority: Priority.fromValue(priority),
+      position: position,
       colorPreset: ColorPreset.tryFromColorValue(colorValue),
       createdAt: DateTime.parse(createdAt),
       updatedAt: DateTime.parse(updatedAt),

@@ -8,6 +8,7 @@ import 'package:priority_lists/presentation/screens/node_screen.dart';
 import 'package:priority_lists/presentation/view_models/filter_view_model.dart';
 import 'package:priority_lists/presentation/view_models/node_tree_view_model.dart';
 import 'package:priority_lists/presentation/widgets/breadcrumb_bar.dart';
+import 'package:priority_lists/presentation/widgets/priority_card.dart';
 import 'package:provider/provider.dart';
 
 PriorityNode node(
@@ -279,6 +280,47 @@ void main() {
         find.textContaining('hidden by the priority filter'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('dragging a card by its handle reorders the level',
+        (tester) async {
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('First', priority: Priority.critical),
+        node('Second', priority: Priority.critical),
+      ]);
+
+      await tester.pumpWidget(wrap(repository));
+      await tester.pumpAndSettle();
+
+      List<String> orderOnScreen() => tester
+          .widgetList<PriorityCard>(find.byType(PriorityCard))
+          .map((card) => card.title)
+          .toList();
+
+      expect(orderOnScreen(), ['First', 'Second']);
+
+      // Grab the second card's handle and drag it above the first.
+      final handle = find.byIcon(Icons.drag_indicator).at(1);
+      final gesture = await tester.startGesture(tester.getCenter(handle));
+      await tester.pump(const Duration(milliseconds: 100));
+      // A short nudge past the drag slop first, then the real travel: the
+      // recognizer only picks up the drag once it has moved.
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+      for (var i = 0; i < 6; i++) {
+        await gesture.moveBy(const Offset(0, -40));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(orderOnScreen(), ['Second', 'First']);
+
+      // The order is persisted, not just a visual swap.
+      final stored = await repository.getAllNodes()
+        ..sort((a, b) => a.position.compareTo(b.position));
+      expect(stored.map((n) => n.title), ['Second', 'First']);
     });
 
     testWidgets('node actions replace sign-out once inside the tree',

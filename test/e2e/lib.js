@@ -9,7 +9,7 @@ const ANON = require('fs')
 
 /**
  * Signs the throwaway account up if it does not exist yet, so a run never
- * depends on a account someone provisioned by hand.
+ * depends on an account someone provisioned by hand.
  */
 async function ensureAccount(email = EMAIL, password = PASSWORD) {
   const res = await fetch(`${URL}auth/v1/signup`, {
@@ -24,8 +24,36 @@ async function ensureAccount(email = EMAIL, password = PASSWORD) {
   }
 }
 
+/** Token for the throwaway account, for the API-side setup and assertions. */
+async function accessToken(email = EMAIL, password = PASSWORD) {
+  const res = await fetch(`${URL}auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.json();
+  if (!body.access_token) throw new Error(`sign-in failed: ${JSON.stringify(body)}`);
+  return body.access_token;
+}
+
+/**
+ * Empties the account's tree before a run. Without this an interrupted run
+ * leaves nodes behind and the next one asserts against someone else's mess.
+ */
+async function resetTree(email = EMAIL, password = PASSWORD) {
+  const token = await accessToken(email, password);
+  const me = await fetch(`${URL}auth/v1/user`, {
+    headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+  }).then(r => r.json());
+  await fetch(`${URL}rest/v1/nodes?user_id=eq.${me.id}`, {
+    method: 'DELETE',
+    headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+  });
+}
+
 async function open() {
   await ensureAccount();
+  await resetTree();
   const browser = await chromium.launch({ channel: 'chrome' });
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
   const errors = [];
@@ -110,4 +138,4 @@ async function login(page) {
   await enableSemantics(page);
 }
 
-module.exports = { open, dump, texts, clickText, clickCard, clickLabel, login, leaf, typeInto, enableSemantics, ensureAccount, EMAIL, PASSWORD };
+module.exports = { open, dump, texts, clickText, clickCard, clickLabel, login, leaf, typeInto, enableSemantics, ensureAccount, accessToken, resetTree, EMAIL, PASSWORD };

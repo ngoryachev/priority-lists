@@ -164,11 +164,67 @@ async function countNodesOnServer() {
   await page.waitForTimeout(1000);
   check('move carried the subtree along', await has(page, 'L2'));
 
+  // --- manual ordering inside a priority group -----------------------------
+  // Two siblings of equal priority; drag the second above the first.
+  await addNode(page, 'Order A');
+  await addNode(page, 'Order B');
+
+  const titlesTopDown = async () => {
+    const cards = await page.$$eval('flt-semantics[aria-label]', els =>
+      els
+        .map(e => ({ label: e.getAttribute('aria-label'), r: e.getBoundingClientRect() }))
+        .filter(e => /^(Critical|High|Medium|Low)\n/.test(e.label) && e.r.height > 50)
+        .sort((a, b) => a.r.top - b.r.top)
+        .map(e => e.label.split('\n').pop())
+    );
+    return cards;
+  };
+
+  const before = await titlesTopDown();
+  check('both siblings are on the level', before.includes('Order A') && before.includes('Order B'),
+    JSON.stringify(before));
+
+  const handles = page.locator('flt-semantics:text-is("Drag to reorder")');
+  const target = before.indexOf('Order B');
+  const box = await handles.nth(target).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // Nudge past the drag slop, then travel in steps so the list keeps up.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 20);
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 20 - i * 40);
+    await page.waitForTimeout(40);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(1800);
+
+  const after = await titlesTopDown();
+  check('dragging reorders siblings of the same priority',
+    after.indexOf('Order B') < after.indexOf('Order A'), JSON.stringify(after));
+
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(4500);
+  await enableSemantics(page);
+  const afterReload = await titlesTopDown();
+  check('the manual order survives a reload',
+    afterReload.indexOf('Order B') < afterReload.indexOf('Order A'),
+    JSON.stringify(afterReload));
+
   // --- cascade delete ------------------------------------------------------
   await clickText(page, 'Back');
   await page.waitForTimeout(1200);
   await clickText(page, 'Back');
   await page.waitForTimeout(1500);
+  // Remove the ordering fixtures so the delete step sees only "E2E Root".
+  for (const title of ['Order A', 'Order B']) {
+    const card = page.locator(`flt-semantics[aria-label*=${JSON.stringify(title)}]`).first();
+    const del = card.locator('flt-semantics:text-is("Delete")');
+    await del.first().evaluate(e => e.click());
+    await page.waitForTimeout(700);
+    await clickText(page, 'Delete');
+    await page.waitForTimeout(1200);
+  }
+
   const deleteButtons = page.locator('flt-semantics:text-is("Delete")');
   await deleteButtons.first().evaluate(e => e.click());
   // Flutter does not publish an AlertDialog's body text to the accessibility

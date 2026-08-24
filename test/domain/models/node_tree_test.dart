@@ -7,6 +7,7 @@ PriorityNode node(
   String id, {
   String? parent,
   Priority priority = Priority.medium,
+  int position = 0,
   int createdOffset = 0,
 }) {
   final created = DateTime(2026, 1, 1).add(Duration(minutes: createdOffset));
@@ -15,6 +16,7 @@ PriorityNode node(
     parentId: parent,
     title: id,
     priority: priority,
+    position: position,
     createdAt: created,
     updatedAt: created,
   );
@@ -34,6 +36,25 @@ void main() {
       expect(tree.childrenOf('root').map((n) => n.id), ['a', 'b']);
       expect(tree.childrenOf('a').map((n) => n.id), ['a1']);
       expect(tree.childrenOf('a1'), isEmpty);
+    });
+
+    test('manual position orders siblings inside one priority', () {
+      final tree = NodeTree([
+        node('third', priority: Priority.high, position: 2, createdOffset: 0),
+        node('first', priority: Priority.high, position: 0, createdOffset: 1),
+        node('second', priority: Priority.high, position: 1, createdOffset: 2),
+      ]);
+
+      expect(tree.roots.map((n) => n.id), ['first', 'second', 'third']);
+    });
+
+    test('priority still outranks manual position', () {
+      final tree = NodeTree([
+        node('low but first', priority: Priority.low, position: 0),
+        node('critical but last', priority: Priority.critical, position: 99),
+      ]);
+
+      expect(tree.roots.map((n) => n.id), ['critical but last', 'low but first']);
     });
 
     test('sorts siblings by priority, then by age', () {
