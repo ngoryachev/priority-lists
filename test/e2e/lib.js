@@ -3,8 +3,29 @@ const { chromium } = require('playwright');
 const URL = 'http://65.21.0.66:8000/';
 const EMAIL = 'e2e-tree@example.com';
 const PASSWORD = 'E2ePassw0rd!tree';
+const ANON = require('fs')
+  .readFileSync(__dirname + '/../../.env.json', 'utf8')
+  .match(/"SUPABASE_ANON_KEY":\s*"([^"]+)"/)[1];
+
+/**
+ * Signs the throwaway account up if it does not exist yet, so a run never
+ * depends on a account someone provisioned by hand.
+ */
+async function ensureAccount(email = EMAIL, password = PASSWORD) {
+  const res = await fetch(`${URL}auth/v1/signup`, {
+    method: 'POST',
+    headers: { apikey: ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.json().catch(() => ({}));
+  // "User already registered" is the expected outcome on every run but the first.
+  if (!res.ok && !/already/i.test(JSON.stringify(body))) {
+    throw new Error(`could not provision ${email}: ${JSON.stringify(body)}`);
+  }
+}
 
 async function open() {
+  await ensureAccount();
   const browser = await chromium.launch({ channel: 'chrome' });
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
   const errors = [];
@@ -89,4 +110,4 @@ async function login(page) {
   await enableSemantics(page);
 }
 
-module.exports = { open, dump, texts, clickText, clickCard, clickLabel, login, leaf, typeInto, enableSemantics, EMAIL, PASSWORD };
+module.exports = { open, dump, texts, clickText, clickCard, clickLabel, login, leaf, typeInto, enableSemantics, ensureAccount, EMAIL, PASSWORD };

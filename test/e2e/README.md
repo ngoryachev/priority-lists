@@ -12,11 +12,35 @@ blank in release builds.
 
 ```bash
 npm install playwright          # browsers come from the system Chrome channel
-node test/e2e/tree_flow.js      # exits non-zero if any check fails
+node test/e2e/tree_flow.js      # desktop viewport, mouse input
+node test/e2e/mobile_flow.js    # Pixel 7 viewport, real touch events
 ```
 
-Targets `http://65.21.0.66:8000/` as the user in `lib.js`. The run creates and
-then deletes its own subtree; it leaves nothing behind on success.
+Both exit non-zero if any check fails, target `http://65.21.0.66:8000/`, and
+sign up their throwaway account on first run. Each creates and then deletes its
+own subtree, leaving nothing behind on success. Screenshots land in the system
+temp dir.
+
+`mobile_flow.js` additionally checks that nothing overflows horizontally at
+depth, in portrait or landscape, and that every breadcrumb clears a 44px tap
+target. The dense card and app-bar controls (the 1..4 rows at 32px, the card
+action icons at 40px) predate the tree, so they are reported rather than
+asserted.
+
+## On a real Android device
+
+`integration_test/tree_flow_test.dart` runs the same flow natively — Supabase
+client, real gestures, no browser:
+
+```bash
+flutter test integration_test/tree_flow_test.dart \
+  --dart-define-from-file=.env.json -d <device-or-emulator>
+```
+
+Two gotchas that cost real debugging time there: a bare `Text` does not hit
+test, so tap the enclosing `InkWell` (tapping a card's title silently misses),
+and tapping a `SegmentedButton` segment through its label dismisses the dialog
+instead of selecting.
 
 ## Driving Flutter web
 

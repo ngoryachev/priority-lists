@@ -21,7 +21,9 @@ class BreadcrumbBar extends StatelessWidget {
     this.rootLabel = 'All',
   });
 
-  static const double height = 36;
+  /// Tall enough for a finger: the crumbs are the main way back up the tree,
+  /// and a 36dp bar left them a ~27dp tap target on a phone.
+  static const double height = 48;
 
   @override
   Widget build(BuildContext context) {
@@ -65,14 +67,22 @@ class BreadcrumbBar extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: color,
+      child: ConstrainedBox(
+        // The tap area fills the bar's height and stays at least 44dp wide,
+        // so short crumbs ("All", "M1") are still comfortable to hit.
+        constraints: const BoxConstraints(minWidth: 44, minHeight: height),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
           ),
         ),
       ),
