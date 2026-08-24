@@ -18,4 +18,15 @@ enum ColorPreset {
         (c) => c.colorValue == value,
         orElse: () => throw ArgumentError('Invalid color value: $value'),
       );
+
+  /// Null instead of throwing, for colours read back from storage: a value
+  /// that no longer matches a preset degrades to "inherit" rather than
+  /// breaking the whole tree load.
+  static ColorPreset? tryFromColorValue(int? value) {
+    if (value == null) return null;
+    for (final preset in ColorPreset.values) {
+      if (preset.colorValue == value) return preset;
+    }
+    return null;
+  }
 }

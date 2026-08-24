@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../domain/repositories/priority_list_repository.dart';
+import '../../domain/repositories/priority_node_repository.dart';
 
 class MigrationService {
-  final PriorityListRepository localRepository;
-  final PriorityListRepository remoteRepository;
+  final PriorityNodeRepository localRepository;
+  final PriorityNodeRepository remoteRepository;
 
   MigrationService({
     required this.localRepository,
@@ -21,21 +21,19 @@ class MigrationService {
 
     if (await _isMigrationCompleted()) return;
 
-    final localLists = await localRepository.getAllLists();
-    if (localLists.isEmpty) {
+    final localNodes = await localRepository.getAllNodes();
+    if (localNodes.isEmpty) {
       await _markMigrationCompleted();
       return;
     }
 
-    final remoteLists = await remoteRepository.getAllLists();
-    if (remoteLists.isNotEmpty) {
+    final remoteNodes = await remoteRepository.getAllNodes();
+    if (remoteNodes.isNotEmpty) {
       await _markMigrationCompleted();
       return;
     }
 
-    for (final list in localLists) {
-      await remoteRepository.saveList(list);
-    }
+    await remoteRepository.saveNodes(localNodes);
 
     await _markMigrationCompleted();
   }

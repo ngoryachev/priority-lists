@@ -1,0 +1,1878 @@
+{
+  "user_id": "ec85b54a-21d5-4c89-93bd-8abc5a872e1d",
+  "email": "ngoryacheff@gmail.com",
+  "exported_at": "2026-08-24T06:29:16.631711+00:00",
+  "items_count": 187,
+  "items": [
+    {
+      "id": "50622087-8098-47cc-bef8-df1b0c02d007",
+      "list_id": "cca5b330-1984-4aac-8269-14ec73cea9c5",
+      "list_name": "Развитие::Сферы",
+      "title": "Архитектор я",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-02T11:54:26.902328+00:00",
+      "updated_at": "2026-08-19T20:32:45.725+00:00"
+    },
+    {
+      "id": "2fcd3249-6528-41dc-b94f-f3e5758b4f08",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Лихие",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-02T11:56:07.312181+00:00",
+      "updated_at": "2026-03-02T11:56:07.312181+00:00"
+    },
+    {
+      "id": "123b8b7c-1a2c-41d3-9855-28c22c3a77c6",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Аутсорс",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-02T11:56:16.579799+00:00",
+      "updated_at": "2026-03-02T11:56:16.579799+00:00"
+    },
+    {
+      "id": "7092b360-7bfd-4432-b67e-ee307ac44785",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Слово пацана",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-02T11:56:26.619329+00:00",
+      "updated_at": "2026-03-02T11:56:26.619329+00:00"
+    },
+    {
+      "id": "27aeed62-8b23-4b4d-a307-cf4b0fe0f9d9",
+      "list_id": "a3779ed1-7640-4942-be5d-b18398f828df",
+      "list_name": "Здоровье::фокус",
+      "title": "Ухо",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-04T05:37:17.492918+00:00",
+      "updated_at": "2026-04-20T06:28:38.670283+00:00"
+    },
+    {
+      "id": "15ecacfa-61bd-425c-895d-cd2a4f4b3f15",
+      "list_id": "a3779ed1-7640-4942-be5d-b18398f828df",
+      "list_name": "Здоровье::фокус",
+      "title": "шея",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-04T08:47:01.832035+00:00",
+      "updated_at": "2026-08-19T20:33:56.791+00:00"
+    },
+    {
+      "id": "3909499a-2596-4ad8-b1ac-04f3a88a7c77",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "Стул компакт",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-03-11T08:19:35.215724+00:00",
+      "updated_at": "2026-05-09T10:23:33.766018+00:00"
+    },
+    {
+      "id": "a33d6885-5895-4bca-be83-631cde2a9fa9",
+      "list_id": "7c20f04b-0a14-43ed-90c0-c4ce2562d89f",
+      "list_name": "Энергия::Источники",
+      "title": "Ноф днём",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T12:48:20.368846+00:00",
+      "updated_at": "2026-05-24T14:56:16.306245+00:00"
+    },
+    {
+      "id": "0f66c6bb-2372-4343-b8f6-0add81d84757",
+      "list_id": "7c20f04b-0a14-43ed-90c0-c4ce2562d89f",
+      "list_name": "Энергия::Источники",
+      "title": "Бег",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T12:48:51.054613+00:00",
+      "updated_at": "2026-05-24T14:56:16.89253+00:00"
+    },
+    {
+      "id": "926883cb-2c7e-49e5-bd33-bd99697eb53d",
+      "list_id": "7c20f04b-0a14-43ed-90c0-c4ce2562d89f",
+      "list_name": "Энергия::Источники",
+      "title": "Кач",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T12:48:54.808463+00:00",
+      "updated_at": "2026-05-24T14:56:14.748128+00:00"
+    },
+    {
+      "id": "c6823036-81d0-438b-adbc-954dd55aab98",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Америка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:33:12.054708+00:00",
+      "updated_at": "2026-08-19T20:57:52.962+00:00"
+    },
+    {
+      "id": "06268064-9d71-4667-a795-de14157820ea",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Дом у моря",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:33:21.262322+00:00",
+      "updated_at": "2026-08-19T20:57:54.255+00:00"
+    },
+    {
+      "id": "443f24a7-6d5b-42c9-ac98-04457fac0a36",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Мот мощный",
+      "description": "хаябуса, триумф спид трипл",
+      "priority": 4,
+      "created_at": "2026-04-07T19:33:33.072764+00:00",
+      "updated_at": "2026-08-19T20:57:57.265+00:00"
+    },
+    {
+      "id": "8c43b039-d4bb-4035-ab52-ce6af541dde5",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Собачка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:33:51.286927+00:00",
+      "updated_at": "2026-08-19T20:57:58.096+00:00"
+    },
+    {
+      "id": "0c44139e-8025-4947-b7f1-0410b65f42bc",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Любовь",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:34:07.704935+00:00",
+      "updated_at": "2026-08-19T20:58:00.453+00:00"
+    },
+    {
+      "id": "353bb05a-86ad-451f-930c-219348dcf46d",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Прикольная тачка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:34:24.858137+00:00",
+      "updated_at": "2026-08-19T20:58:00.936+00:00"
+    },
+    {
+      "id": "77c3a253-3039-44f7-8a4a-4ce9beb19d9c",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Классное тело",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:34:52.547849+00:00",
+      "updated_at": "2026-08-19T20:57:55.85+00:00"
+    },
+    {
+      "id": "2f7631a3-d037-4c6f-bc24-ca5c1ae4de92",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Путешествие с мамой",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:35:09.503652+00:00",
+      "updated_at": "2026-08-19T20:57:58.844+00:00"
+    },
+    {
+      "id": "40f2f563-63b8-45fd-8ebe-e7c492819656",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Жить с детьми",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:35:22.664974+00:00",
+      "updated_at": "2026-08-19T20:57:59.519+00:00"
+    },
+    {
+      "id": "623406dc-0858-4347-9488-27df69ec1660",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Прокатиться на мото вокруг Испании",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:35:55.284699+00:00",
+      "updated_at": "2026-07-12T08:06:12.971546+00:00"
+    },
+    {
+      "id": "33f14fc8-1a07-4b09-bbf8-f1b200835675",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Научиться петь",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:36:21.067887+00:00",
+      "updated_at": "2026-07-12T08:06:00.573653+00:00"
+    },
+    {
+      "id": "81b42cf4-eee7-4dca-a196-a3ab747506f9",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Научиться сочинять",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:36:28.421535+00:00",
+      "updated_at": "2026-08-19T20:58:01.456+00:00"
+    },
+    {
+      "id": "fecf47ee-90c3-471e-970b-b0135388e8f5",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Выступать",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:36:38.009437+00:00",
+      "updated_at": "2026-07-12T08:06:04.802863+00:00"
+    },
+    {
+      "id": "f6d5aaa9-f62f-40dd-95a4-94a863340269",
+      "list_id": "2c2d7456-0cf3-43d7-bf64-dfe2543a8187",
+      "list_name": "Мечты",
+      "title": "Научиться танцевать",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-07T19:36:46.042031+00:00",
+      "updated_at": "2026-07-12T08:06:08.324709+00:00"
+    },
+    {
+      "id": "c9f9682e-d773-4a85-831d-2f7be89fe3f7",
+      "list_id": "7c20f04b-0a14-43ed-90c0-c4ce2562d89f",
+      "list_name": "Энергия::Источники",
+      "title": "No Display",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-08T07:42:37.754777+00:00",
+      "updated_at": "2026-05-24T14:56:15.482714+00:00"
+    },
+    {
+      "id": "5b0ca69c-153d-4fd0-9380-8cdc0af9bdc4",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "душ",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-17T06:40:00.92988+00:00",
+      "updated_at": "2026-08-22T07:30:49.775837+00:00"
+    },
+    {
+      "id": "350e9f41-e66b-4c91-bdb3-506c0c058e86",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Проветрить",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-04-17T11:00:31.573663+00:00",
+      "updated_at": "2026-08-22T09:45:44.416156+00:00"
+    },
+    {
+      "id": "55c0fdd3-22a8-4873-a7d4-fcefa60b22c2",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "Сидушка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-09T10:24:00.55218+00:00",
+      "updated_at": "2026-05-09T10:24:08.555243+00:00"
+    },
+    {
+      "id": "75187106-b5b7-40f8-ba1d-47b324a777fe",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Бабки",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-13T04:54:07.013556+00:00",
+      "updated_at": "2026-08-19T12:23:57.726+00:00"
+    },
+    {
+      "id": "1d414a6b-c790-41aa-b339-cc69c90b8951",
+      "list_id": "cca5b330-1984-4aac-8269-14ec73cea9c5",
+      "list_name": "Развитие::Сферы",
+      "title": "Музыкант я",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-13T15:48:49.802529+00:00",
+      "updated_at": "2026-08-19T20:32:46.685+00:00"
+    },
+    {
+      "id": "cd083e22-3ff8-4a7e-81e9-5057ea629578",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "стрижка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-24T06:47:47.566057+00:00",
+      "updated_at": "2026-08-22T09:45:46.399976+00:00"
+    },
+    {
+      "id": "1a17305a-cd29-461c-b16f-ae93394595bf",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Макс",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-24T14:52:48.864272+00:00",
+      "updated_at": "2026-08-19T20:36:29.042+00:00"
+    },
+    {
+      "id": "156532fa-b270-4f5c-a336-83edb80099d0",
+      "list_id": "dcbe88f8-5098-46d0-aed5-56c4ab2dd8fa",
+      "list_name": "FlutterRadar::Backlog",
+      "title": "e2e",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-24T19:16:25.897512+00:00",
+      "updated_at": "2026-08-19T20:33:30.408+00:00"
+    },
+    {
+      "id": "ffd039f3-645b-4b01-a1f2-0bb3242a403b",
+      "list_id": "dcbe88f8-5098-46d0-aed5-56c4ab2dd8fa",
+      "list_name": "FlutterRadar::Backlog",
+      "title": "packages upd",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-24T19:16:48.699051+00:00",
+      "updated_at": "2026-08-19T20:33:34.733+00:00"
+    },
+    {
+      "id": "0a4f6f73-afc1-4abd-8220-25343c3dfab2",
+      "list_id": "dcbe88f8-5098-46d0-aed5-56c4ab2dd8fa",
+      "list_name": "FlutterRadar::Backlog",
+      "title": "uni network",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-24T19:25:19.117149+00:00",
+      "updated_at": "2026-08-19T20:33:24.367+00:00"
+    },
+    {
+      "id": "839e5325-9460-492c-9010-0bba960812a1",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Ранний отбой",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-25T07:07:23.899342+00:00",
+      "updated_at": "2026-08-18T04:49:49.635177+00:00"
+    },
+    {
+      "id": "12564aba-caa6-4338-b85a-40fa1dbc2b83",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "Ведра",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-25T10:52:42.969732+00:00",
+      "updated_at": "2026-08-13T10:34:40.120441+00:00"
+    },
+    {
+      "id": "86222136-4215-4827-b2ce-53d4347afe3d",
+      "list_id": "3b998b95-b346-4ebe-b687-2baa9331c432",
+      "list_name": "Фразы",
+      "title": "Хочешь - соответствуй",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-26T20:05:24.172279+00:00",
+      "updated_at": "2026-08-19T20:43:38.015+00:00"
+    },
+    {
+      "id": "ad23d982-43d9-4abf-8d3b-6fa9dbec559d",
+      "list_id": "3b998b95-b346-4ebe-b687-2baa9331c432",
+      "list_name": "Фразы",
+      "title": "Проповедуя - исповедуй",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-26T20:06:08.052106+00:00",
+      "updated_at": "2026-08-19T20:43:39.416+00:00"
+    },
+    {
+      "id": "ed54fd99-2d25-41bb-bc87-d921feadb0fe",
+      "list_id": "3b998b95-b346-4ebe-b687-2baa9331c432",
+      "list_name": "Фразы",
+      "title": "Выбирай себя",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-26T20:06:17.901437+00:00",
+      "updated_at": "2026-08-19T20:43:40.256+00:00"
+    },
+    {
+      "id": "f971ba48-8ec5-4c69-937d-fcc56266fdf0",
+      "list_id": "3b998b95-b346-4ebe-b687-2baa9331c432",
+      "list_name": "Фразы",
+      "title": "Спокойствие это огромное количество вещей на своих местах",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-05-27T10:57:13.846149+00:00",
+      "updated_at": "2026-08-19T20:43:41.723+00:00"
+    },
+    {
+      "id": "916ba473-a193-4cff-9a12-c8096f951d64",
+      "list_id": "3b998b95-b346-4ebe-b687-2baa9331c432",
+      "list_name": "Фразы",
+      "title": "В критических ситуациях",
+      "description": "ты не поднимаешся до уровня своих надежд, а подаешь до уровня своей подготовки",
+      "priority": 4,
+      "created_at": "2026-05-27T10:58:43.198928+00:00",
+      "updated_at": "2026-08-19T20:43:41.019+00:00"
+    },
+    {
+      "id": "4b7bef54-95c7-42b0-955c-ec61c5df132b",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "YMCA",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-05-29T20:43:03.356543+00:00",
+      "updated_at": "2026-05-29T20:56:53.914245+00:00"
+    },
+    {
+      "id": "006bc901-d072-44cc-962d-199da31cdc2b",
+      "list_id": "25ec3e46-a9ea-4fd2-9138-06cd9f7a0991",
+      "list_name": "LeadershipEducation::Queue",
+      "title": "read 1-1 article",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-01T08:10:43.964739+00:00",
+      "updated_at": "2026-06-01T08:10:43.964739+00:00"
+    },
+    {
+      "id": "2e1d3efc-42e7-46c9-8eb2-e386e533bb57",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Я решаю",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-01T08:41:48.472848+00:00",
+      "updated_at": "2026-06-01T11:37:33.694652+00:00"
+    },
+    {
+      "id": "ab26b40c-f595-49b0-ad4b-a87626120cec",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Границы",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-01T08:42:04.012191+00:00",
+      "updated_at": "2026-06-01T08:42:04.012191+00:00"
+    },
+    {
+      "id": "05caa8d9-9d8a-41f6-9204-c27f92c1c73d",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Не копи",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-01T08:42:10.887429+00:00",
+      "updated_at": "2026-06-01T08:42:10.887429+00:00"
+    },
+    {
+      "id": "4178bc59-939a-4e71-92df-875de869b621",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "брекинбэд",
+      "description": "3 9 35",
+      "priority": 3,
+      "created_at": "2026-06-01T20:18:19.720133+00:00",
+      "updated_at": "2026-07-18T20:02:58.892065+00:00"
+    },
+    {
+      "id": "d67e4356-aff0-4a1f-9318-deccca723129",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Иван Дорн Ренессанс",
+      "description": "",
+      "priority": 2,
+      "created_at": "2026-06-02T07:44:48.076372+00:00",
+      "updated_at": "2026-08-09T19:28:03.596167+00:00"
+    },
+    {
+      "id": "9f474c15-4129-4abc-bf87-4cb4096be03d",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "лучше 40 раз по разу чем 40 раз за раз",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:10:24.338143+00:00",
+      "updated_at": "2026-06-02T10:10:24.338143+00:00"
+    },
+    {
+      "id": "fd23586e-c174-4a82-a863-126d4e5c98fb",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Не обессудь времена тяжёлые",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:10:45.798575+00:00",
+      "updated_at": "2026-06-02T10:10:45.798575+00:00"
+    },
+    {
+      "id": "894aabe3-5e0f-46ce-9a2f-41527ea7ec3c",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Закинь пятикрылого",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:10:58.254356+00:00",
+      "updated_at": "2026-06-02T10:10:58.254356+00:00"
+    },
+    {
+      "id": "06dec47b-83c4-4b3f-9fbd-17a335683bf3",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Ну раз такое дело",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:11:17.839848+00:00",
+      "updated_at": "2026-06-02T10:11:17.839848+00:00"
+    },
+    {
+      "id": "ec81ff7b-7717-4c0a-a043-f0f77e460253",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Сестра",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:11:30.217201+00:00",
+      "updated_at": "2026-06-02T10:11:30.217201+00:00"
+    },
+    {
+      "id": "00e08e81-3d20-4f92-99b0-59cc75effacb",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Брат",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:11:34.523733+00:00",
+      "updated_at": "2026-06-02T10:11:34.523733+00:00"
+    },
+    {
+      "id": "58421255-bb61-4eca-9851-5e2d44cd689b",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Оформи монету на пластик брат",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:12:03.118703+00:00",
+      "updated_at": "2026-06-02T10:12:03.118703+00:00"
+    },
+    {
+      "id": "93e211b6-e162-4e5d-aca4-c124b760653f",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Дай рубас",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-02T10:12:36.567387+00:00",
+      "updated_at": "2026-06-02T10:12:40.032351+00:00"
+    },
+    {
+      "id": "d0103f01-99cd-412d-89b1-1bd87a69b906",
+      "list_id": "dcbe88f8-5098-46d0-aed5-56c4ab2dd8fa",
+      "list_name": "FlutterRadar::Backlog",
+      "title": "Branch by ticket",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-02T11:24:29.359006+00:00",
+      "updated_at": "2026-08-19T20:33:39.452+00:00"
+    },
+    {
+      "id": "08c24648-7474-4a38-9cf3-6abf229b554b",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Медитировать 10 м",
+      "description": "",
+      "priority": 2,
+      "created_at": "2026-06-03T06:28:44.618603+00:00",
+      "updated_at": "2026-08-21T22:57:04.369283+00:00"
+    },
+    {
+      "id": "b444bb8a-1497-41be-a6b4-de5fa9d7c386",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Достижения",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-04T10:28:20.246403+00:00",
+      "updated_at": "2026-06-04T10:28:20.246403+00:00"
+    },
+    {
+      "id": "3ef2fe48-1e80-4cc6-b537-d0e73d313388",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Дефицитарно Нарциссическая тенденция",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-04T10:28:29.679002+00:00",
+      "updated_at": "2026-06-04T10:28:29.679002+00:00"
+    },
+    {
+      "id": "30771d79-0c4b-40ef-a461-40078be43696",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Сепарация",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-04T10:28:38.146328+00:00",
+      "updated_at": "2026-06-04T10:28:38.146328+00:00"
+    },
+    {
+      "id": "0f9abd43-38a3-422e-9bc9-fc7ea78c53d1",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Акрополь",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-04T10:29:30.583178+00:00",
+      "updated_at": "2026-08-13T09:02:56.674456+00:00"
+    },
+    {
+      "id": "73d3e4c4-a945-4105-85a2-2e990029e55a",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "love you too death.type o negative",
+      "description": "",
+      "priority": 2,
+      "created_at": "2026-06-06T07:08:09.23524+00:00",
+      "updated_at": "2026-07-26T16:20:49.700323+00:00"
+    },
+    {
+      "id": "939cd93f-86a9-4f2c-bbf9-d4af86cb1734",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "олененок",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-08T08:15:34.817281+00:00",
+      "updated_at": "2026-06-29T11:26:25.463823+00:00"
+    },
+    {
+      "id": "de92c336-3aad-4edc-8df8-66d24469b662",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "думаю как все закончить",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-08T08:15:45.76613+00:00",
+      "updated_at": "2026-06-29T11:26:26.359316+00:00"
+    },
+    {
+      "id": "c4bec5f5-1f5d-4ab3-a397-498ec202cba2",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Друзья и соседи",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-08T08:18:58.785277+00:00",
+      "updated_at": "2026-07-03T07:11:33.186977+00:00"
+    },
+    {
+      "id": "5ea64a7d-b29f-4465-8b31-06460e4ba218",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Silo",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-09T04:43:19.854613+00:00",
+      "updated_at": "2026-06-29T11:26:23.73806+00:00"
+    },
+    {
+      "id": "c5b3dbae-d584-4026-9800-8fe84b27987e",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Нет это целое предложение",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-10T06:46:20.460401+00:00",
+      "updated_at": "2026-06-10T06:46:20.460401+00:00"
+    },
+    {
+      "id": "f047ad98-0831-4793-821c-61a922230e15",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Леди ин ред",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-13T16:54:30.216246+00:00",
+      "updated_at": "2026-07-26T16:55:18.309963+00:00"
+    },
+    {
+      "id": "b22ffbbc-cdf1-4e87-8ef9-d97184e2b56b",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "hard to say I'm sorry. peter cetera",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-14T01:49:09.245906+00:00",
+      "updated_at": "2026-07-26T16:20:37.990564+00:00"
+    },
+    {
+      "id": "cffd8dc3-7aa2-4125-94ac-f4a349393dc1",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "айпед",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-14T01:52:33.551326+00:00",
+      "updated_at": "2026-08-13T10:34:33.057351+00:00"
+    },
+    {
+      "id": "3a15497e-cb45-423f-beef-2203a9fdb677",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "блуждающая земля",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-14T02:08:53.148039+00:00",
+      "updated_at": "2026-06-29T11:26:21.698863+00:00"
+    },
+    {
+      "id": "2bace772-35fb-43b5-a36a-61447319794f",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Что у вас здесь происходит?",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-14T02:46:33.220823+00:00",
+      "updated_at": "2026-06-14T02:46:33.220823+00:00"
+    },
+    {
+      "id": "623a47c1-c807-4a0e-a6e1-95cef823be57",
+      "list_id": "3b998b95-b346-4ebe-b687-2baa9331c432",
+      "list_name": "Фразы",
+      "title": "Что оставишь позади то найдешь впереди",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-14T02:47:34.749385+00:00",
+      "updated_at": "2026-08-19T20:43:42.417+00:00"
+    },
+    {
+      "id": "9053345b-59c4-4043-9b66-724d05f779d1",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Не получилось, не фартануло",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-14T02:49:28.750292+00:00",
+      "updated_at": "2026-06-14T02:49:28.750292+00:00"
+    },
+    {
+      "id": "c896f906-811f-4c27-a877-4dd55522c17b",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Бекрумс",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-20T15:40:05.838213+00:00",
+      "updated_at": "2026-06-29T11:26:18.182228+00:00"
+    },
+    {
+      "id": "5c03784f-a8fe-42d0-94fb-c415f437e13b",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Получеловек",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-20T15:40:28.025641+00:00",
+      "updated_at": "2026-06-29T11:26:22.820078+00:00"
+    },
+    {
+      "id": "0d6e3916-373b-476d-98fb-2eccd090d77d",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Налоги",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-20T15:42:46.492087+00:00",
+      "updated_at": "2026-08-13T09:02:49.243187+00:00"
+    },
+    {
+      "id": "c934aee8-8ace-43e3-81ac-8eeeb591ce65",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Now i wanna be yo doll",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-20T16:29:22.518985+00:00",
+      "updated_at": "2026-07-26T16:19:24.969668+00:00"
+    },
+    {
+      "id": "762a796e-4959-4d6d-89e1-8025da1cce1c",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "rnroll queen",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-20T21:16:13.209391+00:00",
+      "updated_at": "2026-06-20T21:16:13.209391+00:00"
+    },
+    {
+      "id": "6b788ade-95ed-4a30-acc1-9a23b26e5ed6",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Спорт",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-23T15:29:49.747083+00:00",
+      "updated_at": "2026-08-18T17:40:48.183171+00:00"
+    },
+    {
+      "id": "6e085d8f-1c5f-4240-85a7-caa25b1bdce9",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Оффлоад",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-23T15:29:57.923675+00:00",
+      "updated_at": "2026-06-29T11:27:08.937482+00:00"
+    },
+    {
+      "id": "e52c4f9a-1c08-4ece-ad64-60cce4e40fb5",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Еда",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-23T15:30:18.723027+00:00",
+      "updated_at": "2026-08-22T07:30:56.093944+00:00"
+    },
+    {
+      "id": "79386786-01bb-49a4-ae60-5883e8c45ba2",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Почитать 1 стр",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-23T15:30:22.328225+00:00",
+      "updated_at": "2026-08-21T22:56:06.864712+00:00"
+    },
+    {
+      "id": "42e2c99b-7255-4d92-8085-b1dd320d9df3",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Я боюсь расстраивать женщин",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-29T07:47:38.866652+00:00",
+      "updated_at": "2026-08-19T20:47:22.518+00:00"
+    },
+    {
+      "id": "ed614dc4-e560-4783-91ba-2ed532524a64",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Я ничтожество",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-29T07:48:00.866038+00:00",
+      "updated_at": "2026-08-19T20:47:29.883+00:00"
+    },
+    {
+      "id": "acdc2a1b-c1c7-4051-ade4-6e93cfad3f4b",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Wonderful life",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-06-29T07:48:25.845878+00:00",
+      "updated_at": "2026-06-29T07:48:25.845878+00:00"
+    },
+    {
+      "id": "af7e7b44-8354-473b-ac4e-b626d78d2166",
+      "list_id": "9c01de0c-e897-4e8f-9aed-fac290b8526f",
+      "list_name": "Препятствия",
+      "title": "Трудное решение(действие)",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-29T11:49:25.194216+00:00",
+      "updated_at": "2026-08-19T20:54:49.107+00:00"
+    },
+    {
+      "id": "163bf853-91a1-4b51-b731-e1c795c5bb83",
+      "list_id": "9c01de0c-e897-4e8f-9aed-fac290b8526f",
+      "list_name": "Препятствия",
+      "title": "Пустые разговоры",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-29T11:49:40.253085+00:00",
+      "updated_at": "2026-08-19T20:54:50.44+00:00"
+    },
+    {
+      "id": "985f3136-c02c-4f18-9cec-ac1d2a8b4fce",
+      "list_id": "9c01de0c-e897-4e8f-9aed-fac290b8526f",
+      "list_name": "Препятствия",
+      "title": "усталость",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-29T11:50:08.542031+00:00",
+      "updated_at": "2026-08-19T20:54:51.827+00:00"
+    },
+    {
+      "id": "c8cf32cf-6b5c-49e5-8ab7-0127375faa35",
+      "list_id": "9c01de0c-e897-4e8f-9aed-fac290b8526f",
+      "list_name": "Препятствия",
+      "title": "дум скроллинг",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-06-29T11:50:15.610564+00:00",
+      "updated_at": "2026-08-19T20:54:47.799+00:00"
+    },
+    {
+      "id": "6484b4e6-0016-4c1b-b2db-e256c172df0e",
+      "list_id": "a3779ed1-7640-4942-be5d-b18398f828df",
+      "list_name": "Здоровье::фокус",
+      "title": "Зуб",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-01T20:32:23.37399+00:00",
+      "updated_at": "2026-08-19T20:33:55.283+00:00"
+    },
+    {
+      "id": "a3867556-12f4-42b8-801e-95557cb09499",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Я должен действовать",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-01T20:35:37.960027+00:00",
+      "updated_at": "2026-08-19T20:42:00.178+00:00"
+    },
+    {
+      "id": "ba18b085-5825-494b-b190-b15682380184",
+      "list_id": "25ec3e46-a9ea-4fd2-9138-06cd9f7a0991",
+      "list_name": "LeadershipEducation::Queue",
+      "title": "read okr link",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-01T20:42:55.088997+00:00",
+      "updated_at": "2026-08-12T22:41:10.093+00:00"
+    },
+    {
+      "id": "0c7ca158-1803-4bde-923b-040ed24fd66b",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "Я работаю обработка эмоций - это странная формулировка",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:35:44.818421+00:00",
+      "updated_at": "2026-07-02T12:35:44.818421+00:00"
+    },
+    {
+      "id": "67a444d7-0495-4f01-a2ec-99ebc86f8d63",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "чьи эмоции ты обрабатываешь",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:35:53.701644+00:00",
+      "updated_at": "2026-07-02T12:35:53.701644+00:00"
+    },
+    {
+      "id": "7206d9cf-b76c-476e-b3eb-f74c74c80b24",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "что такое сепарация",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:36:02.455822+00:00",
+      "updated_at": "2026-07-02T12:36:02.455822+00:00"
+    },
+    {
+      "id": "a0a961b2-e92d-4b4a-bfe2-d52fa44eb2c2",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "что такое на лимбическом уровне",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:43:38.13154+00:00",
+      "updated_at": "2026-07-02T12:43:38.13154+00:00"
+    },
+    {
+      "id": "15dd7434-67af-48a6-b1ec-0d5022616385",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "персонализации флоу",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:53:44.281376+00:00",
+      "updated_at": "2026-07-02T12:53:44.281376+00:00"
+    },
+    {
+      "id": "57340e63-2baf-4203-8bcd-035719d3fa62",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "тетя заставляют учить что тебе не надо",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:54:39.775178+00:00",
+      "updated_at": "2026-07-02T12:54:39.775178+00:00"
+    },
+    {
+      "id": "914ce293-2386-475d-886b-d8bdd6122f38",
+      "list_id": "c5827181-7c51-4b08-af95-c827500d99eb",
+      "list_name": "бот отзыв артик",
+      "title": "нужно более мелкие модули в плане теории и цены",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-02T12:55:57.060265+00:00",
+      "updated_at": "2026-07-02T12:55:57.060265+00:00"
+    },
+    {
+      "id": "1eea6952-f86a-4d66-97b5-8203e4199c1c",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Мастерс оф зе юниверс",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-03T07:10:11.364581+00:00",
+      "updated_at": "2026-07-03T07:11:19.438766+00:00"
+    },
+    {
+      "id": "29e47f28-a969-4790-bb33-686c7ecac6ad",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "бекрумс",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-03T07:10:53.355968+00:00",
+      "updated_at": "2026-07-03T07:10:53.355968+00:00"
+    },
+    {
+      "id": "e1ae2ed9-a97d-4a94-880a-2af8fb7ca142",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "now i wanna be your dog",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-04T07:25:59.39504+00:00",
+      "updated_at": "2026-07-26T16:20:18.634137+00:00"
+    },
+    {
+      "id": "7f76a461-2955-4402-b0a1-b918d045424b",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "born to be wild",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-04T07:26:12.660841+00:00",
+      "updated_at": "2026-07-04T07:26:12.660841+00:00"
+    },
+    {
+      "id": "13524fdd-82b2-462c-9c8c-20d896f3640c",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "когда ты решаешь это выгодно детям",
+      "description": "дети видят того кто справляется/побеждает в жизни. не в игре находится. быстрые решения",
+      "priority": 4,
+      "created_at": "2026-07-04T10:16:29.69299+00:00",
+      "updated_at": "2026-08-19T20:52:50.777+00:00"
+    },
+    {
+      "id": "d8ce2b19-432c-491d-8e4c-110f902a07b0",
+      "list_id": "11949662-0ad8-4821-8d71-e40f9d42d5bd",
+      "list_name": "Глобальные цели",
+      "title": "бабки",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:45:52.489539+00:00",
+      "updated_at": "2026-08-19T20:40:41.893+00:00"
+    },
+    {
+      "id": "020e43d4-40d0-4d7e-850b-4fc826b8285e",
+      "list_id": "11949662-0ad8-4821-8d71-e40f9d42d5bd",
+      "list_name": "Глобальные цели",
+      "title": "свои люди",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:46:01.146398+00:00",
+      "updated_at": "2026-08-19T20:40:37.986+00:00"
+    },
+    {
+      "id": "e8e3d07f-2832-4728-901b-bf0acb228475",
+      "list_id": "11949662-0ad8-4821-8d71-e40f9d42d5bd",
+      "list_name": "Глобальные цели",
+      "title": "свобода",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:46:32.36493+00:00",
+      "updated_at": "2026-08-19T20:40:38.932+00:00"
+    },
+    {
+      "id": "e011c70d-1c67-43a4-97e2-dbb53ffeb5b8",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Кирилл",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:52:49.032232+00:00",
+      "updated_at": "2026-08-19T20:36:31.163+00:00"
+    },
+    {
+      "id": "e1226505-b902-44db-9512-6b69040c946e",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Ромка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:52:52.960694+00:00",
+      "updated_at": "2026-08-19T20:36:31.865+00:00"
+    },
+    {
+      "id": "e2f34494-6539-4c8b-a48c-4c24754eb6fb",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Франческо",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:52:57.186718+00:00",
+      "updated_at": "2026-08-19T20:36:32.598+00:00"
+    },
+    {
+      "id": "774fcb77-40a7-4b3c-88c3-5d82655599c8",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Димка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:53:02.081452+00:00",
+      "updated_at": "2026-08-19T20:36:33.272+00:00"
+    },
+    {
+      "id": "d150044f-b71c-41c2-9441-4f1889d9cf7f",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Андрей",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-06T06:53:07.740068+00:00",
+      "updated_at": "2026-08-19T20:36:33.964+00:00"
+    },
+    {
+      "id": "48bfec53-da7e-46fb-a537-b9438994f7b8",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "let's the music play",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-07T17:14:33.278237+00:00",
+      "updated_at": "2026-07-26T16:49:11.202396+00:00"
+    },
+    {
+      "id": "7b736c6f-e40b-4989-87d8-7fae9c5c2396",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Мальчик, крот, лис и конь",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-14T03:21:25.896599+00:00",
+      "updated_at": "2026-07-14T03:21:25.896599+00:00"
+    },
+    {
+      "id": "39a365f3-61db-4f51-bf3a-88e85d7205ac",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Че крутой? - А ты не сомневайся",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-16T07:57:51.035521+00:00",
+      "updated_at": "2026-07-16T07:58:56.979565+00:00"
+    },
+    {
+      "id": "6811a3bf-7d12-4048-8a2b-6d82153a9868",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Есть проблема. Нет проблемы.",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-16T07:58:04.995382+00:00",
+      "updated_at": "2026-07-16T07:58:04.995382+00:00"
+    },
+    {
+      "id": "3be7561d-d16d-4323-a826-acf0adb435ca",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Зачем что-то делать когда можно не делать",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-16T07:59:18.701758+00:00",
+      "updated_at": "2026-07-16T07:59:18.701758+00:00"
+    },
+    {
+      "id": "181588ff-86db-461e-9f37-d3f07d0e3c91",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Ограничения только в голове. Твоей",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-16T07:59:37.83949+00:00",
+      "updated_at": "2026-07-16T07:59:37.83949+00:00"
+    },
+    {
+      "id": "a36ef4cc-2ac7-4b5d-a92e-f3cf1e1a2479",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Роман Полански",
+      "description": "жилец, Венера в мехах, после прочтения сжечь",
+      "priority": 4,
+      "created_at": "2026-07-18T18:07:55.503803+00:00",
+      "updated_at": "2026-08-23T21:10:51.876254+00:00"
+    },
+    {
+      "id": "abf44a9f-e966-4f25-ac0c-4ebf84809f75",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Philadelphia",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-19T11:32:11.984796+00:00",
+      "updated_at": "2026-07-26T16:19:21.460288+00:00"
+    },
+    {
+      "id": "724ac372-bd83-43f4-9155-4b4ef2453d15",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Обесценивание это когда ты даешь другим решать",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-20T11:39:17.264+00:00",
+      "updated_at": "2026-08-19T20:52:51.7+00:00"
+    },
+    {
+      "id": "579842e1-831d-4d68-8a2b-a6c6171b2439",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "when we are older",
+      "description": "",
+      "priority": 2,
+      "created_at": "2026-07-22T13:57:54.570819+00:00",
+      "updated_at": "2026-08-09T19:27:44.265683+00:00"
+    },
+    {
+      "id": "f6d248f3-70a6-4d89-a938-d6dd8477234b",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Муся",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-22T18:38:08.230113+00:00",
+      "updated_at": "2026-07-22T18:38:08.230113+00:00"
+    },
+    {
+      "id": "4ff01791-004e-42cd-972c-579887977a13",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "гкс сент луис",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-23T08:06:21.223833+00:00",
+      "updated_at": "2026-07-23T08:06:21.223833+00:00"
+    },
+    {
+      "id": "969f845c-e32e-4b69-bc51-c3bcdf88f1c8",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Кто мне запретит",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-25T19:51:52.256013+00:00",
+      "updated_at": "2026-07-25T19:51:52.256013+00:00"
+    },
+    {
+      "id": "7ac36d85-49a9-446c-b747-19bfc480e95f",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "Фото Принтер",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-26T00:06:26.565858+00:00",
+      "updated_at": "2026-08-13T10:34:49.335063+00:00"
+    },
+    {
+      "id": "a13be49f-e183-4130-811c-48df4160f11d",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "майка с рукавами",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-27T07:59:48.117+00:00",
+      "updated_at": "2026-08-13T10:35:01.340152+00:00"
+    },
+    {
+      "id": "a3507c7b-79e5-4fe4-8bfe-303fb5d5d0ac",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "PSA::Impl",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-27T08:23:46.752+00:00",
+      "updated_at": "2026-08-11T07:22:47.464+00:00"
+    },
+    {
+      "id": "4ec3a64f-5bd7-4bd2-b3a2-5cd9d66eb723",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Счета",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-30T11:49:13.851+00:00",
+      "updated_at": "2026-08-13T09:02:41.93708+00:00"
+    },
+    {
+      "id": "0a8e690e-b872-42e9-99be-d8a85242a19b",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Счетчики",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-07-30T11:49:20.84+00:00",
+      "updated_at": "2026-08-21T13:19:22.649+00:00"
+    },
+    {
+      "id": "75bc19e4-7de8-434e-8876-a81c1211de94",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Планы планы...",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-30T14:13:37.892288+00:00",
+      "updated_at": "2026-07-30T14:13:37.892288+00:00"
+    },
+    {
+      "id": "9605d717-0223-4117-b662-2912baa9e0fb",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "Да! Верим!",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-07-30T14:13:53.270318+00:00",
+      "updated_at": "2026-07-30T14:13:53.270318+00:00"
+    },
+    {
+      "id": "7560ee1d-dfbd-47ec-ac99-d496b3fbd068",
+      "list_id": "4a5383ee-4f84-4582-b464-3160b7ef31d8",
+      "list_name": "Неделя",
+      "title": "Посмотреть Грецию",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-01T12:07:42.216233+00:00",
+      "updated_at": "2026-08-12T12:16:11.965+00:00"
+    },
+    {
+      "id": "b5f4f262-a164-4909-b563-7fe823f5cfb5",
+      "list_id": "27032eec-6948-4679-9400-a9d5f156dcde",
+      "list_name": "Уборка::Очередность",
+      "title": "кластеризовать вещи",
+      "description": "",
+      "priority": 2,
+      "created_at": "2026-08-02T11:25:23.224382+00:00",
+      "updated_at": "2026-08-02T11:26:11.663762+00:00"
+    },
+    {
+      "id": "2ae3f382-945e-412d-8a55-da142200e7e7",
+      "list_id": "27032eec-6948-4679-9400-a9d5f156dcde",
+      "list_name": "Уборка::Очередность",
+      "title": "пол",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-02T11:25:36.539109+00:00",
+      "updated_at": "2026-08-02T11:26:25.851186+00:00"
+    },
+    {
+      "id": "0e7c1b82-c83e-458d-bf4f-c37909621e36",
+      "list_id": "27032eec-6948-4679-9400-a9d5f156dcde",
+      "list_name": "Уборка::Очередность",
+      "title": "заправить постель",
+      "description": "",
+      "priority": 1,
+      "created_at": "2026-08-02T11:25:48.111635+00:00",
+      "updated_at": "2026-08-02T11:26:04.593893+00:00"
+    },
+    {
+      "id": "f3403bf3-9203-4438-a39a-faccf26d67f1",
+      "list_id": "27032eec-6948-4679-9400-a9d5f156dcde",
+      "list_name": "Уборка::Очередность",
+      "title": "стирка",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-02T11:25:54.60405+00:00",
+      "updated_at": "2026-08-02T11:25:54.60405+00:00"
+    },
+    {
+      "id": "aaaf8d5a-325f-4ec2-a06b-730e1cca38fb",
+      "list_id": "11949662-0ad8-4821-8d71-e40f9d42d5bd",
+      "list_name": "Глобальные цели",
+      "title": "роботы и футуризм",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-03T08:49:22.774969+00:00",
+      "updated_at": "2026-08-19T20:40:39.746+00:00"
+    },
+    {
+      "id": "ba7cd2ae-c6b8-472c-a76b-0bcf0e080219",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Как это возможно? - Нет ничего невозможного",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-05T09:18:58.609759+00:00",
+      "updated_at": "2026-08-05T09:18:58.609759+00:00"
+    },
+    {
+      "id": "71aef220-ee9b-4e8b-9d12-461b028e14a4",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Алименты",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-08T06:56:28.485326+00:00",
+      "updated_at": "2026-08-21T13:19:32.865+00:00"
+    },
+    {
+      "id": "2c2fa918-e808-4411-8648-de9659479e32",
+      "list_id": "50ddc127-b576-4681-8bec-c077fb4a2306",
+      "list_name": "Сегодня",
+      "title": "ипотека",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-08T21:38:52.403855+00:00",
+      "updated_at": "2026-08-23T21:08:39.648411+00:00"
+    },
+    {
+      "id": "65c0bfad-67c9-4d3e-99c4-ac2b9562b760",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "У меня инсульт?",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-09T09:55:19.179968+00:00",
+      "updated_at": "2026-08-09T09:55:19.179968+00:00"
+    },
+    {
+      "id": "1e474f04-5b0e-497d-9bf3-1ec452096582",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "бля шо куда",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-09T09:56:22.285187+00:00",
+      "updated_at": "2026-08-09T09:56:22.285187+00:00"
+    },
+    {
+      "id": "9cdbbbb4-afb5-4711-8caf-a44d2e175fb2",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "тяжело...",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-09T09:56:38.210638+00:00",
+      "updated_at": "2026-08-09T09:56:38.210638+00:00"
+    },
+    {
+      "id": "4821070a-8e65-4a34-bb4b-78fd8f326e08",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "хорошо что мне все объяснили, плохо что я ничего не понял",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-09T09:57:05.552675+00:00",
+      "updated_at": "2026-08-09T09:57:05.552675+00:00"
+    },
+    {
+      "id": "c31f7868-bc49-438e-aeee-30965ad00c76",
+      "list_id": "717003db-a737-4242-93ef-de4e3160fb5d",
+      "list_name": "Фан Фразы",
+      "title": "А не надо меня никак понимать",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-09T09:57:47.168629+00:00",
+      "updated_at": "2026-08-09T09:57:47.168629+00:00"
+    },
+    {
+      "id": "73a3226f-7147-49da-a2de-0b406af26ef5",
+      "list_id": "cca5b330-1984-4aac-8269-14ec73cea9c5",
+      "list_name": "Развитие::Сферы",
+      "title": "ИИ Эксперт",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-09T13:09:29.748+00:00",
+      "updated_at": "2026-08-19T20:32:47.485+00:00"
+    },
+    {
+      "id": "9cd6787a-9b0d-4eed-b779-8412072458bf",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "Elton::Your song",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-09T13:40:43.558587+00:00",
+      "updated_at": "2026-08-09T19:28:36.486895+00:00"
+    },
+    {
+      "id": "f5f6f3e3-1ae3-4386-b7e8-e18bf181c614",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "фен",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-10T12:00:42.004628+00:00",
+      "updated_at": "2026-08-13T10:34:54.64826+00:00"
+    },
+    {
+      "id": "f593f12f-a870-4f89-89e3-42123c4a734b",
+      "list_id": "7382194c-6b3e-4cd2-b6be-776ede2b7e0d",
+      "list_name": "Караоке",
+      "title": "can you feel my love, Brian ferry",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-11T05:09:32.174352+00:00",
+      "updated_at": "2026-08-11T05:09:32.174352+00:00"
+    },
+    {
+      "id": "9c2f8cd5-9c97-4fbc-9d26-53b23a58b846",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "PSA::Decompose to tasks::review plan",
+      "description": "feture/APP-148_separate-parent-app-tech-research",
+      "priority": 3,
+      "created_at": "2026-08-11T07:21:54.867+00:00",
+      "updated_at": "2026-08-19T20:05:41.783+00:00"
+    },
+    {
+      "id": "578f5954-dcae-4092-a2bc-a3d579444ba3",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "PSA::Estimates",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-11T07:22:24.095+00:00",
+      "updated_at": "2026-08-19T20:05:45.084+00:00"
+    },
+    {
+      "id": "8449b7dc-437a-40fc-8781-ed334a37b2d3",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "SUBS::UPDATE::Fixes",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-11T07:23:21.592+00:00",
+      "updated_at": "2026-08-12T11:12:31.585+00:00"
+    },
+    {
+      "id": "f0079dce-59d6-4e5d-9a41-05ef43b7f127",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "SUBS::Tiers::Impl",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-11T07:23:51.685+00:00",
+      "updated_at": "2026-08-11T07:23:54.142+00:00"
+    },
+    {
+      "id": "11a7908d-627d-4ff4-a1d7-4532448014ee",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "LEAD::Выставить цели",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-12T11:20:56.779+00:00",
+      "updated_at": "2026-08-12T11:34:11.437+00:00"
+    },
+    {
+      "id": "8a480d9f-3443-4e00-bca5-a05c4f91a45b",
+      "list_id": "dcbe88f8-5098-46d0-aed5-56c4ab2dd8fa",
+      "list_name": "FlutterRadar::Backlog",
+      "title": "Sentry::Range errors by importance and fix top 5",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-12T22:34:01.419+00:00",
+      "updated_at": "2026-08-12T22:34:01.419+00:00"
+    },
+    {
+      "id": "7224e48f-f449-44d0-8f5a-7bead8aefc30",
+      "list_id": "ec2c3b7e-9c75-4f99-9e23-70a018e213dd",
+      "list_name": "Шоппинг",
+      "title": "чилл сидушка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-13T10:34:24.208898+00:00",
+      "updated_at": "2026-08-13T10:34:37.886868+00:00"
+    },
+    {
+      "id": "5e0930a3-5f38-45d4-9647-33fd90141db3",
+      "list_id": "27032eec-6948-4679-9400-a9d5f156dcde",
+      "list_name": "Уборка::Очередность",
+      "title": "посуда",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-13T14:52:03.877923+00:00",
+      "updated_at": "2026-08-13T14:52:15.552995+00:00"
+    },
+    {
+      "id": "fcf138ae-b4e4-4789-9a80-f31c6b0572ed",
+      "list_id": "3c64325e-b60b-41e9-a130-3d58e6dbd0e7",
+      "list_name": "С девушками",
+      "title": "Не ври",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-14T15:42:56.917056+00:00",
+      "updated_at": "2026-08-14T16:18:37.698823+00:00"
+    },
+    {
+      "id": "939eb137-2eb0-42ad-bc9a-f1448ffcf750",
+      "list_id": "3c64325e-b60b-41e9-a130-3d58e6dbd0e7",
+      "list_name": "С девушками",
+      "title": "Быстрый выход",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-14T15:43:45.178455+00:00",
+      "updated_at": "2026-08-14T16:18:33.526111+00:00"
+    },
+    {
+      "id": "2ea70757-61f8-4933-ad7b-069e18072f0e",
+      "list_id": "3c64325e-b60b-41e9-a130-3d58e6dbd0e7",
+      "list_name": "С девушками",
+      "title": "Любовь ДА",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-14T15:44:23.581566+00:00",
+      "updated_at": "2026-08-14T16:18:35.008209+00:00"
+    },
+    {
+      "id": "64983647-eb28-46c3-8d50-b1a675f8a46a",
+      "list_id": "3c64325e-b60b-41e9-a130-3d58e6dbd0e7",
+      "list_name": "С девушками",
+      "title": "Секс ДА",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-14T16:12:59.16073+00:00",
+      "updated_at": "2026-08-14T16:18:35.977687+00:00"
+    },
+    {
+      "id": "b4b14243-1c39-47e0-9dc4-230ab7a918b7",
+      "list_id": "3c64325e-b60b-41e9-a130-3d58e6dbd0e7",
+      "list_name": "С девушками",
+      "title": "Отношения НЕТ",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-14T16:13:09.956383+00:00",
+      "updated_at": "2026-08-14T16:18:36.857917+00:00"
+    },
+    {
+      "id": "66041671-37bf-4c02-97f0-ccaae0038f74",
+      "list_id": "3c64325e-b60b-41e9-a130-3d58e6dbd0e7",
+      "list_name": "С девушками",
+      "title": "Только вживую",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-14T16:18:32.348919+00:00",
+      "updated_at": "2026-08-14T16:18:38.938759+00:00"
+    },
+    {
+      "id": "54bfa536-2e14-4762-9794-0de1726401ad",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Психолог",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-15T06:32:12.152426+00:00",
+      "updated_at": "2026-08-15T09:32:44.615626+00:00"
+    },
+    {
+      "id": "c35b01d3-b420-4eba-bd3d-565ff248c11c",
+      "list_id": "3d155ba8-ec2f-4b28-ab0b-d1a794fe2732",
+      "list_name": "Её черты",
+      "title": "Мягкость",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-16T13:29:36.556726+00:00",
+      "updated_at": "2026-08-16T13:29:36.556726+00:00"
+    },
+    {
+      "id": "66b6f2f2-5a1f-40c5-9499-06267794598d",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "Музыка",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-17T10:14:42.163+00:00",
+      "updated_at": "2026-08-18T17:40:58.591207+00:00"
+    },
+    {
+      "id": "a0249712-a17a-4820-b49b-ce94aebe60f3",
+      "list_id": "77dd8464-d9ad-40e8-a7ce-f5f2f7006b77",
+      "list_name": "Мотики нра",
+      "title": "Ninja 650",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-17T13:31:26.883094+00:00",
+      "updated_at": "2026-08-17T13:31:26.883094+00:00"
+    },
+    {
+      "id": "c6e26ab9-dc11-4f70-b7ec-c9f892265ef7",
+      "list_id": "77dd8464-d9ad-40e8-a7ce-f5f2f7006b77",
+      "list_name": "Мотики нра",
+      "title": "NC 750",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-17T13:31:38.425884+00:00",
+      "updated_at": "2026-08-17T13:31:38.425884+00:00"
+    },
+    {
+      "id": "56543597-1d6e-4a1b-b443-3b7230fdc8ab",
+      "list_id": "77dd8464-d9ad-40e8-a7ce-f5f2f7006b77",
+      "list_name": "Мотики нра",
+      "title": "GSX-R 600",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-17T13:32:45.125603+00:00",
+      "updated_at": "2026-08-17T13:32:45.125603+00:00"
+    },
+    {
+      "id": "d7e3d605-1711-4e32-9b7e-0bb784aa6d51",
+      "list_id": "dcbe88f8-5098-46d0-aed5-56c4ab2dd8fa",
+      "list_name": "FlutterRadar::Backlog",
+      "title": "Btw watched video progress is not being tracked for the next videos",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-18T05:09:58.287563+00:00",
+      "updated_at": "2026-08-18T05:09:58.287563+00:00"
+    },
+    {
+      "id": "c90a6053-b9ac-4c88-adc7-3fd5297451d1",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "Хвост::Запушить лоадтест ветку",
+      "description": "feature/audiences-load-testing",
+      "priority": 4,
+      "created_at": "2026-08-18T05:35:03.99+00:00",
+      "updated_at": "2026-08-18T05:35:03.99+00:00"
+    },
+    {
+      "id": "aa7fd521-a3f5-4889-93bf-d3d58e5dabb0",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "ешь молись люби",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T17:48:15.948324+00:00",
+      "updated_at": "2026-08-23T21:10:54.192515+00:00"
+    },
+    {
+      "id": "e8d7333a-a0ee-4879-9f95-2990224ef1c4",
+      "list_id": "4a5383ee-4f84-4582-b464-3160b7ef31d8",
+      "list_name": "Неделя",
+      "title": "YouDo",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T20:31:36.127+00:00",
+      "updated_at": "2026-08-21T13:18:23.728+00:00"
+    },
+    {
+      "id": "458560b8-56ff-4149-8e06-1da34c33fb9b",
+      "list_id": "3803ab26-7fad-4023-a190-07903bf1618d",
+      "list_name": "Мои Люди",
+      "title": "Андрей.Б",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T20:36:58.384+00:00",
+      "updated_at": "2026-08-19T20:37:03.397+00:00"
+    },
+    {
+      "id": "8c69b6e1-f9e3-4c07-a080-f9b8c66a5897",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Негобот",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T20:38:10.515+00:00",
+      "updated_at": "2026-08-19T20:38:10.515+00:00"
+    },
+    {
+      "id": "32c15e2b-b5a7-4f58-919b-4b02922bad84",
+      "list_id": "650da5ce-1312-4fe0-96ab-51f4b6703591",
+      "list_name": "Месяц",
+      "title": "Наив",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T20:39:01.816+00:00",
+      "updated_at": "2026-08-19T20:39:01.816+00:00"
+    },
+    {
+      "id": "27a19edc-94c5-4806-a2cf-f00cc6541fe6",
+      "list_id": "d07e63f7-6d4d-4da3-9745-e76e2587d3e1",
+      "list_name": "Рутина Я",
+      "title": "AI learning",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T20:39:19.824+00:00",
+      "updated_at": "2026-08-23T21:07:21.658109+00:00"
+    },
+    {
+      "id": "a8bf7032-0c3a-4d38-923c-0e1cb3b4b178",
+      "list_id": "8df8952e-6403-4634-850f-fc5579ecebae",
+      "list_name": "Психология::Фокус",
+      "title": "Направляю -> Предупреждаю -> Агрессия",
+      "description": "",
+      "priority": 4,
+      "created_at": "2026-08-19T20:46:41.609+00:00",
+      "updated_at": "2026-08-19T20:52:49.801+00:00"
+    },
+    {
+      "id": "2b687117-8424-4247-9b1a-ce0ee7af5552",
+      "list_id": "50ddc127-b576-4681-8bec-c077fb4a2306",
+      "list_name": "Сегодня",
+      "title": "Димка",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-20T10:55:23.834+00:00",
+      "updated_at": "2026-08-21T22:57:51.337698+00:00"
+    },
+    {
+      "id": "3893a17f-ede2-42c2-adbf-afbd650d1512",
+      "list_id": "0707ecf8-fc79-4069-9e3d-5e43085df39a",
+      "list_name": "ZutobiPriority",
+      "title": "CR.Max",
+      "description": "",
+      "priority": 2,
+      "created_at": "2026-08-20T14:25:49.126101+00:00",
+      "updated_at": "2026-08-20T14:25:49.126101+00:00"
+    },
+    {
+      "id": "50a77fbb-dcca-4dd6-a76b-6764f73dd50c",
+      "list_id": "77dd8464-d9ad-40e8-a7ce-f5f2f7006b77",
+      "list_name": "Мотики нра",
+      "title": "Yamaha tracer 09",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-21T09:57:16.689327+00:00",
+      "updated_at": "2026-08-21T09:57:16.689327+00:00"
+    },
+    {
+      "id": "b7d4538d-3c9b-4e96-81c8-748993382cb7",
+      "list_id": "d29b9951-b1c9-4d09-be11-7627339de852",
+      "list_name": "Кино",
+      "title": "Стивен Соденберг",
+      "description": "Секс, ложь и виде",
+      "priority": 3,
+      "created_at": "2026-08-21T22:11:45.641+00:00",
+      "updated_at": "2026-08-21T22:12:20.538+00:00"
+    },
+    {
+      "id": "5536ca1d-d272-4069-ba86-5490fb034bcd",
+      "list_id": "8305e8a5-2850-4a8c-9a58-704151fe0c25",
+      "list_name": "Фразы Артём",
+      "title": "Зачем ждать когда можно не ждать",
+      "description": "",
+      "priority": 3,
+      "created_at": "2026-08-23T05:52:59.793209+00:00",
+      "updated_at": "2026-08-23T05:52:59.793209+00:00"
+    }
+  ]
+}

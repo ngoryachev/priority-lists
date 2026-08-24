@@ -6,10 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env.dart';
-import 'data/repositories/in_memory_priority_list_repository.dart';
-import 'data/repositories/local_priority_list_repository.dart';
+import 'data/repositories/in_memory_priority_node_repository.dart';
+import 'data/repositories/local_priority_node_repository.dart';
 import 'data/services/auth_service.dart';
-import 'domain/repositories/priority_list_repository.dart';
+import 'domain/repositories/priority_node_repository.dart';
 
 void main() async {
   await SentryFlutter.init(
@@ -29,13 +29,13 @@ Future<void> _runApp() async {
     anonKey: Env.supabaseAnonKey,
   );
 
-  final PriorityListRepository localRepository;
+  final PriorityNodeRepository localRepository;
   if (kIsWeb) {
     // path_provider (and dart:io files) are unavailable in the browser.
-    localRepository = InMemoryPriorityListRepository();
+    localRepository = InMemoryPriorityNodeRepository();
   } else {
     final appDir = await getApplicationDocumentsDirectory();
-    localRepository = LocalPriorityListRepository(
+    localRepository = LocalPriorityNodeRepository(
       filePath: '${appDir.path}/priority_lists.json',
     );
   }

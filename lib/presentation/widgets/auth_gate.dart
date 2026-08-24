@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../data/repositories/supabase_priority_list_repository.dart';
+import '../../data/repositories/supabase_priority_node_repository.dart';
 import '../../data/services/migration_service.dart';
-import '../../domain/repositories/priority_list_repository.dart';
-import '../screens/lists_overview_screen.dart';
+import '../../domain/repositories/priority_node_repository.dart';
 import '../screens/login_screen.dart';
+import '../screens/node_screen.dart';
 import '../view_models/auth_view_model.dart';
-import '../view_models/lists_overview_view_model.dart';
+import '../view_models/node_tree_view_model.dart';
 
 class AuthGate extends StatelessWidget {
-  final PriorityListRepository localRepository;
+  final PriorityNodeRepository localRepository;
 
   const AuthGate({super.key, required this.localRepository});
 
@@ -24,7 +24,7 @@ class AuthGate extends StatelessWidget {
     }
 
     final client = Supabase.instance.client;
-    final supabaseRepository = SupabasePriorityListRepository(client);
+    final supabaseRepository = SupabasePriorityNodeRepository(client);
 
     return _MigrationWrapper(
       localRepository: localRepository,
@@ -34,8 +34,8 @@ class AuthGate extends StatelessWidget {
 }
 
 class _MigrationWrapper extends StatefulWidget {
-  final PriorityListRepository localRepository;
-  final SupabasePriorityListRepository supabaseRepository;
+  final PriorityNodeRepository localRepository;
+  final SupabasePriorityNodeRepository supabaseRepository;
 
   const _MigrationWrapper({
     required this.localRepository,
@@ -120,14 +120,14 @@ class _MigrationWrapperState extends State<_MigrationWrapper> {
 
     return MultiProvider(
       providers: [
-        Provider<PriorityListRepository>.value(
+        Provider<PriorityNodeRepository>.value(
           value: widget.supabaseRepository,
         ),
         ChangeNotifierProvider(
-          create: (_) => ListsOverviewViewModel(widget.supabaseRepository),
+          create: (_) => NodeTreeViewModel(widget.supabaseRepository),
         ),
       ],
-      child: const ListsOverviewScreen(),
+      child: const NodeScreen(),
     );
   }
 }

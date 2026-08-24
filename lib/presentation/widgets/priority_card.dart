@@ -8,6 +8,12 @@ class PriorityCard extends StatelessWidget {
   final String title;
   final String badgeLabel;
   final Color color;
+
+  /// Number of nodes directly inside this one, shown next to the priority
+  /// badge. Sits in the badge row rather than the subtitle so it survives on
+  /// short tiles, where the column below is clipped away.
+  final int? childCount;
+
   final String? subtitle;
 
   /// When non-empty, rendered as mini chips in place of [subtitle].
@@ -27,6 +33,7 @@ class PriorityCard extends StatelessWidget {
     required this.title,
     required this.badgeLabel,
     required this.color,
+    this.childCount,
     this.subtitle,
     this.chipLabels,
     this.backgroundColor,
@@ -105,6 +112,39 @@ class PriorityCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (childCount != null && childCount! > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.subdirectory_arrow_right,
+                                      size: 12,
+                                      color: color,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${childCount!}',
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           // Expanded (not Spacer + Flexible, which would split
                           // the free space) hands the actions everything left of
                           // the badge; reverse keeps them right-aligned and lets
@@ -127,7 +167,7 @@ class PriorityCard extends StatelessWidget {
                                     _CardAction(
                                       icon: Icons.move_to_inbox,
                                       onPressed: onMoveInto,
-                                      tooltip: 'Move into list',
+                                      tooltip: 'Move into another node',
                                     ),
                                   if (onEdit != null)
                                     _CardAction(

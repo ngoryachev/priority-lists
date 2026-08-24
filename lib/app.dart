@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/services/auth_service.dart';
-import 'domain/repositories/priority_list_repository.dart';
+import 'domain/repositories/priority_node_repository.dart';
 import 'presentation/view_models/auth_view_model.dart';
 import 'presentation/view_models/filter_view_model.dart';
 import 'presentation/widgets/auth_gate.dart';
 
 class PriorityListsApp extends StatelessWidget {
-  final PriorityListRepository localRepository;
+  final PriorityNodeRepository localRepository;
   final AuthService authService;
 
   const PriorityListsApp({
