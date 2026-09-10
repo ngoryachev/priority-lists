@@ -13,6 +13,7 @@ import 'package:priority_lists/app.dart';
 import 'package:priority_lists/config/env.dart';
 import 'package:priority_lists/data/repositories/in_memory_priority_node_repository.dart';
 import 'package:priority_lists/data/services/auth_service.dart';
+import 'package:priority_lists/presentation/widgets/priority_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const email = String.fromEnvironment(
@@ -33,6 +34,12 @@ void main() {
       anonKey: Env.supabaseAnonKey,
     );
     final client = Supabase.instance.client;
+
+    // Empty the account before the app starts: clearing it afterwards would
+    // leave the loaded tree in memory, and an interrupted earlier run would
+    // show up as duplicate cards.
+    await client.auth.signInWithPassword(email: email, password: password);
+    await client.from('nodes').delete().eq('user_id', client.auth.currentUser!.id);
     await client.auth.signOut();
 
     await tester.pumpWidget(
@@ -55,10 +62,6 @@ void main() {
     expect(find.byIcon(Icons.logout), findsOneWidget,
         reason: 'sign-in should land on the top level of the tree');
 
-    // Start from a clean tree so a previous, interrupted run cannot skew the
-    // counts below. This is a throwaway account with nothing worth keeping.
-    await client.from('nodes').delete().eq('user_id', client.auth.currentUser!.id);
-    await tester.pumpAndSettle();
 
     // --- build a chain -----------------------------------------------------
     await _addNode(tester, 'Android Root');
@@ -104,6 +107,45 @@ void main() {
         .single();
     expect(raised['priority'], 1,
         reason: 'tapping "1" should promote the node to critical');
+
+    // --- manual ordering by dragging a card's handle -----------------------
+    // Still inside A2, next to A3: a second child there shares its priority.
+    await _addNode(tester, 'A3 sibling');
+
+    List<String> painted() {
+      final cards = tester.widgetList<PriorityCard>(find.byType(PriorityCard));
+      return cards.map((card) => card.title).toList();
+    }
+
+    expect(painted(), ['A3', 'A3 sibling']);
+
+    // Drag the second card's handle above the first. A real drag on a touch
+    // device — the widget test only proves the callback wiring.
+    final handle = find.byIcon(Icons.drag_indicator).at(1);
+    final drag = await tester.startGesture(tester.getCenter(handle));
+    await tester.pump(const Duration(milliseconds: 100));
+    await drag.moveBy(const Offset(0, -20));
+    await tester.pump();
+    for (var i = 0; i < 6; i++) {
+      await drag.moveBy(const Offset(0, -40));
+      await tester.pump();
+    }
+    await drag.up();
+    await tester.pumpAndSettle();
+
+    expect(painted(), ['A3 sibling', 'A3'],
+        reason: 'the dragged card should have moved above its sibling');
+
+    await _pumpFor(tester, const Duration(seconds: 3));
+    final ordered = await client
+        .from('nodes')
+        .select('title, position')
+        .inFilter('title', ['A3', 'A3 sibling']);
+    final positions = {
+      for (final row in ordered) row['title']: row['position'] as int,
+    };
+    expect(positions['A3 sibling']!, lessThan(positions['A3']!),
+        reason: 'the new order should have been written to the server');
 
     // --- clean up: deleting the root takes the subtree with it -------------
     final createdIds = [for (final row in rows) row['id'] as String];
@@ -151,14 +193,17 @@ Future<void> _settle(
   fail('timed out waiting for $target; on screen: $onScreen');
 }
 
-/// Opens the card titled [title]. Taps target the card's ink well: a bare
-/// `Text` does not take pointer events, so tapping the label can silently miss.
+/// Opens the card titled [title].
+///
+/// Taps the card itself rather than its label: a bare `Text` does not take
+/// pointer events, so tapping the title can silently miss and leave the test
+/// looking at the wrong level.
 Future<void> _openCard(WidgetTester tester, String title) async {
-  await tester.tap(
-    find
-        .ancestor(of: find.text(title).first, matching: find.byType(InkWell))
-        .first,
+  final card = find.byWidgetPredicate(
+    (widget) => widget is PriorityCard && widget.title == title,
   );
+  expect(card, findsOneWidget, reason: 'no card titled "$title" on screen');
+  await tester.tap(card);
   await tester.pumpAndSettle();
 }
 

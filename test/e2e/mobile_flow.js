@@ -140,6 +140,19 @@ async function overflowsHorizontally(page) {
   check('every breadcrumb clears a 44px tap target', tooSmallCrumbs.length === 0,
     JSON.stringify(crumbBoxes));
 
+  // The drag handle is new too, and it is the only way to reorder on a phone.
+  const handles = await page.$$eval('flt-semantics', els =>
+    els
+      .filter(e => e.textContent.trim() === 'Drag to reorder')
+      .map(e => {
+        const r = e.getBoundingClientRect();
+        return `${Math.round(r.width)}x${Math.round(r.height)}`;
+      })
+  );
+  check('a drag handle is offered and clears 44px',
+    handles.length > 0 && handles.every(h => h.split('x').every(n => Number(n) >= 44)),
+    JSON.stringify(handles));
+
   // The dense card/app-bar controls predate the tree; reported, not asserted.
   const small = await smallTapTargets(page);
   console.log(`note — controls under 44px (pre-existing): ${JSON.stringify(small)}`);

@@ -21,6 +21,9 @@ sign up their throwaway account on first run. Each creates and then deletes its
 own subtree, leaving nothing behind on success. Screenshots land in the system
 temp dir.
 
+`tree_flow.js` also drags a card by its handle and reloads the page, so manual
+ordering is checked end to end rather than only at the view-model level.
+
 `mobile_flow.js` additionally checks that nothing overflows horizontally at
 depth, in portrait or landscape, and that every breadcrumb clears a 44px tap
 target. The dense card and app-bar controls (the 1..4 rows at 32px, the card
@@ -37,10 +40,12 @@ flutter test integration_test/tree_flow_test.dart \
   --dart-define-from-file=.env.json -d <device-or-emulator>
 ```
 
-Two gotchas that cost real debugging time there: a bare `Text` does not hit
-test, so tap the enclosing `InkWell` (tapping a card's title silently misses),
-and tapping a `SegmentedButton` segment through its label dismisses the dialog
-instead of selecting.
+Three gotchas that cost real debugging time there: a bare `Text` does not hit
+test, so tap the card widget itself (tapping its title silently misses);
+tapping a `SegmentedButton` segment through its label dismisses the dialog
+instead of selecting; and the account has to be emptied *before* `pumpWidget`,
+since clearing it afterwards leaves the already-loaded tree in memory and an
+interrupted earlier run then shows up as duplicate cards.
 
 ## Driving Flutter web
 

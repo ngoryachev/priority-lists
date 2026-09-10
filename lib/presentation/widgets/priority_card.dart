@@ -177,11 +177,12 @@ class PriorityCard extends StatelessWidget {
                                       // reach a screen reader as nothing.
                                       child: Tooltip(
                                         message: 'Drag to reorder',
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 8,
-                                          ),
+                                        // 44x44: the handle is the only way
+                                        // to start a drag, so it has to be
+                                        // comfortable on a phone.
+                                        child: SizedBox(
+                                          width: 44,
+                                          height: 44,
                                           child: Icon(
                                             Icons.drag_indicator,
                                             size: 20,
