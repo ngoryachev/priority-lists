@@ -19,10 +19,19 @@ class NodeTreeViewModel extends ChangeNotifier {
   List<PriorityNode> _nodes = [];
   NodeTree _tree = NodeTree.empty();
   bool _isLoading = false;
+  bool _isRefreshing = false;
+  DateTime? _loadedAt;
   String? _error;
 
-  NodeTreeViewModel(this._repository, {Uuid? uuid})
-    : _uuid = uuid ?? const Uuid();
+  /// How fresh the tree must be for [refresh] to skip the round-trip. Coming
+  /// back to the foreground can fire several lifecycle events in a row.
+  final Duration minRefreshAge;
+
+  NodeTreeViewModel(
+    this._repository, {
+    Uuid? uuid,
+    this.minRefreshAge = const Duration(seconds: 2),
+  }) : _uuid = uuid ?? const Uuid();
 
   NodeTree get tree => _tree;
   bool get isLoading => _isLoading;
@@ -35,11 +44,35 @@ class NodeTreeViewModel extends ChangeNotifier {
 
     try {
       _setNodes(await _repository.getAllNodes());
+      _loadedAt = DateTime.now();
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Quietly re-reads the tree, for when the app comes back to the
+  /// foreground and another device may have written meanwhile. Unlike [load]
+  /// it never flips [isLoading] (no spinner flash) and keeps the current tree
+  /// on failure, so a flaky network can't blank a screen the user is reading.
+  Future<void> refresh() async {
+    if (_isLoading || _isRefreshing) return;
+    final loadedAt = _loadedAt;
+    if (loadedAt != null &&
+        DateTime.now().difference(loadedAt) < minRefreshAge) {
+      return;
+    }
+    _isRefreshing = true;
+    try {
+      _setNodes(await _repository.getAllNodes());
+      _loadedAt = DateTime.now();
+      notifyListeners();
+    } catch (_) {
+      // Stale data beats an empty screen; the next write or resume retries.
+    } finally {
+      _isRefreshing = false;
     }
   }
 

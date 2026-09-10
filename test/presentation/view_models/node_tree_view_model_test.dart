@@ -10,11 +10,15 @@ import 'package:priority_lists/presentation/view_models/node_tree_view_model.dar
 class _FailingRepository implements PriorityNodeRepository {
   final PriorityNodeRepository inner;
   bool failWrites = true;
+  bool failReads = false;
 
   _FailingRepository(this.inner);
 
   @override
-  Future<List<PriorityNode>> getAllNodes() => inner.getAllNodes();
+  Future<List<PriorityNode>> getAllNodes() {
+    if (failReads) throw Exception('offline');
+    return inner.getAllNodes();
+  }
 
   @override
   Future<void> saveNode(PriorityNode node) async {
@@ -42,6 +46,59 @@ void main() {
   setUp(() {
     repository = InMemoryPriorityNodeRepository();
     vm = NodeTreeViewModel(repository);
+  });
+
+  group('refresh', () {
+    test('quietly picks up rows written elsewhere', () async {
+      vm = NodeTreeViewModel(repository, minRefreshAge: Duration.zero);
+      await vm.load();
+      final seen = <bool>[];
+      vm.addListener(() => seen.add(vm.isLoading));
+
+      await repository.saveNode(PriorityNode(
+        id: 'x',
+        title: 'From another device',
+        priority: Priority.low,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ));
+      await vm.refresh();
+
+      expect(vm.tree.nodeById('x'), isNotNull);
+      expect(seen, [false], reason: 'no loading flip, just one settle');
+    });
+
+    test('skips the round-trip while the tree is fresh', () async {
+      vm = NodeTreeViewModel(
+        repository,
+        minRefreshAge: const Duration(hours: 1),
+      );
+      await vm.load();
+      await repository.saveNode(PriorityNode(
+        id: 'x',
+        title: 'Late',
+        priority: Priority.low,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ));
+
+      await vm.refresh();
+
+      expect(vm.tree.nodeById('x'), isNull);
+    });
+
+    test('keeps the current tree when the read fails', () async {
+      final failing = _FailingRepository(repository)..failWrites = false;
+      vm = NodeTreeViewModel(failing, minRefreshAge: Duration.zero);
+      await vm.addChild(title: 'Keep me', priority: Priority.low);
+      await vm.load();
+
+      failing.failReads = true;
+      await vm.refresh();
+
+      expect(vm.tree.roots.map((n) => n.title), ['Keep me']);
+      expect(vm.error, isNull);
+    });
   });
 
   /// Builds root → a → a1 and returns their ids.

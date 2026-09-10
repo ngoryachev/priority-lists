@@ -169,6 +169,8 @@ async function overflowsHorizontally(page) {
 
   // --- the move dialog on a small screen ------------------------------------
   await tap(page, page.locator('flt-semantics:text-is("Move into another node")').first());
+  await page.waitForTimeout(800);
+  await tap(page, page.locator('flt-semantics:text-matches("^Pick from tree")').last());
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(SHOTS, 'mobile-move.png') });
   const dialog = await texts(page);

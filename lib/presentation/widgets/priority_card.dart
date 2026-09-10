@@ -30,7 +30,9 @@ class PriorityCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final ValueChanged<Priority>? onSetPriority;
-  final VoidCallback? onExtract;
+
+  /// Lifts the node one level up, next to its current parent.
+  final VoidCallback? onMoveUp;
   final VoidCallback? onMoveInto;
 
   const PriorityCard({
@@ -49,7 +51,7 @@ class PriorityCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onSetPriority,
-    this.onExtract,
+    this.onMoveUp,
     this.onMoveInto,
   });
 
@@ -191,11 +193,11 @@ class PriorityCard extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                  if (onExtract != null)
+                                  if (onMoveUp != null)
                                     _CardAction(
-                                      icon: Icons.open_in_new,
-                                      onPressed: onExtract,
-                                      tooltip: 'Extract to top level',
+                                      icon: Icons.arrow_upward,
+                                      onPressed: onMoveUp,
+                                      tooltip: 'Move up one level',
                                     ),
                                   if (onMoveInto != null)
                                     _CardAction(

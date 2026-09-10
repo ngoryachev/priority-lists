@@ -56,10 +56,14 @@ class NodeScreen extends StatefulWidget {
   State<NodeScreen> createState() => _NodeScreenState();
 }
 
-class _NodeScreenState extends State<NodeScreen> {
+class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   /// Each level opens as a plain list; the bubble canvas is opt-in and carried
   /// into the next level so the mode sticks while drilling down.
   late bool _showBubbleView;
+
+  /// Node being relocated by tap: set from a card's "move into" action, after
+  /// which every other card on this level is a drop target. Null when idle.
+  String? _movingId;
 
   bool get _isRoot => widget.parentId == null;
 
@@ -68,8 +72,26 @@ class _NodeScreenState extends State<NodeScreen> {
     super.initState();
     _showBubbleView = widget.initialBubbleView;
     if (_isRoot) {
+      // Only the root screen observes: it stays alive under every pushed
+      // level, so one observer covers the whole drill-down.
+      WidgetsBinding.instance.addObserver(this);
       final vm = context.read<NodeTreeViewModel>();
       Future.microtask(() => vm.load());
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_isRoot) WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Another device may have edited the tree while this one was in the
+  /// background; pull the latest on return rather than showing stale data.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<NodeTreeViewModel>().refresh();
     }
   }
 
@@ -161,6 +183,16 @@ class _NodeScreenState extends State<NodeScreen> {
         .where((child) => filter.isVisible(child.priority))
         .toList();
 
+    // The moving node can vanish under us (deleted, filtered out); drop the
+    // mode rather than keep a banner for a card that is no longer there.
+    final moving = tree.nodeById(_movingId);
+    if (_movingId != null &&
+        (moving == null || !children.any((c) => c.id == _movingId))) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _movingId = null);
+      });
+    }
+
     if (children.isEmpty) {
       final hidden = tree.childrenOf(widget.parentId).isNotEmpty;
       return Center(
@@ -173,34 +205,82 @@ class _NodeScreenState extends State<NodeScreen> {
       );
     }
 
-    if (_showBubbleView) {
-      return BubbleView(
-        entries: [
-          for (final child in children)
-            BubbleEntry(
-              id: child.id,
-              name: child.title,
-              color: priorityColor(child.priority),
-              priority: child.priority,
-              subtitle: _subtitleFor(tree, child),
-              chipLabels: _chipLabels(tree, child, filter),
-              onTap: () => _openNode(child, bubbleView: true),
-              onPriorityUp: child.priority.higher != null
-                  ? () => vm.updateNode(
-                      child.copyWith(priority: child.priority.higher!),
-                    )
-                  : null,
-              onPriorityDown: child.priority.lower != null
-                  ? () => vm.updateNode(
-                      child.copyWith(priority: child.priority.lower!),
-                    )
-                  : null,
-              onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
-            ),
-        ],
+    final list = _showBubbleView
+        ? _buildBubbles(vm, tree, filter, children)
+        : _buildList(vm, tree, filter, children);
+    if (moving == null) return list;
+
+    return Column(
+      children: [
+        _MoveBanner(
+          title: moving.title,
+          onPickFromTree: () => _showMoveDialog(vm, tree, moving),
+          onCancel: () => setState(() => _movingId = null),
+        ),
+        Expanded(child: list),
+      ],
+    );
+  }
+
+  /// Tapping a card opens it — unless a move is in progress, when it means
+  /// "put the moving node in here" (or "never mind" on the moving node).
+  VoidCallback _tapFor(NodeTreeViewModel vm, PriorityNode child, bool bubble) {
+    if (_movingId == null) return () => _openNode(child, bubbleView: bubble);
+    if (child.id == _movingId) return () => setState(() => _movingId = null);
+    return () => _dropInto(vm, child);
+  }
+
+  Future<void> _dropInto(NodeTreeViewModel vm, PriorityNode target) async {
+    final movingId = _movingId;
+    if (movingId == null) return;
+    setState(() => _movingId = null);
+    final moved = await vm.moveNode(movingId, target.id);
+    if (!moved && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not move that node.')),
       );
     }
+  }
 
+  Widget _buildBubbles(
+    NodeTreeViewModel vm,
+    NodeTree tree,
+    FilterViewModel filter,
+    List<PriorityNode> children,
+  ) {
+    return BubbleView(
+      entries: [
+        for (final child in children)
+          BubbleEntry(
+            id: child.id,
+            name: child.title,
+            color: priorityColor(child.priority),
+            priority: child.priority,
+            subtitle: _subtitleFor(tree, child),
+            chipLabels: _chipLabels(tree, child, filter),
+            onTap: _tapFor(vm, child, true),
+            onPriorityUp: child.priority.higher != null
+                ? () => vm.updateNode(
+                    child.copyWith(priority: child.priority.higher!),
+                  )
+                : null,
+            onPriorityDown: child.priority.lower != null
+                ? () => vm.updateNode(
+                    child.copyWith(priority: child.priority.lower!),
+                  )
+                : null,
+            onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildList(
+    NodeTreeViewModel vm,
+    NodeTree tree,
+    FilterViewModel filter,
+    List<PriorityNode> children,
+  ) {
     // Reorderable so siblings of one priority can be ranked by hand. Flutter
     // gives touch devices a long-press drag and desktops explicit handles.
     return ReorderableListView.builder(
@@ -227,28 +307,43 @@ class _NodeScreenState extends State<NodeScreen> {
         final cardHeight = (screenHeight * child.priority.cardHeightFraction)
             .clamp(minCardHeight, double.infinity);
         final color = priorityColor(child.priority);
+        // In move mode every other card is a drop target and says so in
+        // green; the moving card itself fades so it reads as "picked up".
+        final isMoving = child.id == _movingId;
+        final isTarget = _movingId != null && !isMoving;
+        final background = isTarget
+            ? Colors.green.withValues(alpha: 0.35)
+            : color.withValues(alpha: 0.15);
 
         return KeyedSubtree(
           key: ValueKey(child.id),
-          child: PriorityCard(
-            title: child.title,
-            badgeLabel: child.priority.label,
-            color: color,
-            backgroundColor: color.withValues(alpha: 0.15),
-            fixedHeight: cardHeight,
-            childCount: tree.childCount(child.id),
-            subtitle: child.description.isEmpty ? null : child.description,
-            chipLabels: _chipLabels(tree, child, filter),
-            currentPriority: child.priority,
-            dragIndex: index,
-            onTap: () => _openNode(child, bubbleView: false),
-            onEdit: () => _editNode(vm, child),
-            onDelete: () => _confirmDelete(vm, tree, child),
-            onExtract: child.parentId != null
-                ? () => _confirmExtract(vm, child)
-                : null,
-            onMoveInto: () => _showMoveDialog(vm, tree, child),
-            onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+          child: Opacity(
+            opacity: isMoving ? 0.5 : 1,
+            child: PriorityCard(
+              title: child.title,
+              badgeLabel: isTarget ? 'Put here' : child.priority.label,
+              color: isTarget ? Colors.green.shade700 : color,
+              backgroundColor: background,
+              fixedHeight: cardHeight,
+              childCount: tree.childCount(child.id),
+              subtitle: child.description.isEmpty ? null : child.description,
+              chipLabels: _chipLabels(tree, child, filter),
+              currentPriority: child.priority,
+              dragIndex: index,
+              onTap: _tapFor(vm, child, false),
+              onEdit: () => _editNode(vm, child),
+              onDelete: () => _confirmDelete(vm, tree, child),
+              // One level up, not straight to the top: the grandparent (null
+              // when the parent is a root, which is the top level anyway).
+              onMoveUp: child.parentId != null
+                  ? () => vm.moveNode(
+                      child.id,
+                      tree.nodeById(child.parentId)?.parentId,
+                    )
+                  : null,
+              onMoveInto: () => setState(() => _movingId = child.id),
+              onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+            ),
           ),
         );
       },
@@ -381,31 +476,7 @@ class _NodeScreenState extends State<NodeScreen> {
     }
   }
 
-  Future<void> _confirmExtract(NodeTreeViewModel vm, PriorityNode node) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Extract to Top Level'),
-        content: Text(
-          'Move "${node.title}" out to the top level, keeping what is inside it?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Extract'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await vm.moveNode(node.id, null);
-    }
-  }
-
+  /// The full-tree picker, for destinations that are not on this level.
   Future<void> _showMoveDialog(
     NodeTreeViewModel vm,
     NodeTree tree,
@@ -417,6 +488,7 @@ class _NodeScreenState extends State<NodeScreen> {
       node: node,
     );
     if (destination == null) return;
+    if (mounted) setState(() => _movingId = null);
 
     final moved = await vm.moveNode(node.id, destination.parentId);
     if (!moved && mounted) {
@@ -424,5 +496,44 @@ class _NodeScreenState extends State<NodeScreen> {
         const SnackBar(content: Text('Could not move that node.')),
       );
     }
+  }
+}
+
+/// Strip above the list while a node is being relocated by tap.
+class _MoveBanner extends StatelessWidget {
+  final String title;
+  final VoidCallback onPickFromTree;
+  final VoidCallback onCancel;
+
+  const _MoveBanner({
+    required this.title,
+    required this.onPickFromTree,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.green.withValues(alpha: 0.2),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Moving "$title" — tap a node to put it inside',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: onPickFromTree,
+              child: const Text('Pick from tree…'),
+            ),
+            TextButton(onPressed: onCancel, child: const Text('Cancel')),
+          ],
+        ),
+      ),
+    );
   }
 }

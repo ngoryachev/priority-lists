@@ -36,7 +36,7 @@ class NodeFormDialog extends StatefulWidget {
     super.key,
     this.initialTitle,
     this.initialDescription,
-    this.initialPriority = Priority.medium,
+    this.initialPriority = Priority.low,
     this.initialColor,
     this.parentTitle,
   });

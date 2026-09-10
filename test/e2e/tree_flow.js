@@ -104,12 +104,10 @@ async function countNodesOnServer() {
   // --- move: lift L1 out to the top level ----------------------------------
   await clickCard(page, 'E2E Root');
   await page.waitForTimeout(800);
-  const extract = page.locator('flt-semantics:text-is("Extract to top level")').last();
+  const extract = page.locator('flt-semantics:text-is("Move up one level")').last();
   const canExtract = (await extract.count()) > 0;
   if (canExtract) {
     await extract.evaluate(e => e.click());
-    await page.waitForTimeout(900);
-    await clickText(page, 'Extract');
     await page.waitForTimeout(1800);
   }
   check('extract action is offered on a nested node', canExtract);
@@ -136,6 +134,9 @@ async function countNodesOnServer() {
   const moveButtons = page.locator('flt-semantics:text-is("Move into another node")');
   // The cards are ordered like the list: E2E Root first, L1 second.
   await moveButtons.nth(1).evaluate(e => e.click());
+  await page.waitForTimeout(800);
+  // The move icon arms tap-to-move on this level; the dialog is one tap further.
+  await page.locator('flt-semantics:text-matches("^Pick from tree")').last().evaluate(e => e.click());
   await page.waitForTimeout(1200);
   const dialog = await texts(page);
   check(

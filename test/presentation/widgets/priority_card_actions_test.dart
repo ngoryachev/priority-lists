@@ -17,7 +17,7 @@ void main() {
         currentPriority: Priority.critical,
         onEdit: () {},
         onDelete: () {},
-        onExtract: () {},
+        onMoveUp: () {},
         onMoveInto: () {},
         onSetPriority: (_) {},
       );
@@ -33,7 +33,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     for (final icon in [
-      Icons.open_in_new,
+      Icons.arrow_upward,
       Icons.move_to_inbox,
       Icons.edit_outlined,
       Icons.delete_outline,
@@ -76,7 +76,7 @@ void main() {
       currentPriority: Priority.high,
       onEdit: () {},
       onDelete: () {},
-      onExtract: () {},
+      onMoveUp: () {},
       onMoveInto: () => moved = true,
       onSetPriority: (_) {},
     )));

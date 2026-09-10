@@ -9,6 +9,7 @@ import 'package:priority_lists/presentation/view_models/filter_view_model.dart';
 import 'package:priority_lists/presentation/view_models/node_tree_view_model.dart';
 import 'package:priority_lists/presentation/widgets/breadcrumb_bar.dart';
 import 'package:priority_lists/presentation/widgets/priority_card.dart';
+import 'package:priority_lists/presentation/widgets/priority_picker_widget.dart';
 import 'package:provider/provider.dart';
 
 PriorityNode node(
@@ -321,6 +322,128 @@ void main() {
       final stored = await repository.getAllNodes()
         ..sort((a, b) => a.position.compareTo(b.position));
       expect(stored.map((n) => n.title), ['Second', 'First']);
+    });
+
+    testWidgets('a new node defaults to the lowest priority', (tester) async {
+      final repository = await seeded([]);
+      await tester.pumpWidget(wrap(repository));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      final picker = tester.widget<PriorityPickerWidget>(
+        find.byType(PriorityPickerWidget),
+      );
+      expect(picker.selected, Priority.low);
+    });
+
+    testWidgets('coming back to the foreground re-reads the tree',
+        (tester) async {
+      final repository = await seeded([node('Work')]);
+      final vm = NodeTreeViewModel(repository, minRefreshAge: Duration.zero);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: vm),
+            ChangeNotifierProvider(create: (_) => FilterViewModel()),
+          ],
+          child: const MaterialApp(home: NodeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Elsewhere'), findsNothing);
+
+      // Another device writes while this one is in the background.
+      await repository.saveNode(node('Elsewhere'));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Elsewhere'), findsOneWidget);
+      // No spinner flashed over the list.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('move-up lifts a node one level, not to the top',
+        (tester) async {
+      final repository = await seeded([
+        node('L0', priority: Priority.critical),
+        node('L1', parent: 'L0', priority: Priority.critical),
+        node('L2', parent: 'L1', priority: Priority.critical),
+      ]);
+      await tester.pumpWidget(wrap(repository));
+      await tester.pumpAndSettle();
+
+      // Roots have nowhere to go up to.
+      expect(find.byIcon(Icons.arrow_upward), findsNothing);
+
+      await tester.tap(find.text('L0'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('L1'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pumpAndSettle();
+
+      final stored = await repository.getAllNodes();
+      expect(stored.firstWhere((n) => n.id == 'L2').parentId, 'L0');
+    });
+
+    testWidgets('tap-to-move nests a node inside a sibling', (tester) async {
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('Work', priority: Priority.critical),
+        node('Home', priority: Priority.critical),
+      ]);
+      await tester.pumpWidget(wrap(repository));
+      await tester.pumpAndSettle();
+
+      // Arm the move on "Home" (second card), then tap "Work".
+      await tester.tap(find.byIcon(Icons.move_to_inbox).at(1));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Moving "Home"'), findsOneWidget);
+      expect(find.text('Put here'), findsOneWidget);
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Moving "Home"'), findsNothing);
+      // "Home" left the top level and now shows as a chip under "Work".
+      expect(
+        tester.widgetList<PriorityCard>(find.byType(PriorityCard)).length,
+        1,
+      );
+      final stored = await repository.getAllNodes();
+      expect(stored.firstWhere((n) => n.id == 'Home').parentId, 'Work');
+    });
+
+    testWidgets('tap-to-move can be cancelled and still opens the picker',
+        (tester) async {
+      final repository = await seeded([
+        node('Work', priority: Priority.critical),
+        node('Home', priority: Priority.critical),
+      ]);
+      await tester.pumpWidget(wrap(repository));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.move_to_inbox).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Moving'), findsNothing);
+      // Tapping a card opens it again once the move is off.
+      await tester.tap(find.text('Home'));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.logout), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.move_to_inbox).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Pick from tree'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
     });
 
     testWidgets('node actions replace sign-out once inside the tree',
