@@ -238,6 +238,112 @@ void main() {
       expect(events.last.nodeTitle, third.title);
     });
 
+    test('a drag to the end reports the ranks the user saw', () async {
+      await seed('A');
+      await seed('B');
+      await seed('C');
+      final before = (await entries()).length;
+
+      final visible = vm.tree.childrenOf(null);
+      expect(visible.map((n) => n.title), ['A', 'B', 'C']);
+      // ReorderableListView reports the slot before the item is lifted out, so
+      // dropping A past the last row arrives as newIndex == length.
+      await vm.reorderChildren(
+        parentId: null,
+        visible: visible,
+        oldIndex: 0,
+        newIndex: 3,
+      );
+
+      expect(vm.tree.childrenOf(null).map((n) => n.title), ['B', 'C', 'A']);
+      final events = await entries();
+      expect(events.length, before + 1);
+      expect(events.last.nodeTitle, 'A');
+      expect(events.last.details, contains('rank 1 \u2192 3'));
+    });
+
+    test('a drag to the front names the rank it came from', () async {
+      await seed('First');
+      await seed('Second');
+      await seed('Third');
+
+      final visible = vm.tree.childrenOf(null);
+      await vm.reorderChildren(
+        parentId: null,
+        visible: visible,
+        oldIndex: 2,
+        newIndex: 0,
+      );
+
+      final events = await entries();
+      // Every node was created with position 0, so only the on-screen ranks
+      // can tell this story.
+      expect(events.last.details, contains('rank 3 \u2192 1'));
+    });
+
+    test('a second drag on the same level reads the order on screen', () async {
+      await seed('A');
+      await seed('B');
+      await seed('C');
+
+      await vm.reorderChildren(
+        parentId: null,
+        visible: vm.tree.childrenOf(null),
+        oldIndex: 2,
+        newIndex: 0,
+      );
+      expect(vm.tree.childrenOf(null).map((n) => n.title), ['C', 'A', 'B']);
+      final before = (await entries()).length;
+
+      // B is the third row now; lifting it one row up is rank 3 → 2.
+      await vm.reorderChildren(
+        parentId: null,
+        visible: vm.tree.childrenOf(null),
+        oldIndex: 2,
+        newIndex: 1,
+      );
+
+      expect(vm.tree.childrenOf(null).map((n) => n.title), ['C', 'B', 'A']);
+      final events = await entries();
+      expect(events.length, before + 1);
+      expect(events.last.nodeTitle, 'B');
+      expect(events.last.details, contains('rank 3 \u2192 2'));
+    });
+
+    test('a filtered drag reports the visible rank, not the stored one',
+        () async {
+      await seed('A', priority: Priority.critical);
+      await seed('B', priority: Priority.critical);
+      await seed('Hidden', priority: Priority.medium);
+      await seed('C', priority: Priority.low);
+      await seed('D', priority: Priority.low);
+      final before = (await entries()).length;
+
+      // What the screen shows with the Medium chip switched off.
+      final visible = [
+        for (final node in vm.tree.childrenOf(null))
+          if (node.priority != Priority.medium) node,
+      ];
+      expect(visible.map((n) => n.title), ['A', 'B', 'C', 'D']);
+
+      await vm.reorderChildren(
+        parentId: null,
+        visible: visible,
+        oldIndex: 3,
+        newIndex: 0,
+      );
+
+      // The hidden sibling keeps its place behind the node it followed.
+      expect(vm.tree.childrenOf(null).map((n) => n.title),
+          ['D', 'A', 'B', 'Hidden', 'C']);
+      final events = await entries();
+      expect(events.length, before + 1);
+      expect(events.last.nodeTitle, 'D');
+      // D was the 4th row on screen, the 5th in the unfiltered level.
+      expect(events.last.details, contains('rank 4 \u2192 1'));
+      expect(events.last.details, contains('Low \u2192 Critical'));
+    });
+
     test('a drag that lands where it started is not logged', () async {
       await seed('First');
       await seed('Second');
