@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../domain/models/node_tree.dart';
 import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
+import '../../domain/repositories/activity_log_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
@@ -15,6 +16,7 @@ import '../widgets/move_node_dialog.dart';
 import '../widgets/node_form_dialog.dart';
 import '../widgets/priority_card.dart';
 import '../widgets/priority_filter_bar.dart';
+import 'activity_log_screen.dart';
 
 /// One level of the tree.
 ///
@@ -146,12 +148,23 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
               tooltip: 'Delete',
               onPressed: () => _confirmDelete(vm, tree, node, popOnDone: true),
             ),
-          ] else
+          ] else ...[
+            // Nullable lookup: the log is an optional extra, and screens built
+            // without it (tests, older entry points) simply hide the button.
+            if (context.read<ActivityLogRepository?>() != null)
+              IconButton(
+                icon: const Icon(Icons.history),
+                tooltip: 'History',
+                onPressed: () => Navigator.of(
+                  context,
+                ).push(ActivityLogScreen.route(context)),
+              ),
             IconButton(
               icon: const Icon(Icons.logout),
               tooltip: 'Sign Out',
               onPressed: () => context.read<AuthViewModel>().signOut(),
             ),
+          ],
         ],
       ),
       body: CenteredBody(child: _buildBody(vm, tree, filter)),
