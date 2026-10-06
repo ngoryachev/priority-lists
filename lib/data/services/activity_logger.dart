@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/models/activity_event.dart';
 import '../../domain/models/node_tree.dart';
+import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
 import '../../domain/repositories/activity_log_repository.dart';
 
@@ -88,18 +89,29 @@ class ActivityLogger {
 
   /// A node was dragged to another rank among its siblings. Only the dragged
   /// node is logged: the siblings that shifted along are noise.
-  void reordered(PriorityNode before, PriorityNode after, NodeTree treeBefore) {
+  ///
+  /// The ranks are the ones the user saw on screen, not the stored
+  /// [PriorityNode.position]: a level nobody has dragged yet has every position
+  /// at 0, so positions would describe a drop onto the first row as no move at
+  /// all. [node] is the node as it landed, [previousPriority] what it had
+  /// before the drop (a drop among another priority group adopts it).
+  void reordered(
+    PriorityNode node,
+    NodeTree treeBefore, {
+    required int fromRank,
+    required int toRank,
+    required Priority previousPriority,
+  }) {
     final moves = <String>[
-      if (before.position != after.position)
-        'rank ${before.position + 1} → ${after.position + 1}',
-      if (before.priority != after.priority)
-        '${before.priority.label} → ${after.priority.label}',
+      if (fromRank != toRank) 'rank ${fromRank + 1} → ${toRank + 1}',
+      if (previousPriority != node.priority)
+        '${previousPriority.label} → ${node.priority.label}',
     ];
     if (moves.isEmpty) return;
     _record(
       action: ActivityAction.reordered,
-      node: after,
-      path: _pathUnder(treeBefore, after.parentId),
+      node: node,
+      path: _pathUnder(treeBefore, node.parentId),
       details: moves.join(', '),
     );
   }

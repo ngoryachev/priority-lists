@@ -212,13 +212,20 @@ class NodeTreeViewModel extends ChangeNotifier {
 
     final byId = {for (final node in changed) node.id: node};
     final treeBefore = _tree;
-    final draggedBefore = treeBefore.nodeById(moved.id);
     final saved = await _write(() => _repository.saveNodes(changed), () {
       _setNodes([for (final n in _nodes) byId[n.id] ?? n]);
     });
-    final draggedAfter = byId[moved.id];
-    if (saved && draggedBefore != null && draggedAfter != null) {
-      _logger?.reordered(draggedBefore, draggedAfter, treeBefore);
+    if (saved) {
+      // Logged from the on-screen ranks: the dragged node itself is often
+      // absent from [changed] (its new index can equal the position it already
+      // had), and the drag still happened.
+      _logger?.reordered(
+        landed,
+        treeBefore,
+        fromRank: oldIndex,
+        toRank: target,
+        previousPriority: moved.priority,
+      );
     }
     return saved;
   }
