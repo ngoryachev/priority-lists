@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../data/repositories/supabase_activity_log_repository.dart';
 import '../../data/repositories/supabase_priority_node_repository.dart';
+import '../../data/services/activity_logger.dart';
 import '../../data/services/migration_service.dart';
+import '../../domain/repositories/activity_log_repository.dart';
 import '../../domain/repositories/priority_node_repository.dart';
 import '../screens/login_screen.dart';
 import '../screens/node_screen.dart';
@@ -29,6 +32,7 @@ class AuthGate extends StatelessWidget {
     return _MigrationWrapper(
       localRepository: localRepository,
       supabaseRepository: supabaseRepository,
+      activityLog: SupabaseActivityLogRepository(client),
     );
   }
 }
@@ -36,10 +40,12 @@ class AuthGate extends StatelessWidget {
 class _MigrationWrapper extends StatefulWidget {
   final PriorityNodeRepository localRepository;
   final SupabasePriorityNodeRepository supabaseRepository;
+  final ActivityLogRepository activityLog;
 
   const _MigrationWrapper({
     required this.localRepository,
     required this.supabaseRepository,
+    required this.activityLog,
   });
 
   @override
@@ -123,8 +129,12 @@ class _MigrationWrapperState extends State<_MigrationWrapper> {
         Provider<PriorityNodeRepository>.value(
           value: widget.supabaseRepository,
         ),
+        Provider<ActivityLogRepository>.value(value: widget.activityLog),
         ChangeNotifierProvider(
-          create: (_) => NodeTreeViewModel(widget.supabaseRepository),
+          create: (_) => NodeTreeViewModel(
+            widget.supabaseRepository,
+            logger: ActivityLogger(widget.activityLog),
+          ),
         ),
       ],
       child: const NodeScreen(),

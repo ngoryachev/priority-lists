@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../data/services/activity_logger.dart';
 import '../../domain/models/color_preset.dart';
 import '../../domain/models/node_tree.dart';
 import '../../domain/models/priority.dart';
@@ -16,6 +17,11 @@ class NodeTreeViewModel extends ChangeNotifier {
   final PriorityNodeRepository _repository;
   final Uuid _uuid;
 
+  /// Records what the user changed, for the activity log. Optional and
+  /// best-effort: it is absent in tests and before sign-in, and a log that
+  /// fails never affects the mutation.
+  final ActivityLogger? _logger;
+
   List<PriorityNode> _nodes = [];
   NodeTree _tree = NodeTree.empty();
   bool _isLoading = false;
@@ -30,8 +36,10 @@ class NodeTreeViewModel extends ChangeNotifier {
   NodeTreeViewModel(
     this._repository, {
     Uuid? uuid,
+    ActivityLogger? logger,
     this.minRefreshAge = const Duration(seconds: 2),
-  }) : _uuid = uuid ?? const Uuid();
+  })  : _uuid = uuid ?? const Uuid(),
+        _logger = logger;
 
   NodeTree get tree => _tree;
   bool get isLoading => _isLoading;
@@ -97,28 +105,38 @@ class NodeTreeViewModel extends ChangeNotifier {
       updatedAt: now,
     );
 
+    final treeBefore = _tree;
     final saved = await _write(() => _repository.saveNode(node), () {
       _setNodes([..._nodes, node]);
     });
+    if (saved) _logger?.created(node, treeBefore);
     return saved ? node : null;
   }
 
   Future<void> updateNode(PriorityNode node) async {
     final updated = node.copyWith(updatedAt: DateTime.now());
-    await _write(() => _repository.saveNode(updated), () {
+    final treeBefore = _tree;
+    final before = treeBefore.nodeById(updated.id);
+    final saved = await _write(() => _repository.saveNode(updated), () {
       _setNodes([
         for (final n in _nodes)
           if (n.id == updated.id) updated else n,
       ]);
     });
+    if (saved && before != null) {
+      _logger?.changed(before, updated, treeBefore);
+    }
   }
 
   /// Deletes the node and everything under it.
   Future<void> deleteNode(String id) async {
     final doomed = {id, ..._tree.descendantsOf(id).map((n) => n.id)};
-    await _write(() => _repository.deleteNode(id), () {
+    final treeBefore = _tree;
+    final node = treeBefore.nodeById(id);
+    final deleted = await _write(() => _repository.deleteNode(id), () {
       _setNodes(_nodes.where((n) => !doomed.contains(n.id)).toList());
     });
+    if (deleted && node != null) _logger?.deleted(node, treeBefore);
   }
 
   /// Re-parents a node, keeping its own subtree attached. Pass null to lift it
@@ -135,12 +153,15 @@ class NodeTreeViewModel extends ChangeNotifier {
     if (node.parentId == newParentId) return true;
 
     final moved = node.withParent(newParentId, updatedAt: DateTime.now());
-    return _write(() => _repository.saveNode(moved), () {
+    final treeBefore = _tree;
+    final saved = await _write(() => _repository.saveNode(moved), () {
       _setNodes([
         for (final n in _nodes)
           if (n.id == moved.id) moved else n,
       ]);
     });
+    if (saved) _logger?.moved(node, treeBefore, newParentId);
+    return saved;
   }
 
   /// Everything the node may be moved into, depth-first from the roots.
@@ -190,9 +211,23 @@ class NodeTreeViewModel extends ChangeNotifier {
     if (changed.isEmpty) return true;
 
     final byId = {for (final node in changed) node.id: node};
-    return _write(() => _repository.saveNodes(changed), () {
+    final treeBefore = _tree;
+    final saved = await _write(() => _repository.saveNodes(changed), () {
       _setNodes([for (final n in _nodes) byId[n.id] ?? n]);
     });
+    if (saved) {
+      // Logged from the on-screen ranks: the dragged node itself is often
+      // absent from [changed] (its new index can equal the position it already
+      // had), and the drag still happened.
+      _logger?.reordered(
+        landed,
+        treeBefore,
+        fromRank: oldIndex,
+        toRank: target,
+        previousPriority: moved.priority,
+      );
+    }
+    return saved;
   }
 
   /// The priority a dropped node takes on: its neighbours' when they agree,
