@@ -24,6 +24,8 @@ jobs:
       - name: Add known hosts
         run: ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
+      # nginx.conf is a single-file bind mount: rsync replaces the file, the
+      # running gateway keeps the old inode, so it is restarted to pick it up.
       - name: Deploy
         run: |
           rsync -avz --delete --exclude='.env' \
@@ -31,7 +33,7 @@ jobs:
             supabase/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/priority-lists/supabase/
 
           ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            'cd /opt/priority-lists/supabase && docker compose pull && docker compose up -d --remove-orphans'
+            'cd /opt/priority-lists/supabase && docker compose pull && docker compose up -d --remove-orphans && docker compose restart gateway'
 
       - name: Apply migrations
         run: |
