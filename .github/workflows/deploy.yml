@@ -32,3 +32,8 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
             'cd /opt/priority-lists/supabase && docker compose pull && docker compose up -d --remove-orphans'
+
+      - name: Apply migrations
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            'bash /opt/priority-lists/supabase/scripts/apply_migrations.sh'
