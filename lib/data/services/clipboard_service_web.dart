@@ -54,8 +54,10 @@ bool _copyWithExecCommand(String text) {
     web.document.body!.append(textarea);
 
     textarea.focus();
-    textarea.setSelectionRange(0, text.length);
-    // What iOS actually reads: the document selection, not the field's own.
+    // The document selection first — iOS reads that one — and the field's own
+    // selection last. The other way round, Blink's `removeAllRanges()` wipes
+    // what `setSelectionRange` just set and `execCommand` copies nothing while
+    // still returning true.
     final selection = web.window.getSelection();
     if (selection != null) {
       final range = web.document.createRange()..selectNodeContents(textarea);
@@ -63,6 +65,7 @@ bool _copyWithExecCommand(String text) {
         ..removeAllRanges()
         ..addRange(range);
     }
+    textarea.setSelectionRange(0, text.length);
     return web.document.execCommand('copy');
   } catch (_) {
     return false;
