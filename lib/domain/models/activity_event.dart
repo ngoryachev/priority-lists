@@ -97,13 +97,27 @@ class ActivityDay {
 
   /// Plain-text recap of the day, ready to paste into a standup.
   ///
+  /// With [onlyIds] the recap covers just those events — what the history
+  /// screen copies when the user ticked a few rows — and the header counts the
+  /// same subset. An id this day does not hold is simply ignored.
+  String digest({Set<String>? onlyIds}) => digestOf(onlyIds == null
+      ? events
+      : events.where((e) => onlyIds.contains(e.id)));
+
+  /// The same recap for an explicit subset of this day's events.
+  ///
   /// Events are retold oldest first — a standup is told forwards — and grouped
-  /// by action so "added five things, deleted one" reads at a glance.
-  String digest() {
-    final buffer = StringBuffer('${formatDay(day)} — ${_countLabel()}')
+  /// by action so "added five things, deleted one" reads at a glance. An empty
+  /// subset has nothing to recap, not even a header, so callers can join days
+  /// without filtering twice.
+  String digestOf(Iterable<ActivityEvent> subset) {
+    final selected = subset.toList();
+    if (selected.isEmpty) return '';
+
+    final buffer = StringBuffer('${formatDay(day)} — ${_countLabel(selected)}')
       ..writeln();
     for (final action in ActivityAction.values) {
-      final ofAction = events.where((e) => e.action == action).toList()
+      final ofAction = selected.where((e) => e.action == action).toList()
         ..sort((a, b) => a.at.compareTo(b.at));
       for (final event in ofAction) {
         buffer.writeln('- ${event.digestLine}');
@@ -112,8 +126,8 @@ class ActivityDay {
     return buffer.toString().trimRight();
   }
 
-  String _countLabel() =>
-      '${events.length} change${events.length == 1 ? '' : 's'}';
+  String _countLabel(List<ActivityEvent> of) =>
+      '${of.length} change${of.length == 1 ? '' : 's'}';
 
   static String formatDay(DateTime day) =>
       '${day.year}-${_two(day.month)}-${_two(day.day)}';

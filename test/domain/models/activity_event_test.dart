@@ -88,5 +88,40 @@ void main() {
       final day = ActivityDay.group([event('1', DateTime(2026, 10, 6))]).single;
       expect(day.digest(), startsWith('2026-10-06 — 1 change\n'));
     });
+
+    test('onlyIds keeps the picked events and counts just them', () {
+      final day = ActivityDay.group([
+        event('1', DateTime(2026, 10, 6, 11),
+            action: ActivityAction.deleted, title: 'Dead end'),
+        event('2', DateTime(2026, 10, 6, 10), title: 'Second'),
+        event('3', DateTime(2026, 10, 6, 9), title: 'First'),
+      ]).single;
+
+      expect(day.digest(onlyIds: {'3', '1'}), '''
+2026-10-06 — 2 changes
+- Added: "First"
+- Deleted: "Dead end"''');
+    });
+
+    test('digestOf retells a subset oldest first, grouped by action', () {
+      final day = ActivityDay.group([
+        event('1', DateTime(2026, 10, 6, 11),
+            action: ActivityAction.deleted, title: 'Dead end'),
+        event('2', DateTime(2026, 10, 6, 10), title: 'Second'),
+        event('3', DateTime(2026, 10, 6, 9), title: 'First'),
+      ]).single;
+
+      expect(day.digestOf(day.events.where((e) => e.id != '3')), '''
+2026-10-06 — 2 changes
+- Added: "Second"
+- Deleted: "Dead end"''');
+    });
+
+    test('nothing to recap for an empty subset', () {
+      final day = ActivityDay.group([event('1', DateTime(2026, 10, 6))]).single;
+      expect(day.digest(onlyIds: const {}), isEmpty);
+      expect(day.digest(onlyIds: const {'nope'}), isEmpty);
+      expect(day.digestOf(const []), isEmpty);
+    });
   });
 }

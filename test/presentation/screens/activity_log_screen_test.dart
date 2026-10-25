@@ -105,6 +105,184 @@ void main() {
     expect(find.textContaining('Copied'), findsOneWidget);
   });
 
+  testWidgets('copies everything shown when nothing is ticked', (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'Today only'));
+    await log.append(event('2', todayAt(9).subtract(const Duration(days: 1)),
+        title: 'Yesterday only'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.copy_all));
+    await tester.pumpAndSettle();
+
+    final text = clipboard.single.arguments['text'] as String;
+    expect(text, contains('- Added: "Today only"'));
+    expect(text, contains('- Added: "Yesterday only"'));
+    expect(find.text('Copied 2 days'), findsOneWidget);
+  });
+
+  testWidgets('the day copy takes only the ticked rows', (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'First'));
+    await log.append(event('2', todayAt(10), title: 'Second'));
+    await log.append(event('3', todayAt(11), title: 'Third'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+
+    // Rows run newest first, after the day header's own checkbox.
+    await tester.tap(find.byType(Checkbox).at(1)); // Third
+    await tester.tap(find.byType(Checkbox).at(3)); // First
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.copy));
+    await tester.pumpAndSettle();
+
+    expect(clipboard, hasLength(1));
+    final text = clipboard.single.arguments['text'] as String;
+    expect(text, '''
+${ActivityDay.formatDay(todayAt(9))} — 2 changes
+- Added: "First"
+- Added: "Third"''');
+    expect(find.textContaining('Copied 2 changes from today'), findsOneWidget);
+  });
+
+  testWidgets('the app-bar copy takes the ticked rows across days',
+      (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'Today only'));
+    await log.append(event('2', todayAt(9).subtract(const Duration(days: 1)),
+        title: 'Yesterday only'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+
+    // The second card is yesterday: its header, then its single row.
+    await tester.tap(find.byType(Checkbox).at(3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.copy_all));
+    await tester.pumpAndSettle();
+
+    final text = clipboard.single.arguments['text'] as String;
+    expect(text, contains('- Added: "Yesterday only"'));
+    expect(text, isNot(contains('Today only')));
+    expect(find.text('Copied 1 change'), findsOneWidget);
+  });
+
+  testWidgets("a day's copy button is off while only other days are ticked",
+      (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'Today only'));
+    await log.append(event('2', todayAt(9).subtract(const Duration(days: 1)),
+        title: 'Yesterday only'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).at(1)); // today's only row
+    await tester.pumpAndSettle();
+
+    final buttons = tester
+        .widgetList<IconButton>(find.widgetWithIcon(IconButton, Icons.copy))
+        .toList();
+    expect(buttons.first.onPressed, isNotNull);
+    expect(buttons.last.onPressed, isNull);
+  });
+
+  testWidgets('the day header checkbox ticks and unticks all of its rows',
+      (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'First'));
+    await log.append(event('2', todayAt(10), title: 'Second'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(_checkboxValues(tester), [true, true, true]);
+
+    // One row off leaves the header in its tri-state "some of them".
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(_checkboxValues(tester), [null, false, true]);
+
+    // From there the header ticks everything, and a second tap clears it.
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(_checkboxValues(tester), [true, true, true]);
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(_checkboxValues(tester), [false, false, false]);
+  });
+
+  testWidgets('reloading drops the ticks', (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'First'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(_checkboxValues(tester), [true, true]);
+
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pumpAndSettle();
+    expect(_checkboxValues(tester), [false, false]);
+
+    await tester.tap(find.byIcon(Icons.copy));
+    await tester.pumpAndSettle();
+    expect(find.text('Copied today'), findsOneWidget);
+  });
+
+  testWidgets('switching the period drops the ticks', (tester) async {
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'First'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.date_range));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Today').last);
+    await tester.pumpAndSettle();
+
+    expect(_checkboxValues(tester), [false, false]);
+  });
+
+  testWidgets('shows the text to copy by hand when the clipboard refuses',
+      (tester) async {
+    // What an insecure web origin does: the platform channel fails, so the
+    // screen must not claim a copy it did not make.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        throw PlatformException(code: 'copy_fail');
+      }
+      return null;
+    });
+
+    final log = InMemoryActivityLogRepository();
+    await log.append(event('1', todayAt(9), title: 'Fix login'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.copy));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Copy it manually'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SelectableText),
+        matching: find.textContaining('- Added: "Fix login"'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Copied'), findsNothing);
+  });
+
   testWidgets('the Today period keeps this morning and drops yesterday',
       (tester) async {
     final log = InMemoryActivityLogRepository();
@@ -187,6 +365,12 @@ void main() {
     expect(find.byIcon(Icons.history), findsNothing);
   });
 }
+
+/// Every checkbox on screen, in build order: a day header then its rows.
+List<bool?> _checkboxValues(WidgetTester tester) => tester
+    .widgetList<Checkbox>(find.byType(Checkbox))
+    .map((c) => c.value)
+    .toList();
 
 class _BrokenLog implements ActivityLogRepository {
   @override
