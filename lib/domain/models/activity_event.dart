@@ -96,15 +96,11 @@ class ActivityDay {
   }
 
   /// Plain-text recap of the day, ready to paste into a standup.
-  ///
-  /// With [onlyIds] the recap covers just those events — what the history
-  /// screen copies when the user ticked a few rows — and the header counts the
-  /// same subset. An id this day does not hold is simply ignored.
-  String digest({Set<String>? onlyIds}) => digestOf(onlyIds == null
-      ? events
-      : events.where((e) => onlyIds.contains(e.id)));
+  String digest() => digestOf(events);
 
-  /// The same recap for an explicit subset of this day's events.
+  /// The same recap for a subset of this day's events — what the history
+  /// screen copies when the user ticked a few rows. The header counts the
+  /// subset too.
   ///
   /// Events are retold oldest first — a standup is told forwards — and grouped
   /// by action so "added five things, deleted one" reads at a glance. An empty
