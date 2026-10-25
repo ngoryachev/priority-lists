@@ -36,6 +36,8 @@ dependencies:
   path_provider: ^2.1.0
   supabase_flutter: ^2.8.0
   sentry_flutter: ^8.14.2
+  # Direct, not transitive: the web-only clipboard fallback talks to the DOM.
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
