@@ -103,6 +103,20 @@ void main() {
 - Deleted: "Dead end"''');
     });
 
+    test('a subset of everything reads like the whole day, in any order', () {
+      final day = ActivityDay.group([
+        event('1', DateTime(2026, 10, 6, 11),
+            action: ActivityAction.deleted, title: 'Dead end'),
+        event('2', DateTime(2026, 10, 6, 10), title: 'Second'),
+        event('3', DateTime(2026, 10, 6, 9), title: 'First'),
+      ]).single;
+
+      // What a ticked day header hands over: every row, newest first on the
+      // screen and oldest first once retold.
+      expect(day.digestOf(day.events), day.digest());
+      expect(day.digestOf(day.events.reversed), day.digest());
+    });
+
     test('nothing to recap for an empty subset', () {
       final day = ActivityDay.group([event('1', DateTime(2026, 10, 6))]).single;
       expect(day.digestOf(const []), isEmpty);
