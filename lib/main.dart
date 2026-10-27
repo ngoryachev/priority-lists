@@ -8,6 +8,7 @@ import 'app.dart';
 import 'config/env.dart';
 import 'data/repositories/in_memory_priority_node_repository.dart';
 import 'data/repositories/local_priority_node_repository.dart';
+import 'data/repositories/supabase_current_role_repository.dart';
 import 'data/services/auth_service.dart';
 import 'domain/repositories/priority_node_repository.dart';
 
@@ -46,5 +47,6 @@ Future<void> _runApp() async {
   runApp(PriorityListsApp(
     localRepository: localRepository,
     authService: authService,
+    currentRoleRepository: SupabaseCurrentRoleRepository(client),
   ));
 }
