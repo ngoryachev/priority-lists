@@ -8,6 +8,7 @@ import '../../domain/repositories/activity_log_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
+import '../view_models/role_view_model.dart';
 import '../utils/priority_colors.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/bubble_view/bubble_view.dart';
@@ -16,6 +17,7 @@ import '../widgets/move_node_dialog.dart';
 import '../widgets/node_form_dialog.dart';
 import '../widgets/priority_card.dart';
 import '../widgets/priority_filter_bar.dart';
+import '../widgets/role_selector_bar.dart';
 import 'activity_log_screen.dart';
 
 /// One level of the tree.
@@ -42,12 +44,17 @@ class NodeScreen extends StatefulWidget {
   }) {
     final treeViewModel = context.read<NodeTreeViewModel>();
     final filterViewModel = context.read<FilterViewModel>();
+    // Nullable: screens built without a role selector (tests, older entry
+    // points) must still be able to drill down.
+    final roleViewModel = context.read<RoleViewModel?>();
     return MaterialPageRoute<void>(
       settings: RouteSettings(name: BreadcrumbBar.routeName(nodeId)),
       builder: (_) => MultiProvider(
         providers: [
           ChangeNotifierProvider<NodeTreeViewModel>.value(value: treeViewModel),
           ChangeNotifierProvider<FilterViewModel>.value(value: filterViewModel),
+          if (roleViewModel != null)
+            ChangeNotifierProvider<RoleViewModel>.value(value: roleViewModel),
         ],
         child: NodeScreen(parentId: nodeId, initialBubbleView: bubbleView),
       ),
@@ -79,6 +86,11 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       WidgetsBinding.instance.addObserver(this);
       final vm = context.read<NodeTreeViewModel>();
       Future.microtask(() => vm.load());
+      // The root screen is only mounted after sign-in, which is when the
+      // remote read can succeed; a re-mount after switching accounts re-reads
+      // the right row.
+      final roles = context.read<RoleViewModel?>();
+      if (roles != null) Future.microtask(() => roles.load());
     }
   }
 
@@ -167,7 +179,14 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
           ],
         ],
       ),
-      body: CenteredBody(child: _buildBody(vm, tree, filter)),
+      body: Column(
+        children: [
+          // Pinned: the marker stays visible while drilling down, which is the
+          // point of it.
+          const RoleSelectorBar(),
+          Expanded(child: CenteredBody(child: _buildBody(vm, tree, filter))),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addChild(vm, node),
         backgroundColor: accent,

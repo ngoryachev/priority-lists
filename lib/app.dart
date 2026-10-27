@@ -2,19 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/services/auth_service.dart';
+import 'domain/repositories/current_role_repository.dart';
 import 'domain/repositories/priority_node_repository.dart';
 import 'presentation/view_models/auth_view_model.dart';
 import 'presentation/view_models/filter_view_model.dart';
+import 'presentation/view_models/role_view_model.dart';
 import 'presentation/widgets/auth_gate.dart';
 
 class PriorityListsApp extends StatelessWidget {
   final PriorityNodeRepository localRepository;
   final AuthService authService;
 
+  /// Where the current-role marker is kept. Optional: without it the selector
+  /// still works, it just forgets the pick when the process ends.
+  final CurrentRoleRepository? currentRoleRepository;
+
   const PriorityListsApp({
     super.key,
     required this.localRepository,
     required this.authService,
+    this.currentRoleRepository,
   });
 
   @override
@@ -26,6 +33,9 @@ class PriorityListsApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => FilterViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => RoleViewModel(repository: currentRoleRepository),
         ),
         Provider<AuthService>.value(value: authService),
       ],
