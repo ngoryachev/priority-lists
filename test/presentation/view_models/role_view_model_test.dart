@@ -6,6 +6,25 @@ import 'package:priority_lists/domain/models/role.dart';
 import 'package:priority_lists/domain/repositories/current_role_repository.dart';
 import 'package:priority_lists/presentation/view_models/role_view_model.dart';
 
+/// A store whose first write is slow, to act out two taps in quick succession
+/// over a network: unordered, the second write would land before the first.
+class _SlowFirstWriteRepository implements CurrentRoleRepository {
+  final List<Role> writes = [];
+  bool _firstWrite = true;
+
+  @override
+  Future<Role?> load() async => writes.isEmpty ? null : writes.last;
+
+  @override
+  Future<void> save(Role role) async {
+    if (_firstWrite) {
+      _firstWrite = false;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    writes.add(role);
+  }
+}
+
 /// A store whose read can be held open, to act out a slow round-trip.
 class _GatedRepository implements CurrentRoleRepository {
   Role? stored;
@@ -61,8 +80,23 @@ void main() {
     expect(vm.selected, Role.partner);
     expect(vm.isSelected(Role.partner), isTrue);
     expect(notifications, 1);
-    await Future<void>.delayed(Duration.zero);
+    await vm.idle;
     expect(await repository.load(), Role.partner);
+  });
+
+  test('two quick picks are written in the order they were made', () async {
+    final repository = _SlowFirstWriteRepository();
+    final vm = RoleViewModel(repository: repository);
+
+    vm.select(Role.father);
+    vm.select(Role.creator);
+    await vm.idle;
+
+    // Unchained, the fast second write would land first and the row would end
+    // up holding the role the user moved away from.
+    expect(repository.writes, [Role.father, Role.creator]);
+    expect(await repository.load(), Role.creator);
+    expect(vm.selected, Role.creator);
   });
 
   test('selecting another role replaces the previous one', () {
@@ -124,7 +158,7 @@ void main() {
     vm.select(Role.creator);
     repository.gate.complete();
     await loading;
-    await Future<void>.delayed(Duration.zero);
+    await vm.idle;
 
     expect(vm.selected, Role.creator);
     expect(repository.stored, Role.creator);
@@ -141,7 +175,7 @@ void main() {
     // The failing save must not surface over the tree, and the pick still
     // holds for this session.
     vm.select(Role.myself);
-    await Future<void>.delayed(Duration.zero);
+    await vm.idle;
     expect(vm.selected, Role.myself);
     expect(repository.saves, 1);
   });

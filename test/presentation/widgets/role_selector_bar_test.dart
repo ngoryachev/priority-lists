@@ -123,6 +123,65 @@ void main() {
     expect(activeRoles(tester), [Role.myself]);
   });
 
+  testWidgets('scrolls a restored trailing role into view', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final repository = InMemoryCurrentRoleRepository();
+    await repository.save(Role.myself);
+    final vm = RoleViewModel(repository: repository);
+    await tester.pumpWidget(wrap(vm));
+    final scrollable = find.byType(Scrollable);
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      0,
+      reason: 'the row starts at its leading edge',
+    );
+
+    await vm.load();
+    await tester.pumpAndSettle();
+
+    // The last role sits well past a 320 px viewport, and a marker the user
+    // cannot see is no marker — the bar has to bring it into view itself.
+    expect(activeRoles(tester), [Role.myself]);
+    final viewport = tester.getRect(find.byType(SingleChildScrollView));
+    final chip = tester.getRect(
+      find.ancestor(
+        of: find.text(Role.myself.label),
+        matching: find.byType(ChoiceChip),
+      ),
+    );
+    expect(chip.left, greaterThanOrEqualTo(viewport.left));
+    expect(chip.right, lessThanOrEqualTo(viewport.right));
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      greaterThan(0),
+    );
+  });
+
+  testWidgets('tapping a chip in plain sight leaves the row where it is', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final vm = RoleViewModel();
+    await tester.pumpWidget(wrap(vm));
+
+    // The first chip is on screen already, so revealing it must not re-centre
+    // the row under the finger that just tapped it.
+    await tester.tap(find.text(Role.father.label));
+    await tester.pumpAndSettle();
+
+    expect(activeRoles(tester), [Role.father]);
+    expect(
+      tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels,
+      0,
+    );
+  });
+
   testWidgets('sits under the node screen app bar on a phone', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1.0;

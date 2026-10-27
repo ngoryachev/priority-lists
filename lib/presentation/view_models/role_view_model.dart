@@ -21,10 +21,19 @@ class RoleViewModel extends ChangeNotifier {
   /// while the read was in flight.
   int _picks = 0;
 
+  /// Writes are chained, like `ActivityLogger`'s: two quick taps issue two
+  /// upserts against the same row, and unordered they can leave the role the
+  /// user moved away from stored while the bar shows the one they ended on.
+  Future<void> _queue = Future.value();
+
   RoleViewModel({CurrentRoleRepository? repository})
       : _repository = repository;
 
   Role? get selected => _selected;
+
+  /// Completes once every pick made so far has been written (or failed).
+  /// For tests, and for [load] to avoid reading across its own pending write.
+  Future<void> get idle => _queue;
 
   bool isSelected(Role role) => _selected == role;
 
@@ -35,8 +44,11 @@ class RoleViewModel extends ChangeNotifier {
     _selected = role;
     _picks++;
     notifyListeners();
-    // Fire and forget: the UI is already showing the new role.
-    _repository?.save(role).catchError((_) {});
+    final repository = _repository;
+    if (repository == null) return;
+    // Fire and forget: the UI is already showing the new role, and a marker
+    // that cannot be stored must never surface as an error over the tree.
+    _queue = _queue.then((_) => repository.save(role)).catchError((_) {});
   }
 
   /// Adopts the stored role — including the absence of one. Called once the
@@ -50,6 +62,9 @@ class RoleViewModel extends ChangeNotifier {
   Future<void> load() async {
     final repository = _repository;
     if (repository == null) return;
+    // Let a pending pick land first: reading across our own in-flight write
+    // hands back the pre-pick row, which would revert the user's choice.
+    await _queue;
     final picksBefore = _picks;
     final Role? stored;
     try {
