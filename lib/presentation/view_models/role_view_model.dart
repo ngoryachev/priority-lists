@@ -62,10 +62,13 @@ class RoleViewModel extends ChangeNotifier {
   Future<void> load() async {
     final repository = _repository;
     if (repository == null) return;
+    // Snapshot before the first await, not after: a tap made while we wait
+    // for the queue below is as new as one made during the read, and its own
+    // write is not part of the future we are about to await.
+    final picksBefore = _picks;
     // Let a pending pick land first: reading across our own in-flight write
     // hands back the pre-pick row, which would revert the user's choice.
     await _queue;
-    final picksBefore = _picks;
     final Role? stored;
     try {
       stored = await repository.load();
