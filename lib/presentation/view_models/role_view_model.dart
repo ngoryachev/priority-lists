@@ -39,8 +39,14 @@ class RoleViewModel extends ChangeNotifier {
     _repository?.save(role).catchError((_) {});
   }
 
-  /// Restores the stored role. Called once the user is signed in, since that is
-  /// when the remote read can succeed.
+  /// Adopts the stored role — including the absence of one. Called once the
+  /// user is signed in, since that is when the remote read can succeed.
+  ///
+  /// This view model outlives a sign-out (it is registered above the
+  /// `MaterialApp`), so a read that comes back empty means "whoever just
+  /// signed in never picked a role" and has to clear the slot: otherwise the
+  /// previous account's marker would stay painted, and nothing in the UI can
+  /// take it off.
   Future<void> load() async {
     final repository = _repository;
     if (repository == null) return;
@@ -55,7 +61,7 @@ class RoleViewModel extends ChangeNotifier {
     // the stored row — and already on its way to it — so it wins. Without
     // this the screen would silently revert a tap the user just made.
     if (_picks != picksBefore) return;
-    if (stored == null || stored == _selected) return;
+    if (stored == _selected) return;
     _selected = stored;
     notifyListeners();
   }
