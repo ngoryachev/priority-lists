@@ -105,27 +105,31 @@ class NodeTreeViewModel extends ChangeNotifier {
       updatedAt: now,
     );
 
-    final treeBefore = _tree;
-    final saved = await _write(() => _repository.saveNode(node), () {
-      _setNodes([..._nodes, node]);
-    });
-    if (saved) _logger?.created(node, treeBefore);
+    final saved = await _saveExclusive(
+      node,
+      now: now,
+      // A node created as critical takes the red slot from its siblings.
+      claimsCritical: priority == Priority.critical,
+      log: (treeBefore) => _logger?.created(node, treeBefore),
+    );
     return saved ? node : null;
   }
 
   Future<void> updateNode(PriorityNode node) async {
-    final updated = node.copyWith(updatedAt: DateTime.now());
-    final treeBefore = _tree;
-    final before = treeBefore.nodeById(updated.id);
-    final saved = await _write(() => _repository.saveNode(updated), () {
-      _setNodes([
-        for (final n in _nodes)
-          if (n.id == updated.id) updated else n,
-      ]);
-    });
-    if (saved && before != null) {
-      _logger?.changed(before, updated, treeBefore);
-    }
+    final now = DateTime.now();
+    final updated = node.copyWith(updatedAt: now);
+    final before = _tree.nodeById(updated.id);
+    await _saveExclusive(
+      updated,
+      now: now,
+      // Only a node that *becomes* red evicts its siblings: re-saving one that
+      // was red already (a rename, say) must leave the level alone.
+      claimsCritical: updated.priority == Priority.critical &&
+          before?.priority != Priority.critical,
+      log: (treeBefore) {
+        if (before != null) _logger?.changed(before, updated, treeBefore);
+      },
+    );
   }
 
   /// Deletes the node and everything under it.
@@ -152,16 +156,15 @@ class NodeTreeViewModel extends ChangeNotifier {
     if (node == null) return false;
     if (node.parentId == newParentId) return true;
 
-    final moved = node.withParent(newParentId, updatedAt: DateTime.now());
-    final treeBefore = _tree;
-    final saved = await _write(() => _repository.saveNode(moved), () {
-      _setNodes([
-        for (final n in _nodes)
-          if (n.id == moved.id) moved else n,
-      ]);
-    });
-    if (saved) _logger?.moved(node, treeBefore, newParentId);
-    return saved;
+    final now = DateTime.now();
+    final moved = node.withParent(newParentId, updatedAt: now);
+    return _saveExclusive(
+      moved,
+      now: now,
+      // A red node landing in a parent that already has one wins the slot.
+      claimsCritical: moved.priority == Priority.critical,
+      log: (treeBefore) => _logger?.moved(node, treeBefore, newParentId),
+    );
   }
 
   /// Everything the node may be moved into, depth-first from the roots.
@@ -198,10 +201,19 @@ class NodeTreeViewModel extends ChangeNotifier {
 
     final full = _weaveHiddenSiblings(parentId, visible, reordered);
 
+    // Landing in the red group makes the node red, and red is exclusive: the
+    // siblings that held it drop one level and follow the newcomer.
+    final eviction = _evictCriticalSiblings(
+      full,
+      landed,
+      claimsCritical: landed.priority == Priority.critical &&
+          moved.priority != Priority.critical,
+    );
+
     final now = DateTime.now();
     final changed = <PriorityNode>[];
-    for (var i = 0; i < full.length; i++) {
-      final node = full[i];
+    for (var i = 0; i < eviction.order.length; i++) {
+      final node = eviction.order[i];
       final existing = _tree.nodeById(node.id)!;
       if (existing.position == i && existing.priority == node.priority) {
         continue;
@@ -226,6 +238,7 @@ class NodeTreeViewModel extends ChangeNotifier {
         toRank: target,
         previousPriority: moved.priority,
       );
+      _logDisplaced(eviction.demoted, treeBefore, by: landed);
     }
     return saved;
   }
@@ -272,6 +285,126 @@ class NodeTreeViewModel extends ChangeNotifier {
       ...leading,
       for (final node in visibleAfter) ...[node, ...?trailing[node.id]],
     ];
+  }
+
+  /// Saves [node] — new, edited or re-parented — and, when it claims the red
+  /// slot of its level, the siblings that red slot belonged to.
+  ///
+  /// This is the single place that keeps a parent from ever showing two red
+  /// children: with [claimsCritical] set, every sibling that was `critical`
+  /// drops to `high` and is parked directly underneath [node], above the
+  /// oranges that were already there. Sibling order is
+  /// (priority, position, createdAt), so that placement means renumbering
+  /// `position` across the whole level, exactly as a drag does — and the whole
+  /// set goes out as one [PriorityNodeRepository.saveNodes] batch through
+  /// [_write], so a rejected write reloads the tree instead of leaving half an
+  /// eviction applied.
+  ///
+  /// [log] records the mutation that triggered all this; the demotions are
+  /// logged after it.
+  Future<bool> _saveExclusive(
+    PriorityNode node, {
+    required DateTime now,
+    required bool claimsCritical,
+    required void Function(NodeTree treeBefore) log,
+  }) async {
+    final level = [
+      node,
+      ..._tree.childrenOf(node.parentId).where((n) => n.id != node.id),
+    ];
+    final eviction =
+        _evictCriticalSiblings(level, node, claimsCritical: claimsCritical);
+    final treeBefore = _tree;
+
+    if (eviction.demoted.isEmpty) {
+      final saved = await _write(
+        () => _repository.saveNode(node),
+        () => _applyWrites([node]),
+      );
+      if (saved) log(treeBefore);
+      return saved;
+    }
+
+    final changed = <PriorityNode>[];
+    for (var i = 0; i < eviction.order.length; i++) {
+      final sibling = eviction.order[i];
+      final existing = _tree.nodeById(sibling.id);
+      // [node] itself always goes: its save may carry a new title or colour
+      // even when its place in the level is unchanged.
+      if (sibling.id != node.id &&
+          existing != null &&
+          existing.position == i &&
+          existing.priority == sibling.priority) {
+        continue;
+      }
+      changed.add(sibling.copyWith(position: i, updatedAt: now));
+    }
+
+    final saved = await _write(
+      () => _repository.saveNodes(changed),
+      () => _applyWrites(changed),
+    );
+    if (saved) {
+      log(treeBefore);
+      _logDisplaced(eviction.demoted, treeBefore, by: node);
+    }
+    return saved;
+  }
+
+  /// Rewrites one level so that at most one child is `critical`.
+  ///
+  /// [level] is the level in sibling order with [red] already in it. When
+  /// [claimsCritical] is false — [red] is not red, or was red before and so
+  /// displaces nobody — the level comes back untouched and `demoted` is empty,
+  /// which is the caller's signal that a plain single-node save will do.
+  /// Otherwise the former reds drop one level and keep their relative order
+  /// directly behind [red].
+  ({List<PriorityNode> order, List<PriorityNode> demoted})
+      _evictCriticalSiblings(
+    List<PriorityNode> level,
+    PriorityNode red, {
+    required bool claimsCritical,
+  }) {
+    if (!claimsCritical) return (order: level, demoted: const []);
+
+    final losers = [
+      for (final n in level)
+        if (n.id != red.id && n.priority == Priority.critical) n,
+    ];
+    if (losers.isEmpty) return (order: level, demoted: const []);
+
+    final demoted = [
+      for (final n in losers) n.copyWith(priority: Priority.high),
+    ];
+    final loserIds = {for (final n in losers) n.id};
+    return (
+      order: [
+        red,
+        ...demoted,
+        for (final n in level)
+          if (n.id != red.id && !loserIds.contains(n.id)) n,
+      ],
+      demoted: demoted,
+    );
+  }
+
+  void _logDisplaced(
+    List<PriorityNode> demoted,
+    NodeTree treeBefore, {
+    required PriorityNode by,
+  }) {
+    for (final node in demoted) {
+      final before = treeBefore.nodeById(node.id);
+      if (before != null) _logger?.displaced(before, node, treeBefore, by: by);
+    }
+  }
+
+  /// Folds written nodes back into the in-memory list, appending the ones that
+  /// are new.
+  void _applyWrites(List<PriorityNode> written) {
+    final byId = {for (final node in written) node.id: node};
+    final merged = [for (final n in _nodes) byId.remove(n.id) ?? n];
+    _setNodes([...merged, ...byId.values]);
   }
 
   void _setNodes(List<PriorityNode> nodes) {

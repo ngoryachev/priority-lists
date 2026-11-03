@@ -189,8 +189,10 @@ void main() {
   group('drags', () {
     test('a drag into another priority group records the new priority',
         () async {
-      await seed('A', priority: Priority.critical);
-      await seed('B', priority: Priority.critical);
+      // High rather than critical: critical is exclusive among siblings, and
+      // what this test is about is adopting the group, not the eviction.
+      await seed('A', priority: Priority.high);
+      await seed('B', priority: Priority.high);
       await seed('C', priority: Priority.low);
       final d = await seed('D', priority: Priority.low);
       final before = (await entries()).length;
@@ -204,12 +206,12 @@ void main() {
         newIndex: 0,
       );
 
-      expect(vm.tree.nodeById(d.id)!.priority, Priority.critical);
+      expect(vm.tree.nodeById(d.id)!.priority, Priority.high);
       final events = await entries();
       expect(events.length, before + 1);
       expect(events.last.action, ActivityAction.reordered);
       expect(events.last.nodeTitle, 'D');
-      expect(events.last.details, contains('Low → Critical'));
+      expect(events.last.details, contains('Low → High'));
     });
 
     test('a drag to the front of the level is logged', () async {
@@ -312,8 +314,10 @@ void main() {
 
     test('a filtered drag reports the visible rank, not the stored one',
         () async {
-      await seed('A', priority: Priority.critical);
-      await seed('B', priority: Priority.critical);
+      // High rather than critical: this test is about the visible rank and
+      // the hidden sibling, not about the exclusive-critical rule.
+      await seed('A', priority: Priority.high);
+      await seed('B', priority: Priority.high);
       await seed('Hidden', priority: Priority.medium);
       await seed('C', priority: Priority.low);
       await seed('D', priority: Priority.low);
@@ -341,7 +345,7 @@ void main() {
       expect(events.last.nodeTitle, 'D');
       // D was the 4th row on screen, the 5th in the unfiltered level.
       expect(events.last.details, contains('rank 4 \u2192 1'));
-      expect(events.last.details, contains('Low \u2192 Critical'));
+      expect(events.last.details, contains('Low \u2192 High'));
     });
 
     test('a drag that lands where it started is not logged', () async {

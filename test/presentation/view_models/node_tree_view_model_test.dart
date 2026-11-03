@@ -215,13 +215,15 @@ void main() {
     });
 
     group('reordering', () {
-      /// Four siblings: two critical, two low — the shape a filtered drag
-      /// has to cope with.
+      /// Four siblings: two high, two low — the shape a filtered drag has to
+      /// cope with. Deliberately not critical: that priority is exclusive
+      /// among siblings (see the `exclusive critical` group), which would mix
+      /// an eviction into every drag here.
       Future<List<String>> seedLevel() async {
         final ids = <String>[];
         for (final entry in [
-          ('c1', Priority.critical),
-          ('c2', Priority.critical),
+          ('h1', Priority.high),
+          ('h2', Priority.high),
           ('l1', Priority.low),
           ('l2', Priority.low),
         ]) {
@@ -248,17 +250,17 @@ void main() {
           isTrue,
         );
 
-        expect(titlesOf(null), ['c2', 'c1', 'l1', 'l2']);
+        expect(titlesOf(null), ['h2', 'h1', 'l1', 'l2']);
         // The new order is what storage holds, not just what the screen shows.
         final stored = await repository.getAllNodes()
           ..sort((a, b) => a.position.compareTo(b.position));
-        expect(stored.map((n) => n.title), ['c2', 'c1', 'l1', 'l2']);
+        expect(stored.map((n) => n.title), ['h2', 'h1', 'l1', 'l2']);
       });
 
       test('adopts the priority of the group it is dropped into', () async {
         await seedLevel();
 
-        // Drag the first low node up between the two critical ones.
+        // Drag the first low node up between the two high ones.
         await vm.reorderChildren(
           parentId: null,
           visible: vm.tree.roots,
@@ -266,15 +268,15 @@ void main() {
           newIndex: 1,
         );
 
-        expect(titlesOf(null), ['c1', 'l1', 'c2', 'l2']);
-        expect(vm.tree.roots[1].priority, Priority.critical,
-            reason: 'dropped among critical nodes, so it became critical');
+        expect(titlesOf(null), ['h1', 'l1', 'h2', 'l2']);
+        expect(vm.tree.roots[1].priority, Priority.high,
+            reason: 'dropped among high nodes, so it became high');
       });
 
       test('keeps its priority when dropped on its own boundary', () async {
         await seedLevel();
 
-        // Move the second critical node to the head of its own group.
+        // Move the second high node to the head of its own group.
         await vm.reorderChildren(
           parentId: null,
           visible: vm.tree.roots,
@@ -282,15 +284,15 @@ void main() {
           newIndex: 0,
         );
 
-        expect(vm.tree.roots.first.title, 'c2');
-        expect(vm.tree.roots.first.priority, Priority.critical);
+        expect(vm.tree.roots.first.title, 'h2');
+        expect(vm.tree.roots.first.priority, Priority.high);
       });
 
       test('leaves filtered-out siblings where they were', () async {
         await seedLevel();
-        // The user is filtering to critical only, so the low nodes are hidden.
+        // The user is filtering to high only, so the low nodes are hidden.
         final visible = vm.tree.roots
-            .where((n) => n.priority == Priority.critical)
+            .where((n) => n.priority == Priority.high)
             .toList();
 
         await vm.reorderChildren(
@@ -302,7 +304,7 @@ void main() {
 
         // Visible nodes swapped; the hidden ones neither moved nor changed
         // priority just because they were off-screen.
-        expect(titlesOf(null), ['c2', 'c1', 'l1', 'l2']);
+        expect(titlesOf(null), ['h2', 'h1', 'l1', 'l2']);
         expect(
           vm.tree.roots.where((n) => n.priority == Priority.low).length,
           2,
@@ -311,7 +313,7 @@ void main() {
 
       test('a hidden node stays with the sibling it followed', () async {
         await seedLevel();
-        // Hide only 'c2' by pretending the filter shows everything else.
+        // Hide only 'h2' by pretending the filter shows everything else.
         final all = vm.tree.roots;
         final visible = [all[0], all[2], all[3]];
 
@@ -323,9 +325,9 @@ void main() {
           newIndex: 0,
         );
 
-        // 'c2' followed 'c1' before the drag, and still does.
+        // 'h2' followed 'h1' before the drag, and still does.
         final order = titlesOf(null);
-        expect(order.indexOf('c2'), order.indexOf('c1') + 1);
+        expect(order.indexOf('h2'), order.indexOf('h1') + 1);
       });
 
       test('a no-op drag writes nothing', () async {
@@ -366,6 +368,194 @@ void main() {
 
         expect(titlesOf(root.id), ['c', 'a', 'b']);
         expect(vm.tree.nodeById(otherRoot!.id)!.position, 0);
+      });
+    });
+
+    /// `critical` is exclusive among direct siblings: a parent never shows two
+    /// red children, so whoever turns red pushes the incumbent down to `high`
+    /// and parks it directly above the oranges that were already there.
+    group('exclusive critical', () {
+      /// A node written straight into storage. Seeding through the repository
+      /// instead of the view model is the only way to set up a level that
+      /// already holds two reds — which is exactly what the rule has to resolve
+      /// in data written before it existed.
+      PriorityNode raw(
+        String id,
+        Priority priority, {
+        String? parentId,
+        int position = 0,
+      }) =>
+          PriorityNode(
+            id: id,
+            parentId: parentId,
+            title: id,
+            priority: priority,
+            position: position,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          );
+
+      List<String> idsOf(String? parentId) =>
+          vm.tree.childrenOf(parentId).map((n) => n.id).toList();
+
+      test('the demoted red lands above the oranges already there', () async {
+        await repository.saveNodes([
+          raw('p', Priority.high),
+          raw('red', Priority.critical, parentId: 'p'),
+          raw('o1', Priority.high, parentId: 'p', position: 1),
+          raw('o2', Priority.high, parentId: 'p', position: 2),
+          raw('target', Priority.medium, parentId: 'p', position: 3),
+        ]);
+        await vm.load();
+
+        await vm.updateNode(
+          vm.tree.nodeById('target')!.copyWith(priority: Priority.critical),
+        );
+
+        expect(idsOf('p'), ['target', 'red', 'o1', 'o2']);
+        expect(vm.tree.nodeById('target')!.priority, Priority.critical);
+        expect(vm.tree.nodeById('red')!.priority, Priority.high);
+        // The whole eviction is in storage, not just in memory.
+        final stored = {
+          for (final node in await repository.getAllNodes()) node.id: node,
+        };
+        expect(stored['red']!.priority, Priority.high);
+        expect(stored['red']!.position, lessThan(stored['o1']!.position));
+      });
+
+      test('two reds pushed down keep their relative order', () async {
+        await repository.saveNodes([
+          raw('r1', Priority.critical),
+          raw('r2', Priority.critical, position: 1),
+          raw('o', Priority.high, position: 2),
+          raw('m', Priority.medium, position: 3),
+        ]);
+        await vm.load();
+
+        // Top level, so the rule has to hold for parentId == null too.
+        await vm.updateNode(
+          vm.tree.nodeById('m')!.copyWith(priority: Priority.critical),
+        );
+
+        expect(idsOf(null), ['m', 'r1', 'r2', 'o']);
+        expect(vm.tree.nodeById('r1')!.priority, Priority.high);
+        expect(vm.tree.nodeById('r2')!.priority, Priority.high);
+      });
+
+      test('another parent keeps its own red child', () async {
+        await repository.saveNodes([
+          raw('p1', Priority.high),
+          raw('p2', Priority.high, position: 1),
+          raw('a', Priority.critical, parentId: 'p1'),
+          raw('b', Priority.low, parentId: 'p1', position: 1),
+          raw('c', Priority.critical, parentId: 'p2'),
+        ]);
+        await vm.load();
+
+        await vm.updateNode(
+          vm.tree.nodeById('b')!.copyWith(priority: Priority.critical),
+        );
+
+        expect(idsOf('p1'), ['b', 'a']);
+        expect(vm.tree.nodeById('a')!.priority, Priority.high);
+        expect(vm.tree.nodeById('c')!.priority, Priority.critical);
+        // The level the two parents live on is not renumbered either.
+        expect(vm.tree.nodeById('p1')!.position, 0);
+        expect(vm.tree.nodeById('p2')!.position, 1);
+      });
+
+      test('re-saving a node that is already red leaves the level alone',
+          () async {
+        await repository.saveNodes([
+          raw('red', Priority.critical),
+          raw('o', Priority.high, position: 1),
+        ]);
+        await vm.load();
+        final untouched = vm.tree.nodeById('o')!.updatedAt;
+
+        await vm.updateNode(
+          vm.tree.nodeById('red')!.copyWith(title: 'renamed'),
+        );
+
+        expect(vm.tree.nodeById('o')!.updatedAt, untouched);
+        expect(vm.tree.nodeById('o')!.priority, Priority.high);
+      });
+
+      test('a node created as critical takes the slot', () async {
+        final parent = await vm.addChild(title: 'p', priority: Priority.high);
+        final first = await vm.addChild(
+          parentId: parent!.id,
+          title: 'first',
+          priority: Priority.critical,
+        );
+        final second = await vm.addChild(
+          parentId: parent.id,
+          title: 'second',
+          priority: Priority.critical,
+        );
+
+        expect(vm.tree.nodeById(second!.id)!.priority, Priority.critical);
+        expect(vm.tree.nodeById(first!.id)!.priority, Priority.high);
+        expect(
+          vm.tree.childrenOf(parent.id).map((n) => n.title),
+          ['second', 'first'],
+        );
+      });
+
+      test('a red node moved in demotes the red child it finds', () async {
+        await repository.saveNodes([
+          raw('p', Priority.high),
+          raw('resident', Priority.critical, parentId: 'p'),
+          raw('orange', Priority.high, parentId: 'p', position: 1),
+          raw('incoming', Priority.critical, position: 1),
+        ]);
+        await vm.load();
+
+        expect(await vm.moveNode('incoming', 'p'), isTrue);
+
+        expect(idsOf('p'), ['incoming', 'resident', 'orange']);
+        expect(vm.tree.nodeById('resident')!.priority, Priority.high);
+      });
+
+      test('a drag into the red group evicts the node that was red', () async {
+        await repository.saveNodes([
+          raw('r', Priority.critical),
+          raw('o', Priority.high, position: 1),
+          raw('low', Priority.low, position: 2),
+        ]);
+        await vm.load();
+
+        // Drop the low node on top of the level, i.e. into the red group.
+        await vm.reorderChildren(
+          parentId: null,
+          visible: vm.tree.roots,
+          oldIndex: 2,
+          newIndex: 0,
+        );
+
+        expect(vm.tree.nodeById('low')!.priority, Priority.critical);
+        expect(vm.tree.nodeById('r')!.priority, Priority.high);
+        expect(idsOf(null), ['low', 'r', 'o']);
+      });
+
+      test('a rejected eviction leaves the level exactly as it was', () async {
+        await repository.saveNodes([
+          raw('r', Priority.critical),
+          raw('o', Priority.high, position: 1),
+          raw('m', Priority.medium, position: 2),
+        ]);
+        final guarded = NodeTreeViewModel(_FailingRepository(repository));
+        await guarded.load();
+
+        await guarded.updateNode(
+          guarded.tree.nodeById('m')!.copyWith(priority: Priority.critical),
+        );
+
+        expect(guarded.error, isNotNull);
+        expect(guarded.tree.roots.map((n) => n.id), ['r', 'o', 'm']);
+        expect(guarded.tree.nodeById('r')!.priority, Priority.critical,
+            reason: 'no half-applied eviction');
+        expect(guarded.tree.nodeById('m')!.priority, Priority.medium);
       });
     });
 
