@@ -64,6 +64,26 @@ class ActivityLogger {
     );
   }
 
+  /// A sibling lost the red slot: [by] became `critical` under the same parent
+  /// and the exclusive-critical rule pushed this node down one level.
+  ///
+  /// Logged as a priority change like any other, but naming the culprit —
+  /// otherwise the entry reads as a demotion nobody asked for.
+  void displaced(
+    PriorityNode before,
+    PriorityNode after,
+    NodeTree tree, {
+    required PriorityNode by,
+  }) {
+    _record(
+      action: ActivityAction.prioritized,
+      node: after,
+      path: _pathUnder(tree, after.parentId),
+      details: '${before.priority.label} → ${after.priority.label}, '
+          'displaced by "${by.title}"',
+    );
+  }
+
   /// A node (and its subtree) was removed. [treeBefore] still contains it.
   void deleted(PriorityNode node, NodeTree treeBefore) {
     final nested = treeBefore.descendantCount(node.id);

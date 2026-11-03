@@ -91,6 +91,24 @@ void main() {
     expect(event.details, 'Medium → Critical');
   });
 
+  test('a sibling pushed out of the red slot is logged with the culprit',
+      () async {
+    final incumbent = await seed('Rewrite billing');
+    await vm.updateNode(incumbent.copyWith(priority: Priority.critical));
+    final challenger = await seed('Prod is down');
+
+    // Turning the second node red demotes the first: two entries, the
+    // triggering change first and the displacement right behind it.
+    await vm.updateNode(challenger.copyWith(priority: Priority.critical));
+
+    final events = await entries();
+    expect(events[events.length - 2].nodeTitle, 'Prod is down');
+    final displaced = events.last;
+    expect(displaced.action, ActivityAction.prioritized);
+    expect(displaced.nodeTitle, 'Rewrite billing');
+    expect(displaced.details, 'Critical → High, displaced by "Prod is down"');
+  });
+
   test('an edit names the fields that changed', () async {
     final node = await seed('Fix login');
     await vm.updateNode(node.copyWith(
