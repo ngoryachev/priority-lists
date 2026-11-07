@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../domain/models/priority_node.dart';
 import '../utils/priority_colors.dart';
+import '../view_models/last_node_view_model.dart';
 
 /// Root-to-current trail shown under the app bar once you are inside the tree.
 ///
@@ -92,8 +94,15 @@ class BreadcrumbBar extends StatelessWidget {
   static String routeName(String? nodeId) => 'node/${nodeId ?? 'root'}';
 
   void _jumpTo(BuildContext context, String? nodeId) {
+    // Looked up before the pops: afterwards this crumb's own route is on its
+    // way out and its context is no longer a reliable place to read from.
+    final lastNodes = context.read<LastNodeViewModel?>();
     Navigator.of(context).popUntil(
       (route) => route.settings.name == routeName(nodeId) || route.isFirst,
     );
+    // Recorded after the pops, not before: each popped level records the
+    // level above it, so the tapped crumb has to be the last write enqueued
+    // to be the one that ends up stored. The leading crumb stores "root".
+    lastNodes?.remember(nodeId);
   }
 }
