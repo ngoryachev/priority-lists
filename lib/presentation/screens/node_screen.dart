@@ -7,6 +7,7 @@ import '../../domain/models/priority_node.dart';
 import '../../domain/repositories/activity_log_repository.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/filter_view_model.dart';
+import '../view_models/last_node_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
 import '../view_models/role_view_model.dart';
 import '../utils/priority_colors.dart';
@@ -41,24 +42,29 @@ class NodeScreen extends StatefulWidget {
     BuildContext context,
     String? nodeId, {
     bool bubbleView = false,
+    bool animate = true,
   }) {
     final treeViewModel = context.read<NodeTreeViewModel>();
     final filterViewModel = context.read<FilterViewModel>();
     // Nullable: screens built without a role selector (tests, older entry
     // points) must still be able to drill down.
     final roleViewModel = context.read<RoleViewModel?>();
-    return MaterialPageRoute<void>(
-      settings: RouteSettings(name: BreadcrumbBar.routeName(nodeId)),
-      builder: (_) => MultiProvider(
-        providers: [
-          ChangeNotifierProvider<NodeTreeViewModel>.value(value: treeViewModel),
-          ChangeNotifierProvider<FilterViewModel>.value(value: filterViewModel),
-          if (roleViewModel != null)
-            ChangeNotifierProvider<RoleViewModel>.value(value: roleViewModel),
-        ],
-        child: NodeScreen(parentId: nodeId, initialBubbleView: bubbleView),
-      ),
+    final lastNodeViewModel = context.read<LastNodeViewModel?>();
+    final settings = RouteSettings(name: BreadcrumbBar.routeName(nodeId));
+    Widget build(BuildContext _) => MultiProvider(
+      providers: [
+        ChangeNotifierProvider<NodeTreeViewModel>.value(value: treeViewModel),
+        ChangeNotifierProvider<FilterViewModel>.value(value: filterViewModel),
+        if (roleViewModel != null)
+          ChangeNotifierProvider<RoleViewModel>.value(value: roleViewModel),
+        if (lastNodeViewModel != null)
+          Provider<LastNodeViewModel>.value(value: lastNodeViewModel),
+      ],
+      child: NodeScreen(parentId: nodeId, initialBubbleView: bubbleView),
     );
+    return animate
+        ? MaterialPageRoute<void>(settings: settings, builder: build)
+        : _InstantPageRoute<void>(settings: settings, builder: build);
   }
 
   @override
@@ -74,23 +80,82 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   /// which every other card on this level is a drop target. Null when idle.
   String? _movingId;
 
+  /// Where the user left off, so every level change can be recorded. Nullable:
+  /// screens built without it (tests, older entry points) just do not persist.
+  LastNodeViewModel? _lastNodes;
+
+  /// The level this screen pops back to, cached while this screen's node is
+  /// still in the tree. Null means the top level.
+  ///
+  /// It has to be a cache: the pop can be triggered *because* the node went
+  /// away (a subtree delete higher up), and by then the tree can no longer
+  /// say what sat above it.
+  String? _parentLevelId;
+
+  /// Restoring the saved level is a launch-time, one-shot affair; a later
+  /// reload of the tree must not drag the user back down.
+  bool _restored = false;
+
   bool get _isRoot => widget.parentId == null;
 
   @override
   void initState() {
     super.initState();
     _showBubbleView = widget.initialBubbleView;
+    // Captured now rather than read from the callbacks below: a pop fires
+    // while this screen is on its way out, and the restore pushes run after
+    // an await.
+    _lastNodes = context.read<LastNodeViewModel?>();
     if (_isRoot) {
       // Only the root screen observes: it stays alive under every pushed
       // level, so one observer covers the whole drill-down.
       WidgetsBinding.instance.addObserver(this);
       final vm = context.read<NodeTreeViewModel>();
-      Future.microtask(() => vm.load());
+      // Nothing is awaited before the first frame: the loading and error
+      // states of the tree are untouched, and the stack is only rebuilt once
+      // there is a tree to look the saved node up in.
+      Future.microtask(() async {
+        await vm.load();
+        if (!mounted) return;
+        await _restoreLastLevel(vm);
+      });
       // The root screen is only mounted after sign-in, which is when the
       // remote read can succeed; a re-mount after switching accounts re-reads
       // the right row.
       final roles = context.read<RoleViewModel?>();
       if (roles != null) Future.microtask(() => roles.load());
+    }
+  }
+
+  /// Reopens the level the user was last on by pushing one route per node of
+  /// its root-to-node path, so breadcrumbs and back navigation behave exactly
+  /// as if the user had drilled down by hand.
+  ///
+  /// Anything that goes wrong — no settings store, a pointer from another
+  /// account, a node that is gone, a store that throws — leaves the user at
+  /// the root, which is where they already are.
+  Future<void> _restoreLastLevel(NodeTreeViewModel vm) async {
+    final lastNodes = _lastNodes;
+    if (lastNodes == null || _restored) return;
+    // No tree means nothing to resolve the pointer against: a load that
+    // failed, or an account with nothing in it. The flag stays unburned so a
+    // resume that does bring a tree in can still restore — `refresh` never
+    // clears `error`, so testing the tree is both truer and the only check
+    // that a later success can pass.
+    if (vm.tree.isEmpty) return;
+    _restored = true;
+    final path = await lastNodes.resolveRestorePath(vm.tree);
+    if (path.isEmpty || !mounted) return;
+    // The tree paints before this read comes back, so the user can tap a card
+    // in between. Their navigation is newer than the stored pointer — and has
+    // already overwritten it — so leave their stack alone rather than pile a
+    // restored one on top of it.
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    final navigator = Navigator.of(context);
+    for (final node in path) {
+      // Animation-free, or the app would visibly fan through every level on
+      // the way down.
+      navigator.push(NodeScreen.route(context, node.id, animate: false));
     }
   }
 
@@ -104,9 +169,15 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   /// background; pull the latest on return rather than showing stale data.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      context.read<NodeTreeViewModel>().refresh();
-    }
+    if (state != AppLifecycleState.resumed) return;
+    final vm = context.read<NodeTreeViewModel>();
+    Future.microtask(() async {
+      await vm.refresh();
+      if (!mounted) return;
+      // A launch whose own load failed has not restored yet: a tree arriving
+      // here is its retry. A no-op once the restore has already run.
+      await _restoreLastLevel(vm);
+    });
   }
 
   @override
@@ -127,9 +198,12 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     final ancestors = _isRoot
         ? const <PriorityNode>[]
         : tree.pathTo(widget.parentId);
+    // Remembered while the node is still here, for the pop that may be caused
+    // by it disappearing. A root node pops back to the top level, hence null.
+    if (node != null) _parentLevelId = node.parentId;
     final accent = node == null ? null : priorityColor(node.priority);
 
-    return Scaffold(
+    final scaffold = Scaffold(
       appBar: AppBar(
         title: Text(node?.title ?? 'Priority Lists'),
         backgroundColor: accent?.withValues(alpha: 0.15),
@@ -195,6 +269,18 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
             : 'Add inside "${node.title}"',
         child: const Icon(Icons.add),
       ),
+    );
+
+    if (_isRoot) return scaffold;
+    // One hook for every way up: the system back gesture, the app bar's back
+    // button, predictive back, the `maybePop` fired when this screen's node
+    // disappears, and each level a breadcrumb jump pops through.
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _lastNodes?.remember(_parentLevelId);
+      },
+      child: scaffold,
     );
   }
 
@@ -428,6 +514,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   }
 
   void _openNode(PriorityNode node, {required bool bubbleView}) {
+    _lastNodes?.remember(node.id);
     Navigator.of(
       context,
     ).push(NodeScreen.route(context, node.id, bubbleView: bubbleView));
@@ -529,6 +616,19 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       );
     }
   }
+}
+
+/// A level pushed without its forward transition.
+///
+/// Restoring a deep level pushes one route per level in a single frame; with
+/// the normal 300ms slide the app would fan through every ancestor on launch.
+/// Only the forward direction is zeroed — walking back up a restored stack
+/// animates like any other pop.
+class _InstantPageRoute<T> extends MaterialPageRoute<T> {
+  _InstantPageRoute({required super.builder, super.settings});
+
+  @override
+  Duration get transitionDuration => Duration.zero;
 }
 
 /// Strip above the list while a node is being relocated by tap.

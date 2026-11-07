@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../domain/models/priority_node.dart';
 import '../utils/priority_colors.dart';
+import '../view_models/last_node_view_model.dart';
 
 /// Root-to-current trail shown under the app bar once you are inside the tree.
 ///
@@ -92,8 +94,25 @@ class BreadcrumbBar extends StatelessWidget {
   static String routeName(String? nodeId) => 'node/${nodeId ?? 'root'}';
 
   void _jumpTo(BuildContext context, String? nodeId) {
-    Navigator.of(context).popUntil(
-      (route) => route.settings.name == routeName(nodeId) || route.isFirst,
-    );
+    // Looked up before the pops: afterwards this crumb's own route is on its
+    // way out and its context is no longer a reliable place to read from.
+    final lastNodes = context.read<LastNodeViewModel?>();
+    // The crumb's level may have no route of its own — the tree can be
+    // re-parented from another device while the user sits deep in it, putting
+    // ancestors in the trail that were never pushed. Then the pop falls back
+    // to the root, and that is what has to be stored.
+    var landedOnCrumb = false;
+    Navigator.of(context).popUntil((route) {
+      if (route.settings.name == routeName(nodeId)) {
+        landedOnCrumb = true;
+        return true;
+      }
+      return route.isFirst;
+    });
+    // Recorded after the pops, not before: each popped level records the
+    // level above it, so the level we landed on has to be the last write
+    // enqueued to be the one that ends up stored. The leading crumb, and any
+    // crumb that fell back to the root, store "root".
+    lastNodes?.remember(landedOnCrumb ? nodeId : null);
   }
 }

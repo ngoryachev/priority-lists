@@ -38,6 +38,8 @@ dependencies:
   sentry_flutter: ^8.14.2
   # Direct, not transitive: the web-only clipboard fallback talks to the DOM.
   web: ^1.1.1
+  # Device-local settings (the last opened node); works in the browser too.
+  shared_preferences: ^2.5.4
 
 dev_dependencies:
   flutter_test:
