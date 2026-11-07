@@ -74,11 +74,16 @@ class LastNodeViewModel {
     if (pointer == null) return const [];
     final nodeId = pointer.nodeId;
     if (nodeId == null) return const [];
+    // Nobody signed in is not "somebody else's pointer": a sign-out landing
+    // between the mount and this read must not cost the user their pointer.
+    // `remember` takes the same stance and skips the write.
+    final userId = _currentUserId();
+    if (userId == null) return const [];
     // Somebody else's pointer, or one pointing at a node that was deleted (or
     // orphaned out of reach): drop it rather than keep retrying it on every
     // launch. An orphan whose parent is missing needs no special case —
     // `NodeTree` treats it as a root, so `pathTo` yields its single-node path.
-    if (pointer.userId != _currentUserId()) {
+    if (pointer.userId != userId) {
       _forget();
       return const [];
     }

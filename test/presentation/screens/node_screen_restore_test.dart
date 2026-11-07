@@ -89,11 +89,14 @@ class _RecordingRepository implements LastNodeRepository {
   }
 }
 
-/// A tree that cannot be read: the error state owns the screen and the saved
-/// pointer has nothing to resolve against.
+/// A tree that cannot be read until [nodes] is filled in: the error state
+/// owns the screen and the saved pointer has nothing to resolve against.
 class _BrokenNodeRepository implements PriorityNodeRepository {
+  List<PriorityNode>? nodes;
+
   @override
-  Future<List<PriorityNode>> getAllNodes() async => throw StateError('offline');
+  Future<List<PriorityNode>> getAllNodes() async =>
+      nodes ?? (throw StateError('offline'));
 
   @override
   Future<void> saveNode(PriorityNode node) async {}
@@ -543,6 +546,103 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'C'), findsOneWidget);
+    });
+
+    /// A crumb's level need not have a route of its own: another device can
+    /// re-parent the tree while the user sits deep in it, putting ancestors in
+    /// the trail that were never pushed. The jump then falls back to the root,
+    /// and the pointer has to agree with the screen.
+    testWidgets('a crumb with no route of its own stores the root', (
+      tester,
+    ) async {
+      usePhoneSize(tester);
+      final repository = _RecordingRepository(
+        const LastNodePointer(userId: 'user-1', nodeId: 'C'),
+      );
+      final lastNodes = viewModel(repository);
+
+      await tester.pumpWidget(
+        wrapLikeProduction(await seededTree(), lastNodes: lastNodes),
+      );
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(AppBar, 'C'), findsOneWidget);
+
+      // B moves under Other, so C's trail reads All > Other > B while the
+      // pushed stack is still root > A > B > C.
+      final tree = Provider.of<NodeTreeViewModel>(
+        tester.element(find.byType(NodeScreen, skipOffstage: false).first),
+        listen: false,
+      );
+      await tree.moveNode('B', 'Other');
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widgetList<Text>(
+              find.descendant(
+                of: find.byType(BreadcrumbBar),
+                matching: find.byType(Text),
+              ),
+            )
+            .map((t) => t.data),
+        ['All', 'Other', 'B'],
+      );
+      repository.calls.clear();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BreadcrumbBar),
+          matching: find.text('Other'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await lastNodes.idle;
+
+      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(stackNames(tester), [rootRouteName]);
+      expect(
+        repository.stored!.nodeId,
+        isNull,
+        reason: 'the pop landed on the root, so "Other" must not be stored',
+      );
+    });
+
+    /// A launch whose tree never loaded has not had its chance to restore;
+    /// the tree arriving on a resume is that chance. `refresh` leaves `error`
+    /// set, so only a tree-based guard lets this through.
+    testWidgets('a launch that failed to load restores once the tree arrives',
+        (tester) async {
+      usePhoneSize(tester);
+      final nodes = _BrokenNodeRepository();
+      final lastNodes = viewModel(
+        InMemoryLastNodeRepository(
+          const LastNodePointer(userId: 'user-1', nodeId: 'C'),
+        ),
+      );
+
+      await tester.pumpWidget(
+        wrapLikeProduction(nodes, lastNodes: lastNodes),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('offline'), findsOneWidget);
+      expect(stackNames(tester), [rootRouteName]);
+
+      // Back online; the resume re-reads the tree.
+      nodes.nodes = [
+        node('A'),
+        node('B', parent: 'A'),
+        node('C', parent: 'B'),
+      ];
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(AppBar, 'C'), findsOneWidget);
+      expect(stackNames(tester), [
+        rootRouteName,
+        BreadcrumbBar.routeName('A'),
+        BreadcrumbBar.routeName('B'),
+        BreadcrumbBar.routeName('C'),
+      ]);
     });
 
     /// The tree paints before the settings read comes back, so a tap can land

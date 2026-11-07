@@ -137,10 +137,13 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   Future<void> _restoreLastLevel(NodeTreeViewModel vm) async {
     final lastNodes = _lastNodes;
     if (lastNodes == null || _restored) return;
+    // No tree means nothing to resolve the pointer against: a load that
+    // failed, or an account with nothing in it. The flag stays unburned so a
+    // resume that does bring a tree in can still restore — `refresh` never
+    // clears `error`, so testing the tree is both truer and the only check
+    // that a later success can pass.
+    if (vm.tree.isEmpty) return;
     _restored = true;
-    // A failed load means there is no tree to resolve the pointer against;
-    // the error state owns the screen, and retrying is the user's call.
-    if (vm.error != null) return;
     final path = await lastNodes.resolveRestorePath(vm.tree);
     if (path.isEmpty || !mounted) return;
     // The tree paints before this read comes back, so the user can tap a card
@@ -166,9 +169,15 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   /// background; pull the latest on return rather than showing stale data.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      context.read<NodeTreeViewModel>().refresh();
-    }
+    if (state != AppLifecycleState.resumed) return;
+    final vm = context.read<NodeTreeViewModel>();
+    Future.microtask(() async {
+      await vm.refresh();
+      if (!mounted) return;
+      // A launch whose own load failed has not restored yet: a tree arriving
+      // here is its retry. A no-op once the restore has already run.
+      await _restoreLastLevel(vm);
+    });
   }
 
   @override

@@ -145,6 +145,21 @@ void main() {
       );
     });
 
+    /// A sign-out can land between the root screen mounting and this read
+    /// resolving. That is not somebody else's pointer, and wiping it would
+    /// cost the user a restore for no reason — `remember` is equally quiet
+    /// when there is no user id.
+    test('keeps the pointer when nobody is signed in', () async {
+      final repository = _RecordingRepository()
+        ..stored = const LastNodePointer(userId: 'user-1', nodeId: 'C');
+      final vm = viewModel(repository, userId: null);
+
+      expect(await vm.resolveRestorePath(tree), isEmpty);
+      await vm.idle;
+      expect(repository.stored, isNotNull);
+      expect(repository.calls, isEmpty);
+    });
+
     test('a store that throws stays at the root without raising', () async {
       expect(await viewModel(_BrokenRepository()).resolveRestorePath(tree),
           isEmpty);
