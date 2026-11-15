@@ -282,9 +282,18 @@ class _PriorityCardState extends State<PriorityCard> {
           )
         : _ownerFace();
 
-    final activeTap = shownIndex == 0
-        ? widget.onTap
-        : widget.childPages[shownIndex - 1].onTap;
+    final shownPage = shownIndex == 0
+        ? null
+        : widget.childPages[shownIndex - 1];
+    // Not `shownPage?.onTap ?? widget.onTap`: a child page with no tap of its
+    // own must not borrow the owner's.
+    final activeTap = shownPage == null ? widget.onTap : shownPage.onTap;
+    // The band the grip is centred in has to clear the 1-4 row of the face
+    // actually on screen: a child page carries its own row even where the
+    // owner has none, and the grip is hit-test-first.
+    final shownHasLevelRow = shownPage == null
+        ? widget.onSetPriority != null
+        : shownPage.onSetPriority != null;
 
     Widget card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -335,7 +344,7 @@ class _PriorityCardState extends State<PriorityCard> {
               // Clear of the 1-4 row: at 360dp the row is pinned bottom-right
               // and exact centring would cost either the grip's touch target
               // or the buttons' hittability.
-              right: widget.onSetPriority != null ? _levelRowReserve : 0,
+              right: shownHasLevelRow ? _levelRowReserve : 0,
               bottom: 0,
               height: PriorityCard._gripTouchSize,
               child: Center(child: _dragGrip()),
@@ -495,6 +504,26 @@ class _CardFace extends StatelessWidget {
     this.onSetPriority,
   });
 
+  /// How far the owner label's own line may be scaled up before a tile with
+  /// little vertical slack stops having room for it. The floor of what the
+  /// two tight tiles measured: the 132dp floor tile (every tile on a small
+  /// phone) overflows at 1.8x — 4dp, 10dp at 2x — and the 160dp tile at 2.5x.
+  static const double _maxTightLabelScale = 1.7;
+
+  /// A short tile is down to the badge row, one line of title and the 1-4
+  /// row; the owner label is a line on top of that, and past
+  /// [_maxTightLabelScale] it no longer fits. Dropping it there keeps the
+  /// title, which is the line worth reading — the dots and the counter still
+  /// say the card is showing a child rather than itself. A tall tile has the
+  /// room at any scale and always keeps it.
+  bool _showsOwnerLabel(BuildContext context, TextStyle? style) {
+    if (ownerLabel == null) return false;
+    if (!isCompact && !isShort) return true;
+    final fontSize = style?.fontSize ?? 11;
+    return MediaQuery.textScalerOf(context).scale(fontSize) <=
+        fontSize * _maxTightLabelScale;
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = isCompact
@@ -502,6 +531,7 @@ class _CardFace extends StatelessWidget {
         : isShort
         ? 12.0
         : 16.0;
+    final ownerLabelStyle = Theme.of(context).textTheme.labelSmall;
 
     final face = InkWell(
       onTap: onTap,
@@ -526,12 +556,12 @@ class _CardFace extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (ownerLabel != null)
+                    if (_showsOwnerLabel(context, ownerLabelStyle))
                       Text(
                         ownerLabel!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        style: ownerLabelStyle?.copyWith(
                           color: color.withValues(alpha: 0.8),
                           fontWeight: FontWeight.w600,
                         ),

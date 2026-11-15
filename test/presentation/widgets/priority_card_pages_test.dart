@@ -45,6 +45,10 @@ void main() {
     int children = 5,
     String? initialChildId,
   }) => PriorityCard(
+    // Keyed by the page it opens on: the initial page is read when the state
+    // is created, so a test that pumps one card over another needs the second
+    // one to be a new card rather than the first one rebuilt.
+    key: ValueKey('card-$initialChildId'),
     title: 'An owner title long enough to need the full width of the tile',
     badgeLabel: Priority.critical.label,
     color: Colors.red,
@@ -122,28 +126,35 @@ void main() {
   }
 
   for (final height in heights) {
-    testWidgets('large text does not overflow a ${height.toInt()}dp tile, on '
-        'the owner page or a child page', (tester) async {
-      useNarrowPhone(tester);
-      await tester.pumpWidget(wrap(card(height: height), textScale: 1.5));
-      await tester.pumpAndSettle();
+    // 2.0 is the top of Android's font-size range and well into the iOS
+    // accessibility sizes. Beyond it the badge row overflows sideways at
+    // every tile height, pages or no pages — that is the card as it was
+    // before this axis existed and is not tested here.
+    for (final scale in [1.5, 2.0]) {
+      testWidgets('text at ${scale}x does not overflow a ${height.toInt()}dp '
+          'tile, on the owner page or a child page', (tester) async {
+        useNarrowPhone(tester);
+        await tester.pumpWidget(wrap(card(height: height), textScale: scale));
+        await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
 
-      // A child page is the tighter of the two: the owner label costs it a
-      // line the owner's own face does not pay for.
-      await tester.pumpWidget(
-        wrap(card(height: height, initialChildId: 'c0'), textScale: 1.5),
-      );
-      await tester.pumpAndSettle();
+        // A child page is the tighter of the two: the owner label costs it a
+        // line the owner's own face does not pay for, which the shortest
+        // tile cannot spare once the text is scaled up.
+        await tester.pumpWidget(
+          wrap(card(height: height, initialChildId: 'c0'), textScale: scale),
+        );
+        await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
-      for (final level in ['1', '2', '3', '4']) {
-        expect(find.text(level).hitTestable(), findsOneWidget, reason: level);
-      }
-    });
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
+        for (final level in ['1', '2', '3', '4']) {
+          expect(find.text(level).hitTestable(), findsOneWidget, reason: level);
+        }
+      });
+    }
   }
 
   testWidgets('the counter names the child page, not the page index',
@@ -166,6 +177,42 @@ void main() {
     expect(find.byIcon(Icons.more_vert), findsNothing);
     expect(find.byType(PageView), findsNothing);
     expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('the grip clears the 1-4 row of the page on screen, not the '
+      "owner's", (tester) async {
+    // The smallest phone the app is tested on, with the list's own insets:
+    // the tile is 280dp wide there, which is where a grip band sized from
+    // the wrong face starts covering the buttons.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // An owner with no 1-4 row of its own, pages that have one: the grip is
+    // hit-test-first, so a band sized from the owner would sit on top of the
+    // child's buttons.
+    await tester.pumpWidget(
+      wrap(
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: PriorityCard(
+            title: 'No level row of its own',
+            badgeLabel: Priority.critical.label,
+            color: Colors.red,
+            fixedHeight: 160,
+            dragIndex: 0,
+            childPages: pages(2),
+            initialChildId: 'c0',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
+    for (final level in ['1', '2', '3', '4']) {
+      expect(find.text(level).hitTestable(), findsOneWidget, reason: level);
+    }
   });
 
   testWidgets('a card with no tile height lays out exactly as it did before '
