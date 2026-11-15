@@ -6,6 +6,7 @@ import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
 import '../../domain/repositories/activity_log_repository.dart';
 import '../view_models/auth_view_model.dart';
+import '../view_models/card_page_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/last_node_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
@@ -50,6 +51,7 @@ class NodeScreen extends StatefulWidget {
     // points) must still be able to drill down.
     final roleViewModel = context.read<RoleViewModel?>();
     final lastNodeViewModel = context.read<LastNodeViewModel?>();
+    final cardPageViewModel = context.read<CardPageViewModel?>();
     final settings = RouteSettings(name: BreadcrumbBar.routeName(nodeId));
     Widget build(BuildContext _) => MultiProvider(
       providers: [
@@ -59,6 +61,8 @@ class NodeScreen extends StatefulWidget {
           ChangeNotifierProvider<RoleViewModel>.value(value: roleViewModel),
         if (lastNodeViewModel != null)
           Provider<LastNodeViewModel>.value(value: lastNodeViewModel),
+        if (cardPageViewModel != null)
+          Provider<CardPageViewModel>.value(value: cardPageViewModel),
       ],
       child: NodeScreen(parentId: nodeId, initialBubbleView: bubbleView),
     );
@@ -84,6 +88,11 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   /// screens built without it (tests, older entry points) just do not persist.
   LastNodeViewModel? _lastNodes;
 
+  /// Which child page every card on this level was left on. Nullable for the
+  /// same reason as [_lastNodes]: screens built without it simply always open
+  /// their cards on page 0.
+  CardPageViewModel? _cardPages;
+
   /// The level this screen pops back to, cached while this screen's node is
   /// still in the tree. Null means the top level.
   ///
@@ -106,6 +115,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     // while this screen is on its way out, and the restore pushes run after
     // an await.
     _lastNodes = context.read<LastNodeViewModel?>();
+    _cardPages = context.read<CardPageViewModel?>();
     if (_isRoot) {
       // Only the root screen observes: it stays alive under every pushed
       // level, so one observer covers the whole drill-down.
@@ -448,6 +458,9 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
               chipLabels: _chipLabels(tree, child, filter),
               currentPriority: child.priority,
               dragIndex: index,
+              childPages: _childPagesFor(vm, tree, filter, child),
+              initialChildId: _cardPages?.childFor(child.id),
+              onChildPageChanged: (id) => _cardPages?.remember(child.id, id),
               onTap: _tapFor(vm, child, false),
               onEdit: () => _editNode(vm, child),
               onDelete: () => _confirmDelete(vm, tree, child),
@@ -466,6 +479,49 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  /// The second, horizontal axis of a list tile: one page per direct child of
+  /// [node], in the tree's own order (priority, then the manual position, then
+  /// age) and honouring the priority filter.
+  ///
+  /// A child page is action-light on purpose — the owner-only actions and the
+  /// reorder handle belong to the level the child lives on. What it does carry
+  /// is the same tap (through [_openNode], so the level is recorded) and the
+  /// same priority write (through [NodeTreeViewModel.updateNode], so the
+  /// critical-priority exclusivity applies) as a card on that level.
+  List<PriorityCardPage> _childPagesFor(
+    NodeTreeViewModel vm,
+    NodeTree tree,
+    FilterViewModel filter,
+    PriorityNode node,
+  ) {
+    // A move in progress turns every card into a drop target whose tap means
+    // "put it here"; swiping to another node's face there would be lying
+    // about what the tap does, so the pages go away until the move is over.
+    // The remembered page is untouched and comes back with them.
+    if (_movingId != null) return const [];
+    return [
+      for (final child
+          in tree
+              .childrenOf(node.id)
+              .where((child) => filter.isVisible(child.priority)))
+        PriorityCardPage(
+          id: child.id,
+          title: child.title,
+          badgeLabel: child.priority.label,
+          color: priorityColor(child.priority),
+          backgroundColor: priorityColor(
+            child.priority,
+          ).withValues(alpha: 0.15),
+          childCount: tree.childCount(child.id),
+          subtitle: child.description.isEmpty ? null : child.description,
+          chipLabels: _chipLabels(tree, child, filter),
+          currentPriority: child.priority,
+          onTap: () => _openNode(child, bubbleView: false),
+          onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+        ),
+    ];
   }
 
   /// Lifts the dragged tile instead of Flutter's default full-width shadow,

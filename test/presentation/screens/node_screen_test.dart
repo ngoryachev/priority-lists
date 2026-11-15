@@ -302,7 +302,7 @@ void main() {
       expect(orderOnScreen(), ['First', 'Second']);
 
       // Grab the second card's handle and drag it above the first.
-      final handle = find.byIcon(Icons.drag_indicator).at(1);
+      final handle = find.byIcon(Icons.drag_handle).at(1);
       final gesture = await tester.startGesture(tester.getCenter(handle));
       await tester.pump(const Duration(milliseconds: 100));
       // A short nudge past the drag slop first, then the real travel: the

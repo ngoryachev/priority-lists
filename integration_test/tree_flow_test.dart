@@ -121,7 +121,7 @@ void main() {
 
     // Drag the second card's handle above the first. A real drag on a touch
     // device — the widget test only proves the callback wiring.
-    final handle = find.byIcon(Icons.drag_indicator).at(1);
+    final handle = find.byIcon(Icons.drag_handle).at(1);
     final drag = await tester.startGesture(tester.getCenter(handle));
     await tester.pump(const Duration(milliseconds: 100));
     await drag.moveBy(const Offset(0, -20));
