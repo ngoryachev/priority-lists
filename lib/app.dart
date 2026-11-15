@@ -6,6 +6,7 @@ import 'domain/repositories/current_role_repository.dart';
 import 'domain/repositories/last_node_repository.dart';
 import 'domain/repositories/priority_node_repository.dart';
 import 'presentation/view_models/auth_view_model.dart';
+import 'presentation/view_models/card_page_view_model.dart';
 import 'presentation/view_models/filter_view_model.dart';
 import 'presentation/view_models/last_node_view_model.dart';
 import 'presentation/view_models/role_view_model.dart';
@@ -52,6 +53,10 @@ class PriorityListsApp extends StatelessWidget {
             currentUserId: () => authService.currentUser?.id,
           ),
         ),
+        // Above the MaterialApp as well, so the page a card was swiped to
+        // survives leaving its level and coming back. Memory only: there is
+        // no repository behind it.
+        Provider<CardPageViewModel>(create: (_) => CardPageViewModel()),
         Provider<AuthService>.value(value: authService),
       ],
       child: MaterialApp(
