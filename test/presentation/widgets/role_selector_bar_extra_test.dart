@@ -203,4 +203,84 @@ void main() {
     expect(vm.tree.nodeById('home')!.priority, Priority.critical);
     expect(vm.tree.nodeById('rest')!.priority, Priority.low);
   });
+
+  testWidgets('roles added one after another keep going to the end', (
+    tester,
+  ) async {
+    // Two adds in a row on a level that already has a hole: the second one has
+    // to sit past the first, not reuse the position the first just took.
+    final (repository, vm) = await seeded([
+      node('work', priority: Priority.critical, position: 0),
+      node('home', priority: Priority.high, position: 1),
+      node('play', priority: Priority.low, position: 2),
+    ]);
+    await tester.pumpWidget(wrap(vm));
+    await tester.pumpAndSettle();
+
+    await deleteRole(tester, 'home');
+    await addRole(tester, 'study');
+    await addRole(tester, 'chores');
+
+    expect(chipOrder(tester), ['work', 'play', 'study', 'chores']);
+    final positions = vm.rolesInChipOrder.map((n) => n.position).toList();
+    expect(
+      positions.toSet(),
+      hasLength(positions.length),
+      reason: 'the level never holds two chips at the same position',
+    );
+    // And the row reads the same way after a restart.
+    final reloaded = NodeTreeViewModel(repository);
+    await reloaded.load();
+    expect(
+      reloaded.rolesInChipOrder.map((n) => n.title).toList(),
+      ['work', 'play', 'study', 'chores'],
+    );
+  });
+
+  testWidgets('a role added after the leading roles were deleted goes last', (
+    tester,
+  ) async {
+    // The survivors start at position 2, so a count-based position would land
+    // the new chip at the head of the row.
+    final (_, vm) = await seeded([
+      node('work', priority: Priority.critical, position: 0),
+      node('home', priority: Priority.low, position: 1),
+      node('rest', priority: Priority.low, position: 2),
+      node('play', priority: Priority.low, position: 3),
+    ]);
+    await tester.pumpWidget(wrap(vm));
+    await tester.pumpAndSettle();
+
+    await deleteRole(tester, 'work');
+    await deleteRole(tester, 'home');
+    expect(chipOrder(tester), ['rest', 'play']);
+
+    await addRole(tester, 'study');
+
+    expect(chipOrder(tester), ['rest', 'play', 'study']);
+  });
+
+  testWidgets('a role added right after a move still goes last', (
+    tester,
+  ) async {
+    // `Move right` renumbers the level, so the next add has to read the fresh
+    // numbering rather than the one it was seeded with.
+    final (_, vm) = await seeded([
+      node('work', priority: Priority.critical, position: 0),
+      node('home', priority: Priority.low, position: 5),
+      node('play', priority: Priority.low, position: 9),
+    ]);
+    await tester.pumpWidget(wrap(vm));
+    await tester.pumpAndSettle();
+
+    await openMenu(tester, 'home');
+    await tapMenuItem(tester, 'Move right');
+    expect(chipOrder(tester), ['work', 'play', 'home']);
+
+    await addRole(tester, 'study');
+
+    expect(chipOrder(tester), ['work', 'play', 'home', 'study']);
+    expect(activeChip(tester), 'work', reason: 'adding never switches role');
+    expect(vm.tree.nodeById(vm.rolesInChipOrder.last.id)!.priority, Priority.low);
+  });
 }
