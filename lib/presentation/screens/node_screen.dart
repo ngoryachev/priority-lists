@@ -10,6 +10,7 @@ import '../view_models/card_page_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/last_node_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
+import '../view_models/role_time_view_model.dart';
 import '../utils/priority_colors.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/bubble_view/bubble_view.dart';
@@ -20,6 +21,7 @@ import '../widgets/node_form_dialog.dart';
 import '../widgets/priority_card.dart';
 import '../widgets/priority_filter_bar.dart';
 import '../widgets/role_selector_bar.dart';
+import '../widgets/role_time_strip.dart';
 import 'activity_log_screen.dart';
 
 /// One level of the tree.
@@ -50,6 +52,7 @@ class NodeScreen extends StatefulWidget {
     final filterViewModel = context.read<FilterViewModel>();
     final lastNodeViewModel = context.read<LastNodeViewModel?>();
     final cardPageViewModel = context.read<CardPageViewModel?>();
+    final roleTimeViewModel = context.read<RoleTimeViewModel?>();
     final settings = RouteSettings(name: BreadcrumbBar.routeName(nodeId));
     Widget build(BuildContext _) => MultiProvider(
       providers: [
@@ -59,6 +62,10 @@ class NodeScreen extends StatefulWidget {
           Provider<LastNodeViewModel>.value(value: lastNodeViewModel),
         if (cardPageViewModel != null)
           Provider<CardPageViewModel>.value(value: cardPageViewModel),
+        if (roleTimeViewModel != null)
+          ChangeNotifierProvider<RoleTimeViewModel>.value(
+            value: roleTimeViewModel,
+          ),
       ],
       child: NodeScreen(parentId: nodeId, initialBubbleView: bubbleView),
     );
@@ -233,8 +240,10 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     if (state != AppLifecycleState.resumed) return;
     final vm = context.read<NodeTreeViewModel>();
     final cardPages = _cardPages;
+    final roleTime = context.read<RoleTimeViewModel?>();
     Future.microtask(() async {
       await Future.wait([
+        if (roleTime != null) roleTime.refresh(),
         vm.refresh(),
         if (cardPages != null) cardPages.reload(),
       ]);
@@ -349,7 +358,23 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
             onDropInto: (role) => _dropInto(vm, role),
           ),
           Expanded(
-            child: CenteredBody(child: _buildBody(vm, tree, filter, levelId)),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CenteredBody(
+                    child: _buildBody(vm, tree, filter, levelId),
+                  ),
+                ),
+                // Along the right edge of the whole list: today's time per
+                // role, in the roles' colours.
+                const Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  child: RoleTimeStrip(),
+                ),
+              ],
+            ),
           ),
         ],
       ),

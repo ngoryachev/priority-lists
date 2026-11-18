@@ -10,6 +10,7 @@ import '../../domain/repositories/activity_log_repository.dart';
 import '../../domain/repositories/priority_node_repository.dart';
 import '../screens/login_screen.dart';
 import '../screens/node_screen.dart';
+import '../view_models/role_time_view_model.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
 
@@ -135,6 +136,13 @@ class _MigrationWrapperState extends State<_MigrationWrapper> {
             widget.supabaseRepository,
             logger: ActivityLogger(widget.activityLog),
           ),
+        ),
+        // Today's time per role, read back from the same log.
+        ChangeNotifierProvider(
+          create: (context) => RoleTimeViewModel(
+            widget.activityLog,
+            context.read<NodeTreeViewModel>(),
+          )..refresh(),
         ),
       ],
       child: const NodeScreen(),
