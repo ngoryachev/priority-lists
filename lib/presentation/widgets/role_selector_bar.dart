@@ -197,14 +197,18 @@ class _RoleSelectorBarState extends State<RoleSelectorBar> {
       builder: (_) => const NodeFormDialog(showPriority: false),
     );
     if (result == null) return;
+    // One past the rightmost chip, so the chip the user just made is where
+    // they would look for it. Not the number of roles: deleting one leaves
+    // its `position` behind as a hole (the level is never renumbered), and a
+    // count would then drop the new chip into the middle of the row.
+    final roles = vm.rolesInChipOrder;
+    final lastPosition = roles.isEmpty ? -1 : roles.last.position;
     await vm.addChild(
       title: result.title,
       description: result.description,
       priority: Priority.low,
       colorPreset: result.colorPreset,
-      // At the end of the row, where the chip the user just made is where
-      // they would look for it.
-      position: vm.rolesInChipOrder.length,
+      position: lastPosition + 1,
     );
   }
 
