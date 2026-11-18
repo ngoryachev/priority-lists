@@ -424,20 +424,23 @@ void main() {
       });
 
       test('two reds pushed down keep their relative order', () async {
+        // Under a parent: parking the demoted reds behind the new one means
+        // renumbering the level, and the top level — the roles — is exempt
+        // from that (see node_tree_view_model_roles_test).
         await repository.saveNodes([
-          raw('r1', Priority.critical),
-          raw('r2', Priority.critical, position: 1),
-          raw('o', Priority.high, position: 2),
-          raw('m', Priority.medium, position: 3),
+          raw('p', Priority.high),
+          raw('r1', Priority.critical, parentId: 'p'),
+          raw('r2', Priority.critical, parentId: 'p', position: 1),
+          raw('o', Priority.high, parentId: 'p', position: 2),
+          raw('m', Priority.medium, parentId: 'p', position: 3),
         ]);
         await vm.load();
 
-        // Top level, so the rule has to hold for parentId == null too.
         await vm.updateNode(
           vm.tree.nodeById('m')!.copyWith(priority: Priority.critical),
         );
 
-        expect(idsOf(null), ['m', 'r1', 'r2', 'o']);
+        expect(idsOf('p'), ['m', 'r1', 'r2', 'o']);
         expect(vm.tree.nodeById('r1')!.priority, Priority.high);
         expect(vm.tree.nodeById('r2')!.priority, Priority.high);
       });

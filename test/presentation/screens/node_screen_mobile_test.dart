@@ -32,17 +32,26 @@ PriorityNode node(
   );
 }
 
-Future<PriorityNodeRepository> seededChain() async {
+/// The tree's top level is the roles, and the main screen lists the children
+/// of the active one — so the chain hangs off one explicit role node.
+const roleId = 'Role';
+
+Future<PriorityNodeRepository> seeded(List<PriorityNode> nodes) async {
   final repository = InMemoryPriorityNodeRepository();
   await repository.saveNodes([
-    node('A long enough root title to wrap on a narrow phone'),
-    node('L1', parent: 'A long enough root title to wrap on a narrow phone'),
-    node('L2', parent: 'L1'),
-    node('L3', parent: 'L2', description: 'Some describing text that is not short'),
-    node('Sibling', parent: 'L2', priority: Priority.low),
+    node(roleId),
+    for (final n in nodes) n.parentId == null ? n.withParent(roleId) : n,
   ]);
   return repository;
 }
+
+Future<PriorityNodeRepository> seededChain() => seeded([
+  node('A long enough root title to wrap on a narrow phone'),
+  node('L1', parent: 'A long enough root title to wrap on a narrow phone'),
+  node('L2', parent: 'L1'),
+  node('L3', parent: 'L2', description: 'Some describing text that is not short'),
+  node('Sibling', parent: 'L2', priority: Priority.low),
+]);
 
 Widget app(PriorityNodeRepository repository, {double textScale = 1.0}) {
   return MaterialApp(
@@ -159,12 +168,11 @@ void main() {
     testWidgets('a deep breadcrumb trail scrolls instead of overflowing',
         (tester) async {
       useScreen(tester, const Size(320, 568));
-      final repository = InMemoryPriorityNodeRepository();
       // Ten nested levels with titles far wider than the bar.
       final titles = [
         for (var i = 0; i < 10; i++) 'Level number $i with a wide title',
       ];
-      await repository.saveNodes([
+      final repository = await seeded([
         for (var i = 0; i < titles.length; i++)
           node(titles[i], parent: i == 0 ? null : titles[i - 1]),
       ]);

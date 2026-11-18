@@ -59,7 +59,12 @@ Future<PriorityNodeRepository> seeded() async {
     }
   }
   final repository = InMemoryPriorityNodeRepository();
-  await repository.saveNodes(nodes);
+  // The tree's top level is the roles and the main screen lists the children
+  // of the active one, so every parent here hangs off one explicit role node.
+  await repository.saveNodes([
+    node('Role', priority: Priority.critical),
+    for (final n in nodes) n.parentId == null ? n.withParent('Role') : n,
+  ]);
   return repository;
 }
 

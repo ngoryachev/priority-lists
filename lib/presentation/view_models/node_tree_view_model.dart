@@ -45,19 +45,55 @@ class NodeTreeViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Title of the role every tree is given when it has none, so the main
+  /// screen always has a level to show.
+  static const String defaultRoleTitle = 'Root';
+
+  /// The role whose children the main screen shows. See [NodeTree.activeRole].
+  PriorityNode? get activeRole => _tree.activeRole;
+
+  /// The roles as the chip bar orders them. See [NodeTree.rolesInChipOrder].
+  List<PriorityNode> get rolesInChipOrder => _tree.rolesInChipOrder;
+
+  /// Guards [_ensureDefaultRole] against re-entry: a rejected write re-reads
+  /// the tree through [load], which would otherwise try to create the role
+  /// again on its way out of the failure it is reporting.
+  bool _creatingDefaultRole = false;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
+    var read = false;
     try {
       _setNodes(await _repository.getAllNodes());
       _loadedAt = DateTime.now();
+      read = true;
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+
+    // A tree with no top-level node has no role, and so no level for the main
+    // screen to show. Only after a read that actually succeeded: a failed one
+    // says nothing about what is in storage.
+    if (read && _tree.roots.isEmpty) await _ensureDefaultRole();
+  }
+
+  Future<void> _ensureDefaultRole() async {
+    if (_creatingDefaultRole) return;
+    _creatingDefaultRole = true;
+    try {
+      await addChild(
+        title: defaultRoleTitle,
+        // The one role there is has to be the active one.
+        priority: Priority.critical,
+      );
+    } finally {
+      _creatingDefaultRole = false;
     }
   }
 
@@ -86,12 +122,17 @@ class NodeTreeViewModel extends ChangeNotifier {
 
   /// Creates a child of [parentId] (top level when null) and returns it, or
   /// null if the write failed.
+  ///
+  /// [position] only matters where it is the whole order — the roles level,
+  /// which is not sorted by priority. Everywhere else the default 0 means "let
+  /// (priority, age) decide", as it always has.
   Future<PriorityNode?> addChild({
     String? parentId,
     required String title,
     String description = '',
     required Priority priority,
     ColorPreset? colorPreset,
+    int position = 0,
   }) async {
     final now = DateTime.now();
     final node = PriorityNode(
@@ -100,6 +141,7 @@ class NodeTreeViewModel extends ChangeNotifier {
       title: title,
       description: description,
       priority: priority,
+      position: position,
       colorPreset: colorPreset,
       createdAt: now,
       updatedAt: now,
@@ -141,6 +183,63 @@ class NodeTreeViewModel extends ChangeNotifier {
       _setNodes(_nodes.where((n) => !doomed.contains(n.id)).toList());
     });
     if (deleted && node != null) _logger?.deleted(node, treeBefore);
+  }
+
+  /// Moves a role one place along the chip bar, [delta] being -1 for left and
+  /// +1 for right. A no-op at the ends of the row.
+  ///
+  /// Only `position` is written — the whole roles level is renumbered 0..n-1,
+  /// the way a drag renumbers a level of cards — so reordering the chips never
+  /// changes which role is active.
+  Future<bool> moveRole({required String id, required int delta}) async {
+    final roles = List.of(_tree.rolesInChipOrder);
+    final from = roles.indexWhere((role) => role.id == id);
+    if (from < 0) return false;
+    final to = from + delta;
+    if (to < 0 || to >= roles.length) return false;
+
+    final moved = roles.removeAt(from);
+    roles.insert(to, moved);
+
+    final now = DateTime.now();
+    final changed = <PriorityNode>[];
+    for (var i = 0; i < roles.length; i++) {
+      if (roles[i].position == i) continue;
+      changed.add(roles[i].copyWith(position: i, updatedAt: now));
+    }
+    if (changed.isEmpty) return true;
+
+    final byId = {for (final role in changed) role.id: role};
+    final treeBefore = _tree;
+    final saved = await _write(() => _repository.saveNodes(changed), () {
+      _setNodes([for (final n in _nodes) byId[n.id] ?? n]);
+    });
+    if (saved) {
+      _logger?.reordered(
+        moved,
+        treeBefore,
+        fromRank: from,
+        toRank: to,
+        previousPriority: moved.priority,
+      );
+    }
+    return saved;
+  }
+
+  /// Deletes a role and everything under it, then makes sure a role is active
+  /// again: with the red one gone, the role rule 2 now resolves to is promoted
+  /// so the main screen has a level to show.
+  ///
+  /// Deleting a role that was not the active one leaves the red where it is.
+  /// The last role is never deleted — the chip menu disables the item — so
+  /// this cannot empty the roles level.
+  Future<void> deleteRole(String id) async {
+    await deleteNode(id);
+    if (_tree.nodeById(id) != null) return;
+    final roles = _tree.roots;
+    if (roles.isEmpty) return;
+    if (roles.any((role) => role.priority == Priority.critical)) return;
+    await updateNode(roles.first.copyWith(priority: Priority.critical));
   }
 
   /// Re-parents a node, keeping its own subtree attached. Pass null to lift it
@@ -300,6 +399,10 @@ class NodeTreeViewModel extends ChangeNotifier {
   /// [_write], so a rejected write reloads the tree instead of leaving half an
   /// eviction applied.
   ///
+  /// The top level is the exception: those nodes are the roles, their chips are
+  /// ordered by `position` alone, and switching the active role must not move
+  /// the chips about. There only the priorities are written.
+  ///
   /// [log] records the mutation that triggered all this; the demotions are
   /// logged after it.
   Future<bool> _saveExclusive(
@@ -326,18 +429,26 @@ class NodeTreeViewModel extends ChangeNotifier {
     }
 
     final changed = <PriorityNode>[];
-    for (var i = 0; i < eviction.order.length; i++) {
-      final sibling = eviction.order[i];
-      final existing = _tree.nodeById(sibling.id);
-      // [node] itself always goes: its save may carry a new title or colour
-      // even when its place in the level is unchanged.
-      if (sibling.id != node.id &&
-          existing != null &&
-          existing.position == i &&
-          existing.priority == sibling.priority) {
-        continue;
+    if (node.parentId == null) {
+      // The roles level is exempt: chips are ordered by `position`, and
+      // renumbering it on every role switch would slide every chip out from
+      // under the finger that just tapped one. Only the priorities go out.
+      changed.add(node);
+      changed.addAll(eviction.demoted.map((n) => n.copyWith(updatedAt: now)));
+    } else {
+      for (var i = 0; i < eviction.order.length; i++) {
+        final sibling = eviction.order[i];
+        final existing = _tree.nodeById(sibling.id);
+        // [node] itself always goes: its save may carry a new title or colour
+        // even when its place in the level is unchanged.
+        if (sibling.id != node.id &&
+            existing != null &&
+            existing.position == i &&
+            existing.priority == sibling.priority) {
+          continue;
+        }
+        changed.add(sibling.copyWith(position: i, updatedAt: now));
       }
-      changed.add(sibling.copyWith(position: i, updatedAt: now));
     }
 
     final saved = await _write(

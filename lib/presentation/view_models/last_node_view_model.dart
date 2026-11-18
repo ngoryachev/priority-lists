@@ -5,8 +5,8 @@ import '../../domain/repositories/last_node_repository.dart';
 /// Remembers which level the user is on, and decides what to reopen on launch.
 ///
 /// Not a [ChangeNotifier]: nothing on screen is driven by this value. It is a
-/// side record, like the current role — the screens write to it as the user
-/// moves, and the root screen reads it exactly once, when the tree has loaded.
+/// side record — the screens write to it as the user moves, and the main
+/// screen reads it exactly once, when the tree has loaded.
 ///
 /// Persistence is best-effort throughout. A settings store that throws, holds
 /// a value from another account, or points at a node that is gone all mean the
@@ -20,7 +20,7 @@ class LastNodeViewModel {
   /// whoever is signed in at the moment of the write.
   final String? Function() _currentUserId;
 
-  /// Writes are chained, like `RoleViewModel`'s: a breadcrumb jump pops
+  /// Writes are chained, like `ActivityLogger`'s: a breadcrumb jump pops
   /// several levels in one go, and unordered those writes can leave an
   /// intermediate level stored while the user is looking at the crumb they
   /// tapped.
@@ -37,7 +37,8 @@ class LastNodeViewModel {
   /// its own pending write.
   Future<void> get idle => _queue;
 
-  /// Records that the user is now looking at [nodeId]'s level; null = root.
+  /// Records that the user is now looking at [nodeId]'s level; null = the main
+  /// screen, whichever role is active there.
   ///
   /// Fire and forget: the screen has already changed, and a pointer that
   /// cannot be stored only means the next launch opens at the root.
@@ -54,8 +55,14 @@ class LastNodeViewModel {
         .catchError((_) {});
   }
 
-  /// The levels to reopen, root-first and excluding the top level itself —
-  /// empty when the app should just stay at the root.
+  /// The levels to reopen, outermost first and excluding the main screen
+  /// itself — empty when the app should just stay there.
+  ///
+  /// A pointer is only usable inside the active role: the main screen lists
+  /// that role's children, so the stored node has to hang off it. A pointer at
+  /// a node in another role, or at a role itself, means the main screen — and
+  /// is dropped rather than retried on every launch. Nothing here ever writes
+  /// a priority, so a launch cannot switch roles.
   ///
   /// Called once [NodeTreeViewModel.load] has produced [tree], since the
   /// pointer is only usable against a tree that is actually there.
@@ -79,20 +86,22 @@ class LastNodeViewModel {
     // `remember` takes the same stance and skips the write.
     final userId = _currentUserId();
     if (userId == null) return const [];
-    // Somebody else's pointer, or one pointing at a node that was deleted (or
-    // orphaned out of reach): drop it rather than keep retrying it on every
-    // launch. An orphan whose parent is missing needs no special case —
-    // `NodeTree` treats it as a root, so `pathTo` yields its single-node path.
+    // Somebody else's pointer: drop it rather than keep retrying it on every
+    // launch.
     if (pointer.userId != userId) {
       _forget();
       return const [];
     }
     final path = tree.pathTo(nodeId);
-    if (path.isEmpty) {
+    // Everything that cannot be reopened inside the active role: a node that
+    // was deleted (or orphaned out of reach, which `NodeTree` reads as a root
+    // of its own), a role, and a node belonging to another role. The role
+    // itself is not a level, hence the leading node of the path going away.
+    if (path.length < 2 || path.first.id != tree.activeRole?.id) {
       _forget();
       return const [];
     }
-    return path;
+    return path.sublist(1);
   }
 
   /// Best-effort clear, chained behind the pending writes like [remember] so

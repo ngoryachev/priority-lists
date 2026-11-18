@@ -16,26 +16,37 @@ import 'package:provider/provider.dart';
 /// (the app bar button and the system gesture), deeper and shallower stacks,
 /// and what happens on the second launch / second account.
 
-PriorityNode node(String id, {String? parent}) {
+PriorityNode node(
+  String id, {
+  String? parent,
+  Priority priority = Priority.high,
+}) {
   final created = DateTime(2026, 1, 1);
   return PriorityNode(
     id: id,
     parentId: parent,
     title: id,
     description: '',
-    priority: Priority.high,
+    priority: priority,
     createdAt: created,
     updatedAt: created,
   );
 }
 
+/// The main screen lists the active role's children, so the tree hangs off one
+/// explicit role node — whose title is what the main screen's app bar shows.
+const roleId = 'Root';
+
 Future<PriorityNodeRepository> seeded(List<PriorityNode> nodes) async {
   final repository = InMemoryPriorityNodeRepository();
-  await repository.saveNodes(nodes);
+  await repository.saveNodes([
+    node(roleId, priority: Priority.critical),
+    for (final n in nodes) n.parentId == null ? n.withParent(roleId) : n,
+  ]);
   return repository;
 }
 
-/// A > B > C > D, with a second branch under A and a second root.
+/// A > B > C > D, with a second branch under A and a sibling at A's level.
 Future<PriorityNodeRepository> deepTree() => seeded([
   node('A'),
   node('B', parent: 'A'),
@@ -161,7 +172,7 @@ void main() {
       await tester.pumpAndSettle();
       await lastNodes.idle;
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(
         store.stored!.nodeId,
         isNull,
@@ -329,13 +340,13 @@ void main() {
 
       await tester.tap(crumb('All'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
     });
 
@@ -372,7 +383,7 @@ void main() {
       await tester.pumpAndSettle();
       await lastNodes.idle;
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
       expect(
         store.stored,

@@ -2,23 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/services/auth_service.dart';
-import 'domain/repositories/current_role_repository.dart';
 import 'domain/repositories/last_node_repository.dart';
 import 'domain/repositories/priority_node_repository.dart';
 import 'presentation/view_models/auth_view_model.dart';
 import 'presentation/view_models/card_page_view_model.dart';
 import 'presentation/view_models/filter_view_model.dart';
 import 'presentation/view_models/last_node_view_model.dart';
-import 'presentation/view_models/role_view_model.dart';
 import 'presentation/widgets/auth_gate.dart';
 
 class PriorityListsApp extends StatelessWidget {
   final PriorityNodeRepository localRepository;
   final AuthService authService;
-
-  /// Where the current-role marker is kept. Optional: without it the selector
-  /// still works, it just forgets the pick when the process ends.
-  final CurrentRoleRepository? currentRoleRepository;
 
   /// Where the last opened node is kept. Optional: without it every launch
   /// opens at the root, which is the behaviour the app shipped with.
@@ -28,7 +22,6 @@ class PriorityListsApp extends StatelessWidget {
     super.key,
     required this.localRepository,
     required this.authService,
-    this.currentRoleRepository,
     this.lastNodeRepository,
   });
 
@@ -42,11 +35,8 @@ class PriorityListsApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => FilterViewModel(),
         ),
-        ChangeNotifierProvider(
-          create: (_) => RoleViewModel(repository: currentRoleRepository),
-        ),
-        // Above the MaterialApp, like the role marker: the user id is read
-        // per write, so the same instance serves whoever signs in next.
+        // Above the MaterialApp: the user id is read per write, so the same
+        // instance serves whoever signs in next.
         Provider<LastNodeViewModel>(
           create: (_) => LastNodeViewModel(
             repository: lastNodeRepository,

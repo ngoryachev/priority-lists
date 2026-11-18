@@ -88,19 +88,25 @@ void main() {
   }
 
   group('repeated evictions', () {
+    // Parking the demoted red above the oranges means renumbering the level,
+    // which is what every level but the roles does — hence the explicit role
+    // over these fixtures.
+    const roleId = 'Role';
+
     test('the newest demotion sits above the one before it', () async {
       await repository.saveNodes([
-        raw('a', Priority.critical),
-        raw('o', Priority.high, position: 1),
-        raw('b', Priority.medium, position: 2),
-        raw('c', Priority.medium, position: 3),
+        raw(roleId, Priority.critical),
+        raw('a', Priority.critical, parentId: roleId),
+        raw('o', Priority.high, parentId: roleId, position: 1),
+        raw('b', Priority.medium, parentId: roleId, position: 2),
+        raw('c', Priority.medium, parentId: roleId, position: 3),
       ]);
       await vm.load();
 
       await setCritical('b'); // a -> high, parked above o
       await setCritical('c'); // b -> high, parked above a and o
 
-      expect(idsOf(null), ['c', 'b', 'a', 'o']);
+      expect(idsOf(roleId), ['c', 'b', 'a', 'o']);
       expect(vm.tree.nodeById('a')!.priority, Priority.high);
       expect(vm.tree.nodeById('b')!.priority, Priority.high);
       expectAtMostOneRed();
@@ -108,9 +114,10 @@ void main() {
 
     test('a demoted node can take the slot back', () async {
       await repository.saveNodes([
-        raw('a', Priority.critical),
-        raw('o', Priority.high, position: 1),
-        raw('b', Priority.medium, position: 2),
+        raw(roleId, Priority.critical),
+        raw('a', Priority.critical, parentId: roleId),
+        raw('o', Priority.high, parentId: roleId, position: 1),
+        raw('b', Priority.medium, parentId: roleId, position: 2),
       ]);
       await vm.load();
 
@@ -118,7 +125,7 @@ void main() {
       // 'a' was pushed to high; promoting it again must push 'b' down in turn.
       await setCritical('a');
 
-      expect(idsOf(null), ['a', 'b', 'o']);
+      expect(idsOf(roleId), ['a', 'b', 'o']);
       expect(vm.tree.nodeById('b')!.priority, Priority.high);
       expectAtMostOneRed();
     });
@@ -217,8 +224,14 @@ void main() {
 
       expect(await vm.moveNode('incoming', null), isTrue);
 
-      expect(idsOf(null), ['incoming', 'root', 'o', 'parent']);
+      // The roles level is exempt from renumbering, so the eviction is a
+      // priority change and nothing else: the order that comes out is the one
+      // the untouched positions already described.
       expect(vm.tree.nodeById('root')!.priority, Priority.high);
+      expect(vm.tree.nodeById('root')!.position, 0);
+      expect(vm.tree.nodeById('o')!.position, 1);
+      expect(vm.tree.nodeById('parent')!.position, 2);
+      expect(idsOf(null), ['incoming', 'root', 'o', 'parent']);
       expectAtMostOneRed();
     });
 

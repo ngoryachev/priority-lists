@@ -32,9 +32,17 @@ PriorityNode node(
   );
 }
 
+/// The tree's top level is the roles and the main screen lists the children
+/// of the active one, so fixtures that used to be top-level hang off one
+/// explicit role node.
+const roleId = 'Role';
+
 Future<PriorityNodeRepository> seeded(List<PriorityNode> nodes) async {
   final repository = InMemoryPriorityNodeRepository();
-  await repository.saveNodes(nodes);
+  await repository.saveNodes([
+    node(roleId, priority: Priority.critical),
+    for (final n in nodes) n.parentId == null ? n.withParent(roleId) : n,
+  ]);
   return repository;
 }
 

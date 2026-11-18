@@ -32,6 +32,14 @@ class NodeFormDialog extends StatefulWidget {
   /// obvious which level is being added to. Null for the top level.
   final String? parentTitle;
 
+  /// Whether the priority picker is part of the form.
+  ///
+  /// Off for a role: a role's priority is what makes it the active one, so
+  /// editing its title here must not switch roles (or leave the roles with no
+  /// active one at all). Switching is the chip tap's job. [initialPriority]
+  /// then comes back unchanged.
+  final bool showPriority;
+
   const NodeFormDialog({
     super.key,
     this.initialTitle,
@@ -39,6 +47,7 @@ class NodeFormDialog extends StatefulWidget {
     this.initialPriority = Priority.low,
     this.initialColor,
     this.parentTitle,
+    this.showPriority = true,
   });
 
   @override
@@ -74,7 +83,8 @@ class _NodeFormDialogState extends State<NodeFormDialog> {
   String get _dialogTitle {
     if (_isEditing) return 'Edit';
     final parent = widget.parentTitle;
-    return parent == null ? 'New Top-Level Node' : 'New Node in "$parent"';
+    // The top level is the roles, so a node created without a parent is one.
+    return parent == null ? 'New Role' : 'New Node in "$parent"';
   }
 
   @override
@@ -112,13 +122,15 @@ class _NodeFormDialogState extends State<NodeFormDialog> {
                 ),
                 maxLines: 3,
               ),
-              const SizedBox(height: 16),
-              const Text('Priority'),
-              const SizedBox(height: 8),
-              PriorityPickerWidget(
-                selected: _selectedPriority,
-                onChanged: (p) => setState(() => _selectedPriority = p),
-              ),
+              if (widget.showPriority) ...[
+                const SizedBox(height: 16),
+                const Text('Priority'),
+                const SizedBox(height: 8),
+                PriorityPickerWidget(
+                  selected: _selectedPriority,
+                  onChanged: (p) => setState(() => _selectedPriority = p),
+                ),
+              ],
               const SizedBox(height: 16),
               InkWell(
                 onTap: _pickColor,

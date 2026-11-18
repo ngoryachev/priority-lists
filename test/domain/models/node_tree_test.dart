@@ -194,4 +194,70 @@ void main() {
       expect(tree.hasChildren('a1'), isFalse);
     });
   });
+
+  /// The top level is the roles: one chip each, exactly one of them active.
+  group('roles', () {
+    test('the red role is the active one', () {
+      final tree = NodeTree([
+        node('work', priority: Priority.high, position: 0),
+        node('home', priority: Priority.critical, position: 1),
+        node('rest', priority: Priority.low, position: 2),
+        // A red child one level down is somebody else's active role, not one.
+        node('deep', parent: 'work', priority: Priority.critical),
+      ]);
+
+      expect(tree.activeRole!.id, 'home');
+    });
+
+    test('with no red role the first one in sibling order stands in', () {
+      final tree = NodeTree([
+        node('low', priority: Priority.low, position: 0),
+        node('high', priority: Priority.high, position: 1),
+      ]);
+
+      // Sibling order is priority-first, so the orange one leads.
+      expect(tree.activeRole!.id, 'high');
+    });
+
+    test('no roles at all has no active role', () {
+      expect(NodeTree.empty().activeRole, isNull);
+    });
+
+    test('chip order is position then age, whatever the priorities', () {
+      final tree = NodeTree([
+        node('third', priority: Priority.critical, position: 2),
+        node('first', priority: Priority.low, position: 0),
+        node('second', priority: Priority.high, position: 1),
+      ]);
+
+      expect(tree.rolesInChipOrder.map((n) => n.id), [
+        'first',
+        'second',
+        'third',
+      ]);
+      expect(
+        tree.roots.map((n) => n.id),
+        ['third', 'second', 'first'],
+        reason: 'sibling order is priority-first and is NOT the chip order',
+      );
+    });
+
+    test('roles that were never reordered fall back to age', () {
+      final tree = NodeTree([
+        node('younger', createdOffset: 1),
+        node('older', createdOffset: 0),
+      ]);
+
+      expect(tree.rolesInChipOrder.map((n) => n.id), ['older', 'younger']);
+    });
+
+    test('only the top level counts as roles', () {
+      final tree = NodeTree([
+        node('role'),
+        node('child', parent: 'role'),
+      ]);
+
+      expect(tree.rolesInChipOrder.map((n) => n.id), ['role']);
+    });
+  });
 }
