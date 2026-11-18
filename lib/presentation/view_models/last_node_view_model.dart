@@ -66,9 +66,21 @@ class LastNodeViewModel {
   ///
   /// Called once [NodeTreeViewModel.load] has produced [tree], since the
   /// pointer is only usable against a tree that is actually there.
-  Future<List<PriorityNode>> resolveRestorePath(NodeTree tree) async {
+  Future<List<PriorityNode>> resolveRestorePath(NodeTree tree) async =>
+      await _resolve(tree) ?? const [];
+
+  /// The levels to follow when the app comes back to the foreground: the
+  /// stored level may be another device's by now. Unlike
+  /// [resolveRestorePath], "nothing to go on" — no store, nothing stored, a
+  /// pointer that is unusable or cannot be read — is null rather than the
+  /// main screen, so a failed read never drags the user back to the top. An
+  /// empty list is a real answer: the main screen.
+  Future<List<PriorityNode>?> resolveFollowPath(NodeTree tree) =>
+      _resolve(tree);
+
+  Future<List<PriorityNode>?> _resolve(NodeTree tree) async {
     final repository = _repository;
-    if (repository == null) return const [];
+    if (repository == null) return null;
     // Let a pending write land first: reading across our own in-flight save
     // would hand back the previous level.
     await _queue;
@@ -76,22 +88,22 @@ class LastNodeViewModel {
     try {
       pointer = await repository.load();
     } catch (_) {
-      return const [];
+      return null;
     }
-    if (pointer == null) return const [];
-    final nodeId = pointer.nodeId;
-    if (nodeId == null) return const [];
+    if (pointer == null) return null;
     // Nobody signed in is not "somebody else's pointer": a sign-out landing
     // between the mount and this read must not cost the user their pointer.
     // `remember` takes the same stance and skips the write.
     final userId = _currentUserId();
-    if (userId == null) return const [];
+    if (userId == null) return null;
     // Somebody else's pointer: drop it rather than keep retrying it on every
     // launch.
     if (pointer.userId != userId) {
       _forget();
-      return const [];
+      return null;
     }
+    final nodeId = pointer.nodeId;
+    if (nodeId == null) return const [];
     final path = tree.pathTo(nodeId);
     // Everything that cannot be reopened inside the active role: a node that
     // was deleted (or orphaned out of reach, which `NodeTree` reads as a root
@@ -99,7 +111,7 @@ class LastNodeViewModel {
     // itself is not a level, hence the leading node of the path going away.
     if (path.length < 2 || path.first.id != tree.activeRole?.id) {
       _forget();
-      return const [];
+      return null;
     }
     return path.sublist(1);
   }

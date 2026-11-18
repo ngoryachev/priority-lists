@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/models/priority.dart';
@@ -84,6 +85,12 @@ class PriorityCard extends StatefulWidget {
   /// child that went away cannot erase the remembered page.
   final ValueChanged<String?>? onChildPageChanged;
 
+  /// Previous / next arrows on mouse hover instead of the swipe dots. On by
+  /// default in the browser, where a mouse cannot drag the pages and a wheel
+  /// only turns them with Shift held. The arrows wrap around: past the last
+  /// child comes the node itself again.
+  final bool pageArrows;
+
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -108,6 +115,7 @@ class PriorityCard extends StatefulWidget {
     this.childPages = const [],
     this.initialChildId,
     this.onChildPageChanged,
+    this.pageArrows = kIsWeb,
     this.onTap,
     this.onEdit,
     this.onDelete,
@@ -149,6 +157,9 @@ class _PriorityCardState extends State<PriorityCard> {
   /// Set around the card's own [PageController.jumpToPage] so the resulting
   /// page change is not reported as the user's choice.
   bool _programmatic = false;
+
+  /// A mouse is over the card, which is when [PriorityCard.pageArrows] show.
+  bool _hovering = false;
 
   @override
   void initState() {
@@ -200,6 +211,12 @@ class _PriorityCardState extends State<PriorityCard> {
   @override
   void didUpdateWidget(PriorityCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // A new page from outside — another device's, after a reload. A swipe of
+    // this card's own lands here too once the level rebuilds, already equal
+    // to [_childId].
+    if (widget.initialChildId != oldWidget.initialChildId) {
+      _childId = widget.initialChildId;
+    }
     if (!_swipeable) {
       final gone = _controller;
       _controller = null;
@@ -233,6 +250,28 @@ class _PriorityCardState extends State<PriorityCard> {
     });
   }
 
+  /// Turns the page by [delta] from an arrow, wrapping around at both ends.
+  /// Reported like a swipe, since it is the user's choice.
+  void _step(int delta) {
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) return;
+    final count = widget.childPages.length + 1;
+    final current = controller.page?.round() ?? _indexOf(_shownChildId);
+    final raw = current + delta;
+    final target = raw % count;
+    if (raw != target) {
+      // Wrapping: a slide across every page in between would read as a
+      // scroll through them.
+      controller.jumpToPage(target);
+    } else {
+      controller.animateToPage(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   void _onPageChanged(int index) {
     if (_programmatic) return;
     final id = index == 0 ? null : widget.childPages[index - 1].id;
@@ -264,6 +303,7 @@ class _PriorityCardState extends State<PriorityCard> {
 
     final controller = _controller;
     final swiping = _swipeable && controller != null;
+    final showArrows = swiping && widget.pageArrows && _hovering;
     // Positioned.fill while swiping (the pages take the whole tile), a plain
     // child otherwise — a Stack with nothing but positioned children takes
     // all the room it is offered, and a card without a fixed height has to
@@ -318,7 +358,35 @@ class _PriorityCardState extends State<PriorityCard> {
                 onTap: activeTap,
               ),
             ),
-          if (swiping)
+          if (showArrows) ...[
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _PageArrow(
+                  icon: Icons.chevron_left,
+                  label: 'Previous page',
+                  color: widget.color,
+                  onTap: () => _step(-1),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _PageArrow(
+                  icon: Icons.chevron_right,
+                  label: 'Next page',
+                  color: widget.color,
+                  onTap: () => _step(1),
+                ),
+              ),
+            ),
+          ],
+          if (swiping && !showArrows)
             Positioned(
               right: 4,
               top: 0,
@@ -352,6 +420,14 @@ class _PriorityCardState extends State<PriorityCard> {
         ],
       ),
     );
+
+    if (swiping && widget.pageArrows) {
+      card = MouseRegion(
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: card,
+      );
+    }
 
     if (widget.fixedHeight != null) {
       return SizedBox(height: widget.fixedHeight, child: card);
@@ -773,6 +849,43 @@ class _SwipeDots extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// One of the hover arrows that turn a card's pages with a mouse.
+class _PageArrow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _PageArrow({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+        shape: const CircleBorder(),
+        elevation: 1,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: Icon(icon, size: 22, color: color),
+          ),
+        ),
       ),
     );
   }

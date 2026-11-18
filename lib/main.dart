@@ -9,6 +9,8 @@ import 'config/env.dart';
 import 'data/repositories/in_memory_priority_node_repository.dart';
 import 'data/repositories/local_priority_node_repository.dart';
 import 'data/repositories/shared_preferences_last_node_repository.dart';
+import 'data/repositories/supabase_view_state_repository.dart';
+import 'data/repositories/synced_last_node_repository.dart';
 import 'data/services/auth_service.dart';
 import 'domain/repositories/priority_node_repository.dart';
 
@@ -47,8 +49,13 @@ Future<void> _runApp() async {
   runApp(PriorityListsApp(
     localRepository: localRepository,
     authService: authService,
-    // shared_preferences works in the browser too, so the deployed web build
-    // reopens the last level like the native ones.
-    lastNodeRepository: SharedPreferencesLastNodeRepository(),
+    // The position lives on the server so every device opens where the user
+    // last was; shared_preferences (which works in the browser too) keeps
+    // this device's copy for when the server cannot be read.
+    lastNodeRepository: SyncedLastNodeRepository(
+      remote: SupabaseLastNodeRepository(client),
+      local: SharedPreferencesLastNodeRepository(),
+    ),
+    cardPageRepository: SupabaseCardPageRepository(client),
   ));
 }

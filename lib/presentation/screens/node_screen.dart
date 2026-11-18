@@ -98,7 +98,9 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   String? _parentLevelId;
 
   /// Restoring the saved level is a launch-time, one-shot affair; a later
-  /// reload of the tree must not drag the user back down.
+  /// reload of the tree must not drag the user back down. After it, coming
+  /// back to the foreground follows another device instead
+  /// ([_followOtherDevice]).
   bool _restored = false;
 
   bool get _isRoot => widget.parentId == null;
@@ -112,6 +114,9 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     // an await.
     _lastNodes = context.read<LastNodeViewModel?>();
     _cardPages = context.read<CardPageViewModel?>();
+    // Pages from another device arrive through a reload; every level rebuilds
+    // its cards onto them.
+    _cardPages?.revision.addListener(_onCardPagesReloaded);
     if (_isRoot) {
       // Only the root screen observes: it stays alive under every pushed
       // level, so one observer covers the whole drill-down.
@@ -120,8 +125,11 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       // Nothing is awaited before the first frame: the loading and error
       // states of the tree are untouched, and the stack is only rebuilt once
       // there is a tree to look the saved node up in.
+      final cardPages = _cardPages;
       Future.microtask(() async {
-        await vm.load();
+        // The pages are in before the first card is built, so a card never
+        // mounts on page 0 and then jumps.
+        await Future.wait([vm.load(), if (cardPages != null) cardPages.reload()]);
         if (!mounted) return;
         await _restoreLastLevel(vm);
       });
@@ -160,24 +168,84 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Moves this device to the level another device left, when the app comes
+  /// back to the foreground — the same moment the tree itself is refreshed.
+  ///
+  /// Only from a plain level: a dialog, a sheet or another screen on top is
+  /// left alone, and so is a read that gives nothing to go on. The stack is
+  /// rebuilt like a launch restore, so back navigation and breadcrumbs behave
+  /// as if the user had drilled down by hand.
+  Future<void> _followOtherDevice(NodeTreeViewModel vm) async {
+    final lastNodes = _lastNodes;
+    if (lastNodes == null || vm.tree.isEmpty) return;
+    final path = await lastNodes.resolveFollowPath(vm.tree);
+    if (path == null || !mounted) return;
+    final navigator = Navigator.of(context);
+    // The route on top, found without popping anything.
+    Route<dynamic>? top;
+    navigator.popUntil((route) {
+      top = route;
+      return true;
+    });
+    final current = top;
+    if (current == null) return;
+    final currentName = current.isFirst
+        ? BreadcrumbBar.routeName(null)
+        : current.settings.name;
+    if (currentName == null || !currentName.startsWith('node/')) return;
+    final targetId = path.isEmpty ? null : path.last.id;
+    if (currentName == BreadcrumbBar.routeName(targetId)) return;
+    if (path.isEmpty) {
+      navigator.popUntil((route) => route.isFirst);
+    } else {
+      // The old levels are removed under the new one rather than popped: a
+      // pop animates (and flies the heroes) while the instant push lands in
+      // the same frame.
+      navigator.pushAndRemoveUntil(
+        NodeScreen.route(context, path.first.id, animate: false),
+        (route) => route.isFirst,
+      );
+      for (final node in path.skip(1)) {
+        navigator.push(NodeScreen.route(context, node.id, animate: false));
+      }
+    }
+    // A popped level records the one above it on its way out; the level we
+    // have landed on has to be the last write.
+    lastNodes.remember(targetId);
+  }
+
+  void _onCardPagesReloaded() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _cardPages?.revision.removeListener(_onCardPagesReloaded);
     if (_isRoot) WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  /// Another device may have edited the tree while this one was in the
-  /// background; pull the latest on return rather than showing stale data.
+  /// Another device may have edited the tree, or moved around it, while this
+  /// one was in the background; pull the latest on return rather than
+  /// showing stale data.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     final vm = context.read<NodeTreeViewModel>();
+    final cardPages = _cardPages;
     Future.microtask(() async {
-      await vm.refresh();
+      await Future.wait([
+        vm.refresh(),
+        if (cardPages != null) cardPages.reload(),
+      ]);
       if (!mounted) return;
-      // A launch whose own load failed has not restored yet: a tree arriving
-      // here is its retry. A no-op once the restore has already run.
-      await _restoreLastLevel(vm);
+      if (_restored) {
+        await _followOtherDevice(vm);
+      } else {
+        // A launch whose own load failed has not restored yet: a tree
+        // arriving here is its retry.
+        await _restoreLastLevel(vm);
+      }
     });
   }
 

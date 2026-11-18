@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/services/auth_service.dart';
+import 'domain/repositories/card_page_repository.dart';
 import 'domain/repositories/last_node_repository.dart';
 import 'domain/repositories/priority_node_repository.dart';
 import 'presentation/view_models/auth_view_model.dart';
@@ -18,11 +19,16 @@ class PriorityListsApp extends StatelessWidget {
   /// opens at the root, which is the behaviour the app shipped with.
   final LastNodeRepository? lastNodeRepository;
 
+  /// Where the card pages are kept. Optional: without it a card remembers its
+  /// page only for the lifetime of the process.
+  final CardPageRepository? cardPageRepository;
+
   const PriorityListsApp({
     super.key,
     required this.localRepository,
     required this.authService,
     this.lastNodeRepository,
+    this.cardPageRepository,
   });
 
   @override
@@ -44,9 +50,10 @@ class PriorityListsApp extends StatelessWidget {
           ),
         ),
         // Above the MaterialApp as well, so the page a card was swiped to
-        // survives leaving its level and coming back. Memory only: there is
-        // no repository behind it.
-        Provider<CardPageViewModel>(create: (_) => CardPageViewModel()),
+        // survives leaving its level and coming back.
+        Provider<CardPageViewModel>(
+          create: (_) => CardPageViewModel(repository: cardPageRepository),
+        ),
         Provider<AuthService>.value(value: authService),
       ],
       child: MaterialApp(
