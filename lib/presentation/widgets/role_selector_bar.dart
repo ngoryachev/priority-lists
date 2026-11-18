@@ -20,13 +20,26 @@ import 'node_form_dialog.dart';
 /// that renames, recolours, reorders and deletes a role; the trailing "+" chip
 /// creates one.
 ///
+/// While a node is being moved by tap ([movingNodeId] set), the chips become
+/// drop targets instead: every role the node is not already a direct child of
+/// lights up green, and tapping it hands the role to [onDropInto]. The menu and
+/// the "+" chip step aside for the duration, so a tap can only mean "put it
+/// here".
+///
 /// The row scrolls horizontally rather than wrapping: on a phone that keeps the
 /// bar one line tall, so the list below it does not jump between one and two
 /// rows of chrome as roles are picked. More chips than fit a phone's width is
 /// the normal case, so the active one is scrolled into view — a marker nobody
 /// can see is no marker.
 class RoleSelectorBar extends StatefulWidget {
-  const RoleSelectorBar({super.key});
+  /// The node being relocated by tap on the level below, or null when idle.
+  final String? movingNodeId;
+
+  /// Called with the role the moving node was dropped on. Only used while
+  /// [movingNodeId] is set.
+  final ValueChanged<PriorityNode>? onDropInto;
+
+  const RoleSelectorBar({super.key, this.movingNodeId, this.onDropInto});
 
   @override
   State<RoleSelectorBar> createState() => _RoleSelectorBarState();
@@ -60,6 +73,10 @@ class _RoleSelectorBarState extends State<RoleSelectorBar> {
 
     _revealAfterFrame(activeId);
 
+    final moving = vm.tree.nodeById(widget.movingNodeId);
+    final onDropInto = widget.onDropInto;
+    final isMoving = moving != null && onDropInto != null;
+
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: SingleChildScrollView(
@@ -68,18 +85,31 @@ class _RoleSelectorBarState extends State<RoleSelectorBar> {
         child: Row(
           children: [
             for (var i = 0; i < roles.length; i++)
-              _RoleChip(
-                key: _keyFor(roles[i].id),
-                role: roles[i],
-                isActive: roles[i].id == activeId,
-                // The active chip has nothing to switch to, so its tap is the
-                // menu — which is also what a long-press does anywhere.
-                onTap: roles[i].id == activeId
-                    ? () => _openMenu(vm, roles, i)
-                    : () => _switchTo(vm, roles[i]),
-                onLongPress: () => _openMenu(vm, roles, i),
-              ),
-            _AddRoleChip(onTap: () => _addRole(vm)),
+              if (isMoving)
+                _RoleChip(
+                  key: _keyFor(roles[i].id),
+                  role: roles[i],
+                  isActive: roles[i].id == activeId,
+                  // Dropping a node into the role it already sits in directly
+                  // would change nothing; from deeper down it lifts the node
+                  // to that role's level, which is a real move.
+                  isDropTarget: roles[i].id != moving.parentId &&
+                      roles[i].id != moving.id,
+                  onTap: () => onDropInto(roles[i]),
+                )
+              else
+                _RoleChip(
+                  key: _keyFor(roles[i].id),
+                  role: roles[i],
+                  isActive: roles[i].id == activeId,
+                  // The active chip has nothing to switch to, so its tap is
+                  // the menu — which is also what a long-press does anywhere.
+                  onTap: roles[i].id == activeId
+                      ? () => _openMenu(vm, roles, i)
+                      : () => _switchTo(vm, roles[i]),
+                  onLongPress: () => _openMenu(vm, roles, i),
+                ),
+            if (!isMoving) _AddRoleChip(onTap: () => _addRole(vm)),
           ],
         ),
       ),
@@ -256,14 +286,19 @@ class _RoleChip extends StatelessWidget {
   final PriorityNode role;
   final bool isActive;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
+
+  /// Set while a node is being moved: null outside move mode, true when the
+  /// node can be dropped here, false when it cannot (the chip is then inert).
+  final bool? isDropTarget;
 
   const _RoleChip({
     super.key,
     required this.role,
     required this.isActive,
     required this.onTap,
-    required this.onLongPress,
+    this.onLongPress,
+    this.isDropTarget,
   });
 
   @override
@@ -278,18 +313,44 @@ class _RoleChip extends StatelessWidget {
             Brightness.dark
         ? Colors.white
         : Colors.black87;
-    final chip = ChoiceChip(
-      label: Text(role.title),
-      selected: isActive,
-      onSelected: (_) => onTap(),
-      selectedColor: accent,
-      labelStyle: TextStyle(
-        color: isActive ? onAccent : scheme.onSurface,
-        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-      ),
-      showCheckmark: false,
-      side: BorderSide(color: isActive ? accent : scheme.outlineVariant),
-    );
+    final dropTarget = isDropTarget;
+    final Widget chip;
+    if (dropTarget != null) {
+      // Move mode: the same green the cards use for "put it here", so the
+      // chips read as part of one set of targets. The active role keeps its
+      // bold label as the only reminder of where the user is.
+      chip = ChoiceChip(
+        label: Text(role.title),
+        selected: false,
+        onSelected: dropTarget ? (_) => onTap() : null,
+        backgroundColor: Colors.green.withValues(alpha: 0.35),
+        disabledColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        labelStyle: TextStyle(
+          color: dropTarget
+              ? scheme.onSurface
+              : scheme.onSurface.withValues(alpha: 0.38),
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+        showCheckmark: false,
+        side: BorderSide(
+          color: dropTarget ? Colors.green : scheme.outlineVariant,
+          width: dropTarget ? 1.5 : 1,
+        ),
+      );
+    } else {
+      chip = ChoiceChip(
+        label: Text(role.title),
+        selected: isActive,
+        onSelected: (_) => onTap(),
+        selectedColor: accent,
+        labelStyle: TextStyle(
+          color: isActive ? onAccent : scheme.onSurface,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+        showCheckmark: false,
+        side: BorderSide(color: isActive ? accent : scheme.outlineVariant),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),

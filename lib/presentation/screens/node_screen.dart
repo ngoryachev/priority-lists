@@ -274,7 +274,12 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
         children: [
           // Pinned: the roles stay visible while drilling down, which is the
           // point of them.
-          const RoleSelectorBar(),
+          // While a node is being moved the chips are drop targets too, so it
+          // can go straight into another role.
+          RoleSelectorBar(
+            movingNodeId: _movingId,
+            onDropInto: (role) => _dropInto(vm, role),
+          ),
           Expanded(
             child: CenteredBody(child: _buildBody(vm, tree, filter, levelId)),
           ),
@@ -722,7 +727,7 @@ class _MoveBanner extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Moving "$title" — tap a node to put it inside',
+                'Moving "$title" — tap a node or a role to put it inside',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
