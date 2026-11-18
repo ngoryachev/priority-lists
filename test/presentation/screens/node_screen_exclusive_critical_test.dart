@@ -16,15 +16,21 @@ void main() {
   late InMemoryPriorityNodeRepository repository;
   late NodeTreeViewModel vm;
 
+  /// The level under test is the active role's children — what the main
+  /// screen lists — so every seeded node hangs off [roleId].
+  const roleId = 'Role';
+
   PriorityNode seed(
     String id,
     Priority priority, {
+    String? parentId = roleId,
     int position = 0,
     int createdOffset = 0,
   }) {
     final created = DateTime(2026).add(Duration(minutes: createdOffset));
     return PriorityNode(
       id: id,
+      parentId: parentId,
       title: id,
       priority: priority,
       position: position,
@@ -64,6 +70,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await repository.saveNodes([
+      seed(roleId, Priority.critical, parentId: null),
       seed('Incumbent', Priority.critical),
       seed('Orange', Priority.high, position: 1, createdOffset: 1),
       seed('Challenger', Priority.medium, position: 2, createdOffset: 2),
@@ -79,7 +86,7 @@ void main() {
     expect(vm.tree.nodeById('Challenger')!.priority, Priority.critical);
     expect(vm.tree.nodeById('Incumbent')!.priority, Priority.high);
     expect(
-      vm.tree.roots.map((n) => n.id),
+      vm.tree.childrenOf(roleId).map((n) => n.id),
       ['Challenger', 'Incumbent', 'Orange'],
       reason: 'the demoted red is parked above the orange already there',
     );
@@ -92,6 +99,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await repository.saveNodes([
+      seed(roleId, Priority.critical, parentId: null),
       seed('Red', Priority.critical),
       seed('Orange', Priority.high, position: 1, createdOffset: 1),
     ]);
@@ -105,6 +113,6 @@ void main() {
 
     expect(vm.tree.nodeById('Orange')!.priority, Priority.high);
     expect(vm.tree.nodeById('Orange')!.updatedAt, DateTime(2026, 1, 1, 0, 1));
-    expect(vm.tree.roots.map((n) => n.id), ['Red', 'Orange']);
+    expect(vm.tree.childrenOf(roleId).map((n) => n.id), ['Red', 'Orange']);
   });
 }

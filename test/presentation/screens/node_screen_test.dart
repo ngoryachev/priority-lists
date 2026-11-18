@@ -31,9 +31,17 @@ PriorityNode node(
   );
 }
 
+/// The tree's top level is the roles, and the main screen lists the children
+/// of the active one — so a fixture that used to be top-level hangs off one
+/// explicit role node here.
+const roleId = 'Role';
+
 Future<PriorityNodeRepository> seeded(List<PriorityNode> nodes) async {
   final repository = InMemoryPriorityNodeRepository();
-  await repository.saveNodes(nodes);
+  await repository.saveNodes([
+    node(roleId, priority: Priority.critical),
+    for (final n in nodes) n.parentId == null ? n.withParent(roleId) : n,
+  ]);
   return repository;
 }
 
@@ -83,7 +91,8 @@ void usePhoneSize(WidgetTester tester) {
 
 void main() {
   group('NodeScreen', () {
-    testWidgets('top level lists root nodes with child chips', (tester) async {
+    testWidgets('the main screen lists the active role\'s children with chips',
+        (tester) async {
       usePhoneSize(tester);
       final repository = await seeded([
         node('Work', priority: Priority.critical),
@@ -225,6 +234,12 @@ void main() {
 
     testWidgets('bubble view renders a level without exceptions',
         (tester) async {
+      // A little taller than the default view: the chip bar takes a line of
+      // its own above the canvas, and these chip counts are about the space
+      // the canvas has.
+      tester.view.physicalSize = const Size(800, 660);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       final repository = await seeded([
         node('Work', priority: Priority.critical),
         for (var i = 0; i < 7; i++)
@@ -319,8 +334,11 @@ void main() {
       expect(orderOnScreen(), ['Second', 'First']);
 
       // The order is persisted, not just a visual swap.
-      final stored = await repository.getAllNodes()
-        ..sort((a, b) => a.position.compareTo(b.position));
+      final stored =
+          (await repository.getAllNodes())
+              .where((n) => n.id != roleId)
+              .toList()
+            ..sort((a, b) => a.position.compareTo(b.position));
       expect(stored.map((n) => n.title), ['Second', 'First']);
     });
 
@@ -355,7 +373,7 @@ void main() {
       expect(find.text('Elsewhere'), findsNothing);
 
       // Another device writes while this one is in the background.
-      await repository.saveNode(node('Elsewhere'));
+      await repository.saveNode(node('Elsewhere', parent: roleId));
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
@@ -375,7 +393,8 @@ void main() {
       await tester.pumpWidget(wrap(repository));
       await tester.pumpAndSettle();
 
-      // Roots have nowhere to go up to.
+      // A role's children have nowhere to go up to — the level above them is
+      // the role itself, and nothing may be lifted into one.
       expect(find.byIcon(Icons.arrow_upward), findsNothing);
 
       await tester.tap(find.text('L0'));

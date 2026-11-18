@@ -1,3 +1,4 @@
+import 'priority.dart';
 import 'priority_node.dart';
 
 /// An immutable index over a flat list of [PriorityNode]s.
@@ -52,6 +53,38 @@ class NodeTree {
   bool get isNotEmpty => nodes.isNotEmpty;
 
   List<PriorityNode> get roots => childrenOf(null);
+
+  /// The roles — the tree's top-level nodes — in the order the chip bar paints
+  /// them: the manual [PriorityNode.position] first, then age.
+  ///
+  /// Deliberately not [roots]: that one is priority-first, so switching the
+  /// active role would move every chip out from under the finger that tapped
+  /// it. Priority is what marks the active role, not where its chip sits.
+  List<PriorityNode> get rolesInChipOrder {
+    final roles = List.of(roots);
+    roles.sort((a, b) {
+      final byPosition = a.position.compareTo(b.position);
+      if (byPosition != 0) return byPosition;
+      return a.createdAt.compareTo(b.createdAt);
+    });
+    return List.unmodifiable(roles);
+  }
+
+  /// The role whose children the main screen shows.
+  ///
+  /// The red one: `critical` is exclusive per parent, so there can only be a
+  /// single red role. A tree whose roles hold no red at all — one edited by an
+  /// older build, or caught between a delete and the promotion that follows
+  /// it — falls back to the first role in sibling order. Null only when there
+  /// are no roles yet, which is what the default `Root` role is for.
+  PriorityNode? get activeRole {
+    final roles = roots;
+    if (roles.isEmpty) return null;
+    for (final role in roles) {
+      if (role.priority == Priority.critical) return role;
+    }
+    return roles.first;
+  }
 
   /// Direct children of [parentId], sorted; `null` yields the top level.
   List<PriorityNode> childrenOf(String? parentId) =>

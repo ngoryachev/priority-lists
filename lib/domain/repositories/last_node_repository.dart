@@ -28,9 +28,9 @@ class LastNodePointer {
 
 /// Stores the last opened node, one value per device.
 ///
-/// Like `CurrentRoleRepository` this is a side record: the tree never reads it,
-/// and losing it must never break the screen — callers treat every failure as
-/// "nothing stored", which simply means the app opens at the root.
+/// A side record: the tree never reads it, and losing it must never break the
+/// screen — callers treat every failure as "nothing stored", which simply
+/// means the app opens at the main screen.
 abstract class LastNodeRepository {
   /// The stored pointer, or null when nothing was ever written (or the stored
   /// value cannot be made sense of).

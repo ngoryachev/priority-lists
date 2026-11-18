@@ -15,26 +15,38 @@ import 'package:priority_lists/presentation/view_models/node_tree_view_model.dar
 import 'package:priority_lists/presentation/widgets/breadcrumb_bar.dart';
 import 'package:provider/provider.dart';
 
-PriorityNode node(String id, {String? parent}) {
+PriorityNode node(
+  String id, {
+  String? parent,
+  Priority priority = Priority.high,
+}) {
   final created = DateTime(2026, 1, 1);
   return PriorityNode(
     id: id,
     parentId: parent,
     title: id,
     description: '',
-    priority: Priority.high,
+    priority: priority,
     createdAt: created,
     updatedAt: created,
   );
 }
 
+/// The main screen lists the active role's children, so the tree hangs off one
+/// explicit role node — whose title is what the main screen's app bar shows.
+const roleId = 'Root';
+
 Future<PriorityNodeRepository> seeded(List<PriorityNode> nodes) async {
   final repository = InMemoryPriorityNodeRepository();
-  await repository.saveNodes(nodes);
+  await repository.saveNodes([
+    node(roleId, priority: Priority.critical),
+    for (final n in nodes) n.parentId == null ? n.withParent(roleId) : n,
+  ]);
   return repository;
 }
 
-/// A > B > C, plus a sibling root to prove the restore picks one branch.
+/// A > B > C, plus a sibling at A's level to prove the restore picks one
+/// branch.
 Future<PriorityNodeRepository> seededTree() => seeded([
   node('A'),
   node('B', parent: 'A'),
@@ -239,7 +251,7 @@ void main() {
 
       navigator.pop();
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       await lastNodes.idle;
       expect(
         (await repository.load())!.nodeId,
@@ -305,7 +317,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       await lastNodes.idle;
       expect((await repository.load())!.nodeId, isNull);
     });
@@ -325,7 +337,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
       await lastNodes.idle;
       expect(
@@ -349,7 +361,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
       await lastNodes.idle;
       expect(await repository.load(), isNull);
@@ -366,7 +378,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
     });
 
@@ -501,7 +513,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
     });
 
@@ -541,6 +553,8 @@ void main() {
         wrapLikeProduction(await seededTree(), lastNodes: lastNodes),
       );
 
+      // The tree has not arrived yet, so there is no active role to name the
+      // level after — the main screen still paints, under its fallback title.
       expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
 
@@ -597,7 +611,7 @@ void main() {
       await tester.pumpAndSettle();
       await lastNodes.idle;
 
-      expect(find.widgetWithText(AppBar, 'Priority Lists'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, roleId), findsOneWidget);
       expect(stackNames(tester), [rootRouteName]);
       expect(
         repository.stored!.nodeId,
@@ -628,7 +642,8 @@ void main() {
 
       // Back online; the resume re-reads the tree.
       nodes.nodes = [
-        node('A'),
+        node(roleId, priority: Priority.critical),
+        node('A', parent: roleId),
         node('B', parent: 'A'),
         node('C', parent: 'B'),
       ];

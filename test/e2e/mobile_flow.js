@@ -175,8 +175,10 @@ async function overflowsHorizontally(page) {
   await page.screenshot({ path: path.join(SHOTS, 'mobile-move.png') });
   const dialog = await texts(page);
   // The current parent is rendered disabled, and a disabled ListTile is not
-  // published to the accessibility tree — "Top level" is the reachable target.
-  check('move dialog fits and offers a destination', dialog.some(t => t.includes('Top level')), JSON.stringify(dialog));
+  // published to the accessibility tree. There is no "Top level" target any
+  // more — the top level is the roles — so the reachable one is the active
+  // role itself, published as "Root\n<n> children".
+  check('move dialog fits and offers a destination', dialog.some(t => t.startsWith('Root')), JSON.stringify(dialog));
   check('move dialog does not overflow', !(await overflowsHorizontally(page)));
   await tap(page, leaf(page, 'Cancel'));
 

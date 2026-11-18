@@ -4,8 +4,8 @@ import '../../domain/models/node_tree.dart';
 import '../../domain/models/priority_node.dart';
 import '../utils/priority_colors.dart';
 
-/// Chosen destination for a move. Wraps the id because null is meaningful
-/// (the top level) and must not read as "dialog dismissed".
+/// Chosen destination for a move. A wrapper rather than a bare id so that
+/// "dialog dismissed" (null) is told apart from a destination that was picked.
 class MoveDestination {
   final String? parentId;
   const MoveDestination(this.parentId);
@@ -77,14 +77,10 @@ class _MoveNodeDialogState extends State<MoveNodeDialog> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  if (_query.isEmpty && !widget.node.isRoot)
-                    ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.north)),
-                      title: const Text('Top level'),
-                      subtitle: const Text('No parent'),
-                      onTap: () => Navigator.of(context)
-                          .pop(const MoveDestination(null)),
-                    ),
+                  // No "Top level" tile: the top level is the roles, and a
+                  // node lifted into it would silently become one. The roles
+                  // are the leading entries of the list below, so moving a
+                  // node into another role is a tap away all the same.
                   for (final candidate in candidates)
                     _targetTile(context, tree, candidate),
                   if (candidates.isEmpty)

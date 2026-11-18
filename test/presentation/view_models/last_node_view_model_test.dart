@@ -6,25 +6,33 @@ import 'package:priority_lists/domain/models/priority_node.dart';
 import 'package:priority_lists/domain/repositories/last_node_repository.dart';
 import 'package:priority_lists/presentation/view_models/last_node_view_model.dart';
 
-PriorityNode node(String id, {String? parent}) {
+PriorityNode node(
+  String id, {
+  String? parent,
+  Priority priority = Priority.medium,
+}) {
   final created = DateTime(2026, 1, 1);
   return PriorityNode(
     id: id,
     parentId: parent,
     title: id,
     description: '',
-    priority: Priority.medium,
+    priority: priority,
     createdAt: created,
     updatedAt: created,
   );
 }
 
-/// A > B > C, plus a second root.
+/// The active role, with A > B > C and a sibling of A inside it — plus a
+/// second role whose own subtree the pointer must never reopen.
 final tree = NodeTree([
-  node('A'),
+  node('Role', priority: Priority.critical),
+  node('A', parent: 'Role'),
   node('B', parent: 'A'),
   node('C', parent: 'B'),
-  node('Other'),
+  node('Other', parent: 'Role'),
+  node('Other role', priority: Priority.low),
+  node('Elsewhere', parent: 'Other role'),
 ]);
 
 /// Records the order of calls, so the chained queue can be checked.
@@ -74,7 +82,8 @@ LastNodeViewModel viewModel(
 
 void main() {
   group('resolveRestorePath', () {
-    test('rebuilds the whole root-to-node path', () async {
+    test('rebuilds the path from the active role down, role excluded',
+        () async {
       final vm = viewModel(
         InMemoryLastNodeRepository(
           const LastNodePointer(userId: 'user-1', nodeId: 'C'),
@@ -83,7 +92,36 @@ void main() {
 
       final path = await vm.resolveRestorePath(tree);
 
+      // The role's own level is the main screen, so the role is not one of
+      // the levels to push; everything under it is.
       expect(path.map((n) => n.id), ['A', 'B', 'C']);
+    });
+
+    test('a pointer inside another role opens the main screen', () async {
+      final repository = _RecordingRepository()
+        ..stored = const LastNodePointer(
+          userId: 'user-1',
+          nodeId: 'Elsewhere',
+        );
+      final vm = viewModel(repository);
+
+      expect(await vm.resolveRestorePath(tree), isEmpty);
+      await vm.idle;
+      expect(
+        repository.stored,
+        isNull,
+        reason: 'a pointer outside the active role cannot be reopened',
+      );
+    });
+
+    test('a pointer at a role itself opens the main screen', () async {
+      final repository = _RecordingRepository()
+        ..stored = const LastNodePointer(userId: 'user-1', nodeId: 'Role');
+      final vm = viewModel(repository);
+
+      expect(await vm.resolveRestorePath(tree), isEmpty);
+      await vm.idle;
+      expect(repository.stored, isNull);
     });
 
     test('a root pointer stays at the root', () async {
@@ -129,20 +167,17 @@ void main() {
       expect(repository.stored, isNull);
     });
 
-    /// `NodeTree` treats a node whose parent is missing as a root, so an
-    /// orphan is still reachable — and still worth reopening.
-    test('an orphan resolves to its own single-node path', () async {
+    /// `NodeTree` treats a node whose parent is missing as a root, which now
+    /// means "a role" — and a role is the main screen, not a level to reopen.
+    test('an orphan reads as a role and opens the main screen', () async {
       final orphaned = NodeTree([node('Stray', parent: 'gone')]);
-      final vm = viewModel(
-        InMemoryLastNodeRepository(
-          const LastNodePointer(userId: 'user-1', nodeId: 'Stray'),
-        ),
-      );
+      final repository = _RecordingRepository()
+        ..stored = const LastNodePointer(userId: 'user-1', nodeId: 'Stray');
+      final vm = viewModel(repository);
 
-      expect(
-        (await vm.resolveRestorePath(orphaned)).map((n) => n.id),
-        ['Stray'],
-      );
+      expect(await vm.resolveRestorePath(orphaned), isEmpty);
+      await vm.idle;
+      expect(repository.stored, isNull);
     });
 
     /// A sign-out can land between the root screen mounting and this read

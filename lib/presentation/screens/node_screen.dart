@@ -10,11 +10,11 @@ import '../view_models/card_page_view_model.dart';
 import '../view_models/filter_view_model.dart';
 import '../view_models/last_node_view_model.dart';
 import '../view_models/node_tree_view_model.dart';
-import '../view_models/role_view_model.dart';
 import '../utils/priority_colors.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/bubble_view/bubble_view.dart';
 import '../widgets/centered_body.dart';
+import '../widgets/delete_node_dialog.dart';
 import '../widgets/move_node_dialog.dart';
 import '../widgets/node_form_dialog.dart';
 import '../widgets/priority_card.dart';
@@ -24,9 +24,10 @@ import 'activity_log_screen.dart';
 
 /// One level of the tree.
 ///
-/// The same screen renders the top level ([parentId] == null) and every level
-/// below it, so nesting has no ceiling: tapping a child pushes another
-/// [NodeScreen] for that child's own children.
+/// The same screen renders the main screen ([parentId] == null, which shows the
+/// children of the active role) and every level below it, so nesting has no
+/// ceiling: tapping a child pushes another [NodeScreen] for that child's own
+/// children.
 class NodeScreen extends StatefulWidget {
   final String? parentId;
   final bool initialBubbleView;
@@ -47,9 +48,6 @@ class NodeScreen extends StatefulWidget {
   }) {
     final treeViewModel = context.read<NodeTreeViewModel>();
     final filterViewModel = context.read<FilterViewModel>();
-    // Nullable: screens built without a role selector (tests, older entry
-    // points) must still be able to drill down.
-    final roleViewModel = context.read<RoleViewModel?>();
     final lastNodeViewModel = context.read<LastNodeViewModel?>();
     final cardPageViewModel = context.read<CardPageViewModel?>();
     final settings = RouteSettings(name: BreadcrumbBar.routeName(nodeId));
@@ -57,8 +55,6 @@ class NodeScreen extends StatefulWidget {
       providers: [
         ChangeNotifierProvider<NodeTreeViewModel>.value(value: treeViewModel),
         ChangeNotifierProvider<FilterViewModel>.value(value: filterViewModel),
-        if (roleViewModel != null)
-          ChangeNotifierProvider<RoleViewModel>.value(value: roleViewModel),
         if (lastNodeViewModel != null)
           Provider<LastNodeViewModel>.value(value: lastNodeViewModel),
         if (cardPageViewModel != null)
@@ -129,11 +125,6 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
         if (!mounted) return;
         await _restoreLastLevel(vm);
       });
-      // The root screen is only mounted after sign-in, which is when the
-      // remote read can succeed; a re-mount after switching accounts re-reads
-      // the right row.
-      final roles = context.read<RoleViewModel?>();
-      if (roles != null) Future.microtask(() => roles.load());
     }
   }
 
@@ -195,7 +186,13 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     final vm = context.watch<NodeTreeViewModel>();
     final filter = context.watch<FilterViewModel>();
     final tree = vm.tree;
-    final node = tree.nodeById(widget.parentId);
+    final node = _isRoot ? null : tree.nodeById(widget.parentId);
+    // Which level is listed below. The main screen shows the active role's
+    // children, so the role is this screen's level without being a node the
+    // user drilled into — [node] stays null there, which is what keeps the
+    // History and Sign Out actions (and keeps Edit / Delete off the role).
+    final levelNode = _isRoot ? tree.activeRole : node;
+    final levelId = levelNode?.id;
 
     // The node backing this screen can be deleted from elsewhere in the tree
     // (a subtree delete higher up); close rather than show a dead level.
@@ -207,15 +204,25 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
 
     final ancestors = _isRoot
         ? const <PriorityNode>[]
-        : tree.pathTo(widget.parentId);
+        : _trailTo(tree, widget.parentId);
     // Remembered while the node is still here, for the pop that may be caused
-    // by it disappearing. A root node pops back to the top level, hence null.
-    if (node != null) _parentLevelId = node.parentId;
-    final accent = node == null ? null : priorityColor(node.priority);
+    // by it disappearing. A child of the role pops back to the main screen,
+    // which is `null` — the role is never a level of its own.
+    if (node != null) {
+      final parentId = node.parentId;
+      _parentLevelId = parentId == tree.activeRole?.id ? null : parentId;
+    }
+    // What tints the app bar and the FAB: a drilled-in node by its priority,
+    // the active role by its own colour when it has one.
+    final accent = levelNode == null
+        ? null
+        : _isRoot
+            ? _roleColor(levelNode)
+            : priorityColor(levelNode.priority);
 
     final scaffold = Scaffold(
       appBar: AppBar(
-        title: Text(node?.title ?? 'Priority Lists'),
+        title: Text(levelNode?.title ?? 'Priority Lists'),
         backgroundColor: accent?.withValues(alpha: 0.15),
         bottom: ancestors.length > 1
             ? PreferredSize(
@@ -265,18 +272,20 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       ),
       body: Column(
         children: [
-          // Pinned: the marker stays visible while drilling down, which is the
-          // point of it.
+          // Pinned: the roles stay visible while drilling down, which is the
+          // point of them.
           const RoleSelectorBar(),
-          Expanded(child: CenteredBody(child: _buildBody(vm, tree, filter))),
+          Expanded(
+            child: CenteredBody(child: _buildBody(vm, tree, filter, levelId)),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _addChild(vm, node),
+        onPressed: () => _addChild(vm, levelNode),
         backgroundColor: accent,
-        tooltip: node == null
-            ? 'Add top-level node'
-            : 'Add inside "${node.title}"',
+        tooltip: levelNode == null
+            ? 'Add a role'
+            : 'Add inside "${levelNode.title}"',
         child: const Icon(Icons.add),
       ),
     );
@@ -294,10 +303,24 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// The trail of ancestors a level shows in its breadcrumbs.
+  ///
+  /// The active role is dropped from it: the role's level *is* the main
+  /// screen, which the leading "All" crumb already stands for, and the role
+  /// has no level of its own to jump to.
+  List<PriorityNode> _trailTo(NodeTree tree, String? id) {
+    final path = tree.pathTo(id);
+    if (path.isNotEmpty && path.first.id == tree.activeRole?.id) {
+      return path.sublist(1);
+    }
+    return path;
+  }
+
   Widget _buildBody(
     NodeTreeViewModel vm,
     NodeTree tree,
     FilterViewModel filter,
+    String? levelId,
   ) {
     if (vm.isLoading && tree.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -307,7 +330,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     }
 
     final children = tree
-        .childrenOf(widget.parentId)
+        .childrenOf(levelId)
         .where((child) => filter.isVisible(child.priority))
         .toList();
 
@@ -322,7 +345,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     }
 
     if (children.isEmpty) {
-      final hidden = tree.childrenOf(widget.parentId).isNotEmpty;
+      final hidden = tree.childrenOf(levelId).isNotEmpty;
       return Center(
         child: Text(
           hidden
@@ -335,7 +358,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
 
     final list = _showBubbleView
         ? _buildBubbles(vm, tree, filter, children)
-        : _buildList(vm, tree, filter, children);
+        : _buildList(vm, tree, filter, children, levelId);
     if (moving == null) return list;
 
     return Column(
@@ -408,6 +431,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     NodeTree tree,
     FilterViewModel filter,
     List<PriorityNode> children,
+    String? levelId,
   ) {
     // Reorderable so siblings of one priority can be ranked by hand. Flutter
     // gives touch devices a long-press drag and desktops explicit handles.
@@ -420,7 +444,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       // on top of the action row.
       buildDefaultDragHandles: false,
       onReorder: (oldIndex, newIndex) => vm.reorderChildren(
-        parentId: widget.parentId,
+        parentId: levelId,
         visible: children,
         oldIndex: oldIndex,
         newIndex: newIndex,
@@ -442,6 +466,9 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
         final background = isTarget
             ? Colors.green.withValues(alpha: 0.35)
             : color.withValues(alpha: 0.15);
+        // The level the card can be lifted to: its grandparent, which a child
+        // of a role does not have.
+        final moveUpTarget = tree.nodeById(child.parentId)?.parentId;
 
         return KeyedSubtree(
           key: ValueKey(child.id),
@@ -464,14 +491,12 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
               onTap: _tapFor(vm, child, false),
               onEdit: () => _editNode(vm, child),
               onDelete: () => _confirmDelete(vm, tree, child),
-              // One level up, not straight to the top: the grandparent (null
-              // when the parent is a root, which is the top level anyway).
-              onMoveUp: child.parentId != null
-                  ? () => vm.moveNode(
-                      child.id,
-                      tree.nodeById(child.parentId)?.parentId,
-                    )
-                  : null,
+              // One level up, not straight to the top — and only when there
+              // is a level above: a child of a role has none, and lifting it
+              // further would turn it into a role of its own.
+              onMoveUp: moveUpTarget == null
+                  ? null
+                  : () => vm.moveNode(child.id, moveUpTarget),
               onMoveInto: () => setState(() => _movingId = child.id),
               onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
             ),
@@ -576,6 +601,17 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     ).push(NodeScreen.route(context, node.id, bubbleView: bubbleView));
   }
 
+  /// The colour a role tints its level with: its own when it has one, and
+  /// otherwise the colour of its priority, like any other node.
+  Color _roleColor(PriorityNode role) {
+    final preset = role.colorPreset;
+    return preset == null
+        ? priorityColor(role.priority)
+        : Color(preset.colorValue);
+  }
+
+  /// Adds a child of [parent] — the active role on the main screen, this
+  /// screen's node below it.
   Future<void> _addChild(NodeTreeViewModel vm, PriorityNode? parent) async {
     final result = await showDialog<NodeFormResult>(
       context: context,
@@ -583,7 +619,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     );
     if (result == null) return;
     await vm.addChild(
-      parentId: widget.parentId,
+      parentId: parent?.id,
       title: result.title,
       description: result.description,
       priority: result.priority,
@@ -619,31 +655,8 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     PriorityNode node, {
     bool popOnDone = false,
   }) async {
-    final descendants = tree.descendantCount(node.id);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete'),
-        content: Text(
-          descendants == 0
-              ? 'Delete "${node.title}"?'
-              : 'Delete "${node.title}" and everything inside '
-                    '($descendants node${descendants == 1 ? '' : 's'})?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final confirmed = await confirmDeleteNode(context, tree: tree, node: node);
+    if (!confirmed) return;
 
     await vm.deleteNode(node.id);
     if (popOnDone && mounted) {
