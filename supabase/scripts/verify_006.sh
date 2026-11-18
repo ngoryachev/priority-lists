@@ -221,17 +221,28 @@ DO $$
 DECLARE
   drifted BIGINT;
 BEGIN
+  -- Each side of the symmetric difference is parenthesised on purpose:
+  -- EXCEPT and UNION share a precedence and associate to the left, so without
+  -- the brackets this would collapse to one direction and a row the second run
+  -- *added* — an extra Root per user, the very failure worth catching — would
+  -- slip through.
   SELECT count(*) INTO drifted FROM (
-    SELECT id, user_id, parent_id, title, priority, position FROM nodes
-    EXCEPT
-    SELECT id, user_id, parent_id, title, priority, position FROM verify_after
+    (SELECT id, user_id, parent_id, title, priority, position FROM nodes
+     EXCEPT
+     SELECT id, user_id, parent_id, title, priority, position FROM verify_after)
     UNION ALL
-    SELECT id, user_id, parent_id, title, priority, position FROM verify_after
-    EXCEPT
-    SELECT id, user_id, parent_id, title, priority, position FROM nodes
+    (SELECT id, user_id, parent_id, title, priority, position FROM verify_after
+     EXCEPT
+     SELECT id, user_id, parent_id, title, priority, position FROM nodes)
   ) diff;
   IF drifted <> 0 THEN
     RAISE EXCEPTION 'the second run changed % row(s)', drifted;
+  END IF;
+  -- EXCEPT deduplicates, so a row that came back twice would look identical
+  -- to one that stayed put. The count catches that.
+  IF (SELECT count(*) FROM nodes) <> (SELECT count(*) FROM verify_after) THEN
+    RAISE EXCEPTION 'the second run changed the row count: % -> %',
+      (SELECT count(*) FROM verify_after), (SELECT count(*) FROM nodes);
   END IF;
 END $$;
 SQL
