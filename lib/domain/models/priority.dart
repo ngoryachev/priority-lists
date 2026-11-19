@@ -1,27 +1,18 @@
 enum Priority {
-  critical(1, 0.20, 0.50, 'Critical'),
-  high(2, 0.20, 0.30, 'High'),
-  medium(3, 0.20, 0.20, 'Medium'),
-  low(4, 0.10, 0.10, 'Low');
+  critical(1, 0.50, 'Critical'),
+  high(2, 0.30, 'High'),
+  medium(3, 0.20, 'Medium'),
+  low(4, 0.10, 'Low');
 
-  const Priority(
-    this.value,
-    this.cardHeightFraction,
-    this.bubbleWeight,
-    this.label,
-  );
+  const Priority(this.value, this.bubbleWeight, this.label);
 
   final int value;
 
-  /// Share of the screen height a list tile takes. Critical, high and medium
-  /// deliberately share one height: colour and the badge already carry the
-  /// priority, and oversized tiles pushed everything else off the screen —
-  /// which defeats the point of a tree you scan level by level. Low stays
-  /// half-height so noise stays visually cheap.
-  final double cardHeightFraction;
-
-  /// Relative size of a bubble on the canvas, where size *is* the encoding —
-  /// unlike tiles, bubbles have room to differ.
+  /// Relative size of a bubble on the canvas, where size *is* the encoding.
+  /// List tiles carry no such thing: every tile is as short as its content
+  /// allows and leaves the priority to its colour and its badge, because
+  /// oversized tiles pushed everything else off the screen — which defeats
+  /// the point of a tree you scan level by level.
   final double bubbleWeight;
 
   final String label;

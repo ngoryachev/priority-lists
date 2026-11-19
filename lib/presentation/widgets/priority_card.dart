@@ -5,15 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/priority.dart';
 import '../utils/priority_colors.dart';
-import 'item_chips.dart';
 
 /// One child page of a [PriorityCard]: the face of a node's direct child,
 /// shown when the card is swiped sideways.
 ///
 /// Deliberately action-light. A child page carries the child's own look (its
-/// colour, title, chips) and the 1-4 priority row, but none of the owner-only
-/// actions and no drag index — edit, delete, move and reorder belong to the
-/// level that child lives on, which is one tap away.
+/// colour, title, child count) and the 1-4 priority row, but none of the
+/// owner-only actions and no drag index — edit, delete, move and reorder
+/// belong to the level that child lives on, which is one tap away.
 @immutable
 class PriorityCardPage {
   /// Id of the node this page shows. The enclosing card remembers its page by
@@ -29,8 +28,6 @@ class PriorityCardPage {
   final Color? backgroundColor;
 
   final int? childCount;
-  final String? subtitle;
-  final List<String>? chipLabels;
   final Priority? currentPriority;
   final VoidCallback? onTap;
   final ValueChanged<Priority>? onSetPriority;
@@ -42,8 +39,6 @@ class PriorityCardPage {
     required this.color,
     this.backgroundColor,
     this.childCount,
-    this.subtitle,
-    this.chipLabels,
     this.currentPriority,
     this.onTap,
     this.onSetPriority,
@@ -56,14 +51,10 @@ class PriorityCard extends StatefulWidget {
   final Color color;
 
   /// Number of nodes directly inside this one, shown next to the priority
-  /// badge. Sits in the badge row rather than the subtitle so it survives on
-  /// short tiles, where the column below is clipped away.
+  /// badge — the whole of what the tile says about its children, now that the
+  /// column below is one line of title and nothing else.
   final int? childCount;
 
-  final String? subtitle;
-
-  /// When non-empty, rendered as mini chips in place of [subtitle].
-  final List<String>? chipLabels;
   final Color? backgroundColor;
   final double? fixedHeight;
   final Priority? currentPriority;
@@ -106,8 +97,6 @@ class PriorityCard extends StatefulWidget {
     required this.badgeLabel,
     required this.color,
     this.childCount,
-    this.subtitle,
-    this.chipLabels,
     this.backgroundColor,
     this.fixedHeight,
     this.currentPriority,
@@ -134,9 +123,48 @@ class PriorityCard extends StatefulWidget {
 
   /// Touch target of the bottom drag grip. The grip is the only way to start a
   /// reorder, so it stays finger-sized; it overlaps the bottom of the content
-  /// transparently rather than reserving all 44dp, which short tiles cannot
-  /// spare.
+  /// transparently rather than reserving all 44dp, which a tile sized to its
+  /// content cannot spare.
   static const double _gripTouchSize = 44;
+
+  /// Padding around a face's content.
+  static const double _facePadding = 10;
+
+  /// Gap between the badge row and the title.
+  static const double _titleGap = 4;
+
+  /// Height of the overlaid 1-4 priority row, reserved at the bottom of the
+  /// column so the title never slides underneath it.
+  static const double _levelRowHeight = 32;
+
+  /// Height a [_CardAction] claims in the badge row: `IconButton`'s 48dp
+  /// minimum less the 8dp [VisualDensity.compact] takes off it. Their touch
+  /// target is what sets the row's height until the text is scaled past it.
+  static const double _actionRowHeight = 40;
+
+  /// The height every list tile gets: exactly what a minimal face needs and
+  /// nothing more — badge row, one line of title, the 1-4 row and the
+  /// paddings between them. Priority plays no part; colour and the badge
+  /// carry it.
+  ///
+  /// Scaled with the text scaler rather than fixed, so a card grows with the
+  /// user's font size instead of clipping its title. The numbers are upper
+  /// bounds of the real line heights (Material 3's `titleMedium` is 16/1.5,
+  /// `labelSmall` 11/1.45, the badge a bare 12pt plus its 4dp insets), so a
+  /// face always has a little slack rather than a pixel too few.
+  static double compactHeight(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final badgeRow = scaler.scale(12) * 1.2 + 8;
+    final titleLine = scaler.scale(16) * 1.5;
+    final ownerLabelLine = scaler.scale(11) * 1.5;
+    // The owner face pays for the action buttons, a child page for the owner
+    // label instead — whichever of the two needs more is what the tile gets,
+    // since one card shows both.
+    final ownerFace =
+        math.max(badgeRow, _actionRowHeight) + _titleGap + titleLine;
+    final childFace = ownerLabelLine + badgeRow + _titleGap + titleLine;
+    return 2 * _facePadding + _levelRowHeight + math.max(ownerFace, childFace);
+  }
 
   @override
   State<PriorityCard> createState() => _PriorityCardState();
@@ -279,21 +307,6 @@ class _PriorityCardState extends State<PriorityCard> {
     setState(() => _childId = id);
     widget.onChildPageChanged?.call(id);
   }
-
-  /// Height of the overlaid 1-4 priority row, reserved at the bottom of the
-  /// column so chips never slide underneath it.
-  static const double _levelRowHeight = 32;
-
-  /// Below this height the card only has room for the badge row and the
-  /// title, so chips and the subtitle are dropped. The threshold sits just
-  /// under a medium tile on a phone (20% of an 800dp screen) so medium lists
-  /// show their items too.
-  bool get _isCompact =>
-      widget.fixedHeight != null && widget.fixedHeight! < 155;
-
-  /// Medium tiles clear [_isCompact] by only a few pixels, so they trade some
-  /// padding for the row of chips that would otherwise be clipped.
-  bool get _isShort => widget.fixedHeight != null && widget.fixedHeight! < 190;
 
   @override
   Widget build(BuildContext context) {
@@ -440,8 +453,8 @@ class _PriorityCardState extends State<PriorityCard> {
   static const double _levelRowReserve = 160;
 
   /// Band kept clear for the grip glyph on a card that has no 1-4 row. With
-  /// the row there its 32dp already covers the glyph, so the grip costs a
-  /// short tile nothing.
+  /// the row there its 32dp already covers the glyph, so the grip costs the
+  /// tile nothing.
   static const double _gripBandHeight = 20;
 
   Widget _dragGrip() {
@@ -478,11 +491,7 @@ class _PriorityCardState extends State<PriorityCard> {
       badgeLabel: widget.badgeLabel,
       color: widget.color,
       childCount: widget.childCount,
-      subtitle: widget.subtitle,
-      chipLabels: widget.chipLabels,
       currentPriority: widget.currentPriority,
-      isCompact: _isCompact,
-      isShort: _isShort,
       bottomReserve: _bottomReserve(hasLevelRow: widget.onSetPriority != null),
       rightReserve: _swipeable ? PriorityCard._dotsGutter : 0,
       onTap: widget.onTap,
@@ -501,11 +510,7 @@ class _PriorityCardState extends State<PriorityCard> {
       color: page.color,
       background: page.backgroundColor,
       childCount: page.childCount,
-      subtitle: page.subtitle,
-      chipLabels: page.chipLabels,
       currentPriority: page.currentPriority,
-      isCompact: _isCompact,
-      isShort: _isShort,
       bottomReserve: _bottomReserve(hasLevelRow: page.onSetPriority != null),
       rightReserve: PriorityCard._dotsGutter,
       // Whose card this is: the page belongs to the owner's tile, not to the
@@ -517,11 +522,11 @@ class _PriorityCardState extends State<PriorityCard> {
   }
 
   /// Space kept below the column. The grip's 44dp touch target deliberately
-  /// reaches past this band — reserving all of it would cost the shortest
-  /// tiles their title, and the part that overlaps is transparent.
+  /// reaches past this band — reserving all of it would cost the tile its
+  /// title, and the part that overlaps is transparent.
   double _bottomReserve({required bool hasLevelRow}) {
     return math.max(
-      hasLevelRow ? _levelRowHeight : 0,
+      hasLevelRow ? PriorityCard._levelRowHeight : 0,
       widget.dragIndex != null ? _gripBandHeight : 0,
     );
   }
@@ -538,16 +543,12 @@ class _CardFace extends StatelessWidget {
   final Color? background;
 
   final int? childCount;
-  final String? subtitle;
-  final List<String>? chipLabels;
   final Priority? currentPriority;
 
   /// Small line above the badge row naming the tile this page hangs off —
   /// only set on child pages.
   final String? ownerLabel;
 
-  final bool isCompact;
-  final bool isShort;
   final double bottomReserve;
   final double rightReserve;
 
@@ -564,12 +565,8 @@ class _CardFace extends StatelessWidget {
     required this.color,
     this.background,
     this.childCount,
-    this.subtitle,
-    this.chipLabels,
     this.currentPriority,
     this.ownerLabel,
-    required this.isCompact,
-    required this.isShort,
     required this.bottomReserve,
     required this.rightReserve,
     this.onTap,
@@ -580,33 +577,8 @@ class _CardFace extends StatelessWidget {
     this.onSetPriority,
   });
 
-  /// How far the owner label's own line may be scaled up before a tile with
-  /// little vertical slack stops having room for it. The floor of what the
-  /// two tight tiles measured: the 132dp floor tile (every tile on a small
-  /// phone) overflows at 1.8x — 4dp, 10dp at 2x — and the 160dp tile at 2.5x.
-  static const double _maxTightLabelScale = 1.7;
-
-  /// A short tile is down to the badge row, one line of title and the 1-4
-  /// row; the owner label is a line on top of that, and past
-  /// [_maxTightLabelScale] it no longer fits. Dropping it there keeps the
-  /// title, which is the line worth reading — the dots and the counter still
-  /// say the card is showing a child rather than itself. A tall tile has the
-  /// room at any scale and always keeps it.
-  bool _showsOwnerLabel(BuildContext context, TextStyle? style) {
-    if (ownerLabel == null) return false;
-    if (!isCompact && !isShort) return true;
-    final fontSize = style?.fontSize ?? 11;
-    return MediaQuery.textScalerOf(context).scale(fontSize) <=
-        fontSize * _maxTightLabelScale;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final padding = isCompact
-        ? 10.0
-        : isShort
-        ? 12.0
-        : 16.0;
     final ownerLabelStyle = Theme.of(context).textTheme.labelSmall;
 
     final face = InkWell(
@@ -617,22 +589,23 @@ class _CardFace extends StatelessWidget {
           border: Border(left: BorderSide(color: color, width: 5)),
         ),
         child: Padding(
-          padding: EdgeInsets.all(padding),
+          padding: const EdgeInsets.all(PriorityCard._facePadding),
           // The priority-level row is overlaid via Stack so it doesn't eat
-          // vertical space inside the Column — important for compact cards
-          // (low/medium) where the Column is already tight.
+          // vertical space inside the Column — the card is sized to its
+          // content, so the Column has nothing to spare.
           child: Stack(
             children: [
               Padding(
-                // Keep the column clear of the overlaid 1-4 row. This holds
-                // on compact tiles too: skipping it there let the buttons sit
-                // on top of the title, so tapping a short card's name set a
-                // priority instead of opening the node.
+                // Keep the column clear of the overlaid 1-4 row: skipping it
+                // let the buttons sit on top of the title, so tapping a
+                // card's name set a priority instead of opening the node.
                 padding: EdgeInsets.only(bottom: bottomReserve),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_showsOwnerLabel(context, ownerLabelStyle))
+                    // Shown at every text scale: the tile's own height is
+                    // measured with this line in it.
+                    if (ownerLabel != null)
                       Text(
                         ownerLabel!,
                         maxLines: 1,
@@ -737,7 +710,7 @@ class _CardFace extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: isShort ? 4 : 8),
+                    const SizedBox(height: PriorityCard._titleGap),
                     Flexible(
                       // Only the middle of the face is kept clear of the dots:
                       // they sit vertically centred on the right edge, well
@@ -748,46 +721,16 @@ class _CardFace extends StatelessWidget {
                         padding: EdgeInsets.only(right: rightReserve),
                         child: Text(
                           title,
-                          // A compact tile has room for the badge row, one
-                          // line of title and the 1-4 row — the large style
-                          // simply gets clipped there.
-                          style:
-                              (isCompact
-                                      ? Theme.of(context).textTheme.titleMedium
-                                      : Theme.of(context).textTheme.titleLarge)
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                          maxLines: isCompact ? 1 : 2,
+                          // One line, always: a tile is as short as the badge
+                          // row, this line and the 1-4 row allow, and the
+                          // full name is one tap away.
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
-                    if (!isCompact &&
-                        chipLabels != null &&
-                        chipLabels!.isNotEmpty) ...[
-                      SizedBox(height: isShort ? 3 : 6),
-                      Flexible(
-                        child: Padding(
-                          padding: EdgeInsets.only(right: rightReserve),
-                          child: ItemChips(labels: chipLabels!, color: color),
-                        ),
-                      ),
-                    ] else if (!isCompact &&
-                        subtitle != null &&
-                        subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Flexible(
-                        child: Padding(
-                          padding: EdgeInsets.only(right: rightReserve),
-                          child: Text(
-                            subtitle!,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey.shade600),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 5,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

@@ -10,13 +10,6 @@ void main() {
       expect(Priority.low.value, 4);
     });
 
-    test('critical, high and medium tiles share one height', () {
-      expect(Priority.critical.cardHeightFraction, 0.20);
-      expect(Priority.high.cardHeightFraction, 0.20);
-      expect(Priority.medium.cardHeightFraction, 0.20);
-      expect(Priority.low.cardHeightFraction, 0.10);
-    });
-
     test('bubbles still scale by priority', () {
       expect(Priority.critical.bubbleWeight, 0.50);
       expect(Priority.high.bubbleWeight, 0.30);

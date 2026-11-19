@@ -531,6 +531,12 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     List<PriorityNode> children,
     String? levelId,
   ) {
+    // One height for every tile, whatever its priority and however tall the
+    // screen: the badge row, one line of title and the 1-4 row, and nothing
+    // else. Priority is carried by the colour and the badge. Read once here
+    // rather than per tile, so there is only one number in play.
+    final cardHeight = PriorityCard.compactHeight(context);
+
     // Reorderable so siblings of one priority can be ranked by hand. Flutter
     // gives touch devices a long-press drag and desktops explicit handles.
     return ReorderableListView.builder(
@@ -550,12 +556,6 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       proxyDecorator: _dragProxy,
       itemBuilder: (context, index) {
         final child = children[index];
-        final screenHeight = MediaQuery.of(context).size.height;
-        // Enough for the badge row, a line of title and the 1-4 row; below
-        // this the title gets clipped instead of merely tight.
-        const minCardHeight = 132.0;
-        final cardHeight = (screenHeight * child.priority.cardHeightFraction)
-            .clamp(minCardHeight, double.infinity);
         final color = priorityColor(child.priority);
         // In move mode every other card is a drop target and says so in
         // green; the moving card itself fades so it reads as "picked up".
@@ -579,8 +579,6 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
               backgroundColor: background,
               fixedHeight: cardHeight,
               childCount: tree.childCount(child.id),
-              subtitle: child.description.isEmpty ? null : child.description,
-              chipLabels: _chipLabels(tree, child, filter),
               currentPriority: child.priority,
               dragIndex: index,
               childPages: _childPagesFor(vm, tree, filter, child),
@@ -638,8 +636,6 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
             child.priority,
           ).withValues(alpha: 0.15),
           childCount: tree.childCount(child.id),
-          subtitle: child.description.isEmpty ? null : child.description,
-          chipLabels: _chipLabels(tree, child, filter),
           currentPriority: child.priority,
           onTap: () => _openNode(child, bubbleView: false),
           onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
@@ -676,8 +672,9 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
   }
 
   /// Titles of the node's children as mini chips, so one level down is visible
-  /// without drilling in. Honors the priority filter, and is skipped for low
-  /// nodes whose tiles are too short to fit chips.
+  /// without drilling in — the bubble view's doing; list tiles carry only the
+  /// child count. Honors the priority filter, and is skipped for low nodes
+  /// whose bubbles are too small to fit chips.
   List<String>? _chipLabels(
     NodeTree tree,
     PriorityNode node,
