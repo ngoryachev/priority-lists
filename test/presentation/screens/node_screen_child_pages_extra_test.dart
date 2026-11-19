@@ -207,20 +207,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final card = tester.getRect(cardOf('P2'));
-      // Inside the grip's band but past its target, and well right of the
-      // back-gesture gutter — which opens the node by a path of its own and
-      // would make this vacuous. Read off the grip rather than hard-coded:
-      // the band shrinks with whatever the bottom-right row costs, so a fixed
-      // offset drifts onto the grip as that row grows.
-      final grip = tester.getRect(
-        find.descendant(
-          of: cardOf('P2'),
-          matching: find.byType(ReorderableDragStartListener),
-        ),
-      );
-      final offTheGrip = grip.right + 8;
-      expect(offTheGrip, lessThan(card.right));
-      await tester.tapAt(Offset(offTheGrip, card.bottom - 14));
+      // Bottom-left of the card: inside the grip's band, left of its target
+      // and right of the back-gesture gutter.
+      await tester.tapAt(Offset(card.left + 60, card.bottom - 14));
       await tester.pumpAndSettle();
 
       expect(
@@ -239,13 +228,7 @@ void main() {
       expect(shownTitle(tester, 'P2'), 'b1');
 
       final card = tester.getRect(cardOf('P2'));
-      final grip = tester.getRect(
-        find.descendant(
-          of: cardOf('P2'),
-          matching: find.byType(ReorderableDragStartListener),
-        ),
-      );
-      await tester.tapAt(Offset(grip.right + 8, card.bottom - 14));
+      await tester.tapAt(Offset(card.left + 60, card.bottom - 14));
       await tester.pumpAndSettle();
 
       expect(

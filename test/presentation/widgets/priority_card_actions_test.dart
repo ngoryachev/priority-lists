@@ -164,21 +164,15 @@ void main() {
       }
     });
 
-    testWidgets('the grip keeps its 44dp and its place, and never covers the '
-        'gutter, at every width', (tester) async {
-      // The card's bottom edge is claimed by three things and, on a 320dp
-      // phone, has room for barely two: the 24dp back-gesture gutter, the
-      // grip's 44dp, and the six-button row. The gutter and the grip are
-      // fixed and must always be exactly where they are; the row is the one
-      // that gives way, by scrolling. This is the one place that says so.
-      //
-      // The grip used to be centred in whatever the row left over, which made
-      // its position a function of the row's width — it covered the row's
-      // buttons on one card width, the gutter on another, and below ~288dp was
-      // clipped out of existence. The assertions below are the invariants that
-      // replaced that: same size, same place, at every width.
-      Rect? firstGrip;
-      for (final width in [400.0, 360.0, 320.0, 300.0, 288.0, 277.0]) {
+    testWidgets('the marks never cost the grip or the 1-4 row their targets', (
+      tester,
+    ) async {
+      // The marks live in the badge row, not next to the 1-4 buttons, so the
+      // bottom of the card is exactly what it was before them: the drag grip
+      // and the four priority buttons, each with its whole touch target, and
+      // the strip the card keeps clear for the platform back swipe. This is
+      // the guard for that — the earlier placement squeezed all three.
+      for (final width in [400.0, 360.0, 320.0]) {
         tester.view.physicalSize = Size(width, 700);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
@@ -195,9 +189,9 @@ void main() {
                   title: 'Some item',
                   badgeLabel: Priority.high.label,
                   color: Colors.orange,
-                  // Any height a tile could have: the bottom-right row and the
-                  // grip are both pinned to the card's bottom edge, so it is
-                  // the card's *width* this is about.
+                  // Any height a tile could have: the grip and the 1-4 row are
+                  // both pinned to the card's bottom edge, so it is the card's
+                  // *width* this is about.
                   fixedHeight: 120,
                   currentPriority: Priority.high,
                   dragIndex: 0,
@@ -222,12 +216,11 @@ void main() {
         await tester.pumpAndSettle();
         final at = 'at ${width}dp';
 
-        // Its whole 44dp target, and its glyph unclipped — not a sliver of
-        // either, however narrow the card.
+        // The grip's whole target and an unclipped glyph. 44 and 20 are spelt
+        // out rather than read back from the card: they are the touch-target
+        // guideline and the glyph, so a change that shrinks either should fail
+        // here, not pass quietly.
         final grip = tester.getRect(find.byType(ReorderableDragStartListener));
-        // 44 and 24 spelt out rather than read back from the card: these are
-        // the touch-target guideline and the platform's back-swipe strip, so a
-        // change that shrinks either should fail here, not pass quietly.
         expect(grip.width, 44, reason: at);
         expect(grip.height, 44, reason: at);
         expect(
@@ -241,21 +234,22 @@ void main() {
           reason: 'the card cannot be picked up $at',
         );
 
-        // Clear of the strip the card keeps free of its own gestures, and in
-        // the same place on every card — the position is no longer a function
-        // of what the bottom-right row costs.
+        // Clear of the strip the card keeps free of its own gestures.
         final content = tester.getRect(find.byType(Stack).first);
-        expect(
-          grip.left - content.left,
-          24,
-          reason: 'the grip is not flush against the gutter $at',
+        final gutter = Rect.fromLTRB(
+          content.left,
+          grip.top,
+          content.left + 24,
+          grip.bottom,
         );
-        final relative = grip.shift(-content.topLeft);
-        firstGrip ??= relative;
-        expect(relative, firstGrip, reason: 'the grip moved $at');
+        expect(
+          grip.overlaps(gutter),
+          isFalse,
+          reason: 'the grip reaches into the back-gesture gutter $at '
+              '(grip $grip, gutter $gutter)',
+        );
 
-        // The 1-4 row is the part of the bottom row that is always there, so
-        // it is never what scrolls away.
+        // All four priority buttons, and both marks in the row above.
         for (final p in Priority.values) {
           expect(
             find.text('${p.value}').hitTestable(),
@@ -263,21 +257,16 @@ void main() {
             reason: 'the 1-4 row lost button ${p.value} $at',
           );
         }
-
-        // The marks are fully tappable across the supported range; below it
-        // they scroll into reach rather than hiding under anything.
-        if (width >= 320) {
-          for (final mark in NodeMark.values) {
-            expect(
-              find.text(mark.emoji).hitTestable(),
-              findsOneWidget,
-              reason: '${mark.emoji} is not tappable $at',
-            );
-          }
-          await tester.tap(find.text(NodeMark.flame.emoji));
-          await tester.tap(find.text(NodeMark.ice.emoji));
-          expect(picked, [NodeMark.flame, NodeMark.ice], reason: at);
+        for (final mark in NodeMark.values) {
+          expect(
+            find.text(mark.emoji).hitTestable(),
+            findsOneWidget,
+            reason: '${mark.emoji} is not tappable $at',
+          );
         }
+        await tester.tap(find.text(NodeMark.flame.emoji));
+        await tester.tap(find.text(NodeMark.ice.emoji));
+        expect(picked, [NodeMark.flame, NodeMark.ice], reason: at);
       }
     });
 

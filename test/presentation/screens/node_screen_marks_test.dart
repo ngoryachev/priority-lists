@@ -864,4 +864,106 @@ void main() {
       );
     });
   });
+
+  group('the mark buttons on a narrow phone', () {
+    /// The card as the level's list builds it: the list's own 8dp padding and
+    /// the card's 12dp margin come off the width before anything on the card
+    /// gets any, so a card measured on its own is 16dp wider than this one.
+    Future<Finder> cardAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      // A bare tree first: the card is keyed by its node id, so pumping a
+      // second screen would reuse the same State — and with it the page the
+      // previous width's swipe left it on.
+      await tester.pumpWidget(const SizedBox());
+
+      final repository = await seeded([
+        node('Parent', createdOffset: 1),
+        // A child makes the card swipeable: its pages are the gesture that
+        // anything along the card's bottom edge would compete with.
+        node('Kid', parent: 'Parent', createdOffset: 2),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      return find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Parent',
+      );
+    }
+
+    testWidgets('both are whole and tappable at 320dp', (tester) async {
+      // 320dp is the narrowest the app is tested on. The marks sit in the
+      // badge row with edit and delete — which already scrolls when it runs
+      // out of width — rather than next to the 1-4 buttons, where six
+      // buttons, the 44dp grip and the 24dp back-gesture strip do not fit a
+      // card this narrow between them.
+      final card = await cardAt(tester, 320);
+
+      for (final mark in NodeMark.values) {
+        final glyph = find.descendant(
+          of: card,
+          matching: find.text(mark.emoji),
+        );
+        expect(
+          glyph.hitTestable(),
+          findsOneWidget,
+          reason: '${mark.emoji} is not tappable at 320dp',
+        );
+        // Whole, not sliced by the edge of a scroller or of the card.
+        final button = tester.getRect(glyph);
+        final cardRect = tester.getRect(card);
+        expect(
+          cardRect.contains(button.topLeft) &&
+              cardRect.contains(button.bottomRight),
+          isTrue,
+          reason:
+              '${mark.emoji} is clipped at 320dp '
+              '(button $button, card $cardRect)',
+        );
+      }
+    });
+
+    testWidgets('setting a mark from a 320dp card works', (tester) async {
+      final card = await cardAt(tester, 320);
+      await tester.tap(
+        find.descendant(of: card, matching: find.text(NodeMark.flame.emoji)),
+      );
+      await tester.pumpAndSettle();
+
+      // It left the list for a pinned row, which is the whole point of it.
+      expect(pinnedOrder(tester), ['Parent']);
+      expect(cardOrder(tester), isEmpty);
+    });
+
+    testWidgets('a sideways swipe over the bottom of the card turns the page', (
+      tester,
+    ) async {
+      // The card's second axis. Nothing along its bottom edge may claim a
+      // horizontal drag: an earlier placement put the marks next to the 1-4
+      // row, which made that row a scroller on a narrow card and killed the
+      // swipe in the bottom strip of every tile.
+      for (final width in [320.0, 360.0]) {
+        final card = await cardAt(tester, width);
+        final childPage = find.descendant(of: card, matching: find.text('Kid'));
+        expect(childPage, findsNothing, reason: 'at ${width}dp');
+
+        // From the "2" button: along the card's bottom edge, nowhere near the
+        // grip on the left.
+        await tester.drag(
+          find.descendant(of: card, matching: find.text('2')),
+          const Offset(-250, 0),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          childPage,
+          findsOneWidget,
+          reason:
+              'the swipe did not turn the card to its child page '
+              'at ${width}dp',
+        );
+      }
+    });
+  });
 }

@@ -61,7 +61,7 @@ class PriorityCard extends StatefulWidget {
   final Priority? currentPriority;
 
   /// The node's 🔥 / 🧊 mark, or null when it has none. Only read when
-  /// [onSetMark] is set, which is what makes the mark buttons appear.
+  /// [onSetMark] is set, which is what makes the mark actions appear.
   final NodeMark? currentMark;
 
   /// Position in the enclosing [ReorderableListView]. When set, the card shows
@@ -93,7 +93,13 @@ class PriorityCard extends StatefulWidget {
   final ValueChanged<Priority>? onSetPriority;
 
   /// Sets the node's mark, or clears it when the active one is tapped again.
-  /// Null — on a child page, and on a role — leaves the buttons off entirely.
+  /// Null — on a child page, and on a role — leaves the two actions off.
+  ///
+  /// They live in the badge row with edit and delete rather than next to the
+  /// 1-4 buttons: that row already scrolls when it runs out of width, whereas
+  /// the bottom of the card is spoken for by the drag grip and the strip kept
+  /// clear for the platform back swipe, and a 320dp phone has no room for
+  /// six buttons between them.
   final ValueChanged<NodeMark?>? onSetMark;
 
   /// Lifts the node one level up, next to its current parent.
@@ -145,11 +151,6 @@ class PriorityCard extends StatefulWidget {
     horizontal: 12,
     vertical: 6,
   );
-
-  /// The accent stripe down a face's left edge. Named because the bottom-right
-  /// row's left reserve is measured in face coordinates and so has to know
-  /// what the face itself insets by.
-  static const double _faceBorderWidth = 5;
 
   /// Padding around a face's content. The tightest of the three widths the
   /// card used to choose between: with the badge row and the 1-4 row both
@@ -387,6 +388,12 @@ class _PriorityCardState extends State<PriorityCard> {
     // Not `shownPage?.onTap ?? widget.onTap`: a child page with no tap of its
     // own must not borrow the owner's.
     final activeTap = shownPage == null ? widget.onTap : shownPage.onTap;
+    // The band the grip is centred in has to clear the 1-4 row of the face
+    // actually on screen: a child page carries its own row even where the
+    // owner has none, and the grip is hit-test-first.
+    final shownHasLevelRow = shownPage == null
+        ? widget.onSetPriority != null
+        : shownPage.onSetPriority != null;
 
     Widget card = Card(
       margin: PriorityCard._cardMargin,
@@ -395,38 +402,12 @@ class _PriorityCardState extends State<PriorityCard> {
       child: Stack(
         children: [
           pages,
-          // Before the gutter and the arrows on purpose: they are hit-tested
-          // first and so keep the strips they own (see below).
-          //
-          // Anchored, not centred in what is left of the card: the grip used
-          // to sit in the middle of a band measured from the card's own width,
-          // so every dp the bottom-right row grew moved it, and on a narrow
-          // card it slid onto the gutter, lost its touch target, and below
-          // ~288dp was clipped out of existence. Its place and its 44dp are
-          // fixed now — right of the gutter, which it must never cover
-          // whether or not this card swipes — and it is the *row* that gives
-          // way instead (see [_CardFace.leftReserve]).
-          if (hasGrip)
-            Positioned(
-              left: PriorityCard._backGestureGutter,
-              bottom: 0,
-              width: PriorityCard._gripTouchSize,
-              height: PriorityCard._gripTouchSize,
-              child: _dragGrip(),
-            ),
           if (swiping)
             // The page drag is dropped in this strip (opaque hit testing keeps
             // the PageView out of the gesture arena here) so the platform's
             // back swipe still works. The enclosing list's scroll and the
             // route's back gesture are *ancestors* of this card, so they stay
             // in the arena — only the page turn is given up.
-            //
-            // Hit-tested ahead of the grip, which is why it is declared after
-            // it: on the narrowest phone the card has no room for a 24dp
-            // gutter, a 44dp grip target and the whole button row at once, and
-            // what gives is a slice of the grip's slack — not this strip,
-            // whose whole point is that the card's own gestures stay out of
-            // it. The grip's glyph sits clear of it either way.
             Positioned(
               left: 0,
               top: 0,
@@ -485,6 +466,17 @@ class _PriorityCardState extends State<PriorityCard> {
                 ),
               ),
             ),
+          if (hasGrip)
+            Positioned(
+              left: 0,
+              // Clear of the 1-4 row: at 360dp the row is pinned bottom-right
+              // and exact centring would cost either the grip's touch target
+              // or the buttons' hittability.
+              right: shownHasLevelRow ? _levelRowReserve : 0,
+              bottom: 0,
+              height: PriorityCard._gripTouchSize,
+              child: Center(child: _dragGrip()),
+            ),
         ],
       ),
     );
@@ -503,28 +495,9 @@ class _PriorityCardState extends State<PriorityCard> {
     return card;
   }
 
-  /// Strip the bottom-right button row keeps clear on its left: the
-  /// back-gesture gutter, the grip's fixed 44dp, and a gap — less the face's
-  /// own left inset, since the row is positioned inside the face while the
-  /// gutter and the grip are positioned on the card.
-  ///
-  /// The card's bottom edge has three claims on it and, on a 320dp phone, room
-  /// for barely two: the gutter and the grip are fixed sizes that have to be
-  /// exactly where they are, so the row — the only elastic one of the three —
-  /// is what gives way. It scrolls inside whatever is left rather than
-  /// colliding with them, the same answer the badge row above already gives
-  /// when a large text scale leaves it too narrow.
-  static const double _gripReserve =
-      PriorityCard._backGestureGutter +
-      PriorityCard._gripTouchSize +
-      4 -
-      PriorityCard._faceBorderWidth -
-      PriorityCard._facePadding;
-
-  /// Side of a mark button's square. A touch smaller than a priority button,
-  /// so the six-button row still fits a 320dp phone whole; comfortably over
-  /// the glyph it holds.
-  static const double _markButtonSize = 28;
+  /// Width the bottom-right 1-4 row takes, as seen from the card: the four
+  /// 32dp buttons with their gaps, plus the face's own padding.
+  static const double _levelRowReserve = 160;
 
   /// Band kept clear for the grip glyph on a card that has no 1-4 row. With
   /// the row there its 32dp already covers the glyph, so the grip costs the
@@ -567,11 +540,8 @@ class _PriorityCardState extends State<PriorityCard> {
       childCount: widget.childCount,
       currentPriority: widget.currentPriority,
       currentMark: widget.currentMark,
-      bottomReserve: _bottomReserve(
-        hasLevelRow: widget.onSetPriority != null || widget.onSetMark != null,
-      ),
+      bottomReserve: _bottomReserve(hasLevelRow: widget.onSetPriority != null),
       rightReserve: _swipeable ? PriorityCard._dotsGutter : 0,
-      leftReserve: widget.dragIndex != null ? _gripReserve : 0,
       onTap: widget.onTap,
       onEdit: widget.onEdit,
       onDelete: widget.onDelete,
@@ -594,7 +564,6 @@ class _PriorityCardState extends State<PriorityCard> {
       currentPriority: page.currentPriority,
       bottomReserve: _bottomReserve(hasLevelRow: page.onSetPriority != null),
       rightReserve: PriorityCard._dotsGutter,
-      leftReserve: widget.dragIndex != null ? _gripReserve : 0,
       // Whose card this is: the page belongs to the owner's tile, not to the
       // child's own level.
       ownerLabel: '${widget.title} ›',
@@ -628,7 +597,7 @@ class _CardFace extends StatelessWidget {
   final Priority? currentPriority;
 
   /// The node's mark, and the callback that sets it. Null [onSetMark] leaves
-  /// the two buttons out, which is every face but a level's own card.
+  /// the two actions out, which is every face but a level's own card.
   final NodeMark? currentMark;
   final ValueChanged<NodeMark?>? onSetMark;
 
@@ -638,11 +607,6 @@ class _CardFace extends StatelessWidget {
 
   final double bottomReserve;
   final double rightReserve;
-
-  /// Width the bottom-right button row keeps clear on its left, for the drag
-  /// grip and the back-gesture gutter. The row scrolls inside what is left
-  /// rather than reaching under either of them.
-  final double leftReserve;
 
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
@@ -663,7 +627,6 @@ class _CardFace extends StatelessWidget {
     this.ownerLabel,
     required this.bottomReserve,
     required this.rightReserve,
-    this.leftReserve = 0,
     this.onTap,
     this.onEdit,
     this.onDelete,
@@ -681,12 +644,7 @@ class _CardFace extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(
-              color: color,
-              width: PriorityCard._faceBorderWidth,
-            ),
-          ),
+          border: Border(left: BorderSide(color: color, width: 5)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(PriorityCard._facePadding),
@@ -808,6 +766,21 @@ class _CardFace extends StatelessWidget {
                                     onPressed: onDelete,
                                     tooltip: 'Delete',
                                   ),
+                                // Last in the row, so the actions that were
+                                // here keep the places the muscle memory of
+                                // this app already has for them.
+                                if (onSetMark != null)
+                                  for (final mark in NodeMark.values)
+                                    _MarkAction(
+                                      mark: mark,
+                                      isActive: currentMark == mark,
+                                      // Tapping the active one takes the mark
+                                      // off, so one button both marks and
+                                      // unmarks.
+                                      onPressed: () => onSetMark!(
+                                        currentMark == mark ? null : mark,
+                                      ),
+                                    ),
                               ],
                             ),
                           ),
@@ -838,48 +811,13 @@ class _CardFace extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onSetPriority != null || onSetMark != null)
+              if (onSetPriority != null)
                 Positioned(
-                  left: leftReserve,
                   right: 0,
                   bottom: 0,
-                  // One row: the marks first, then the 1-4 buttons. They are
-                  // orthogonal — a mark says what is happening to the node,
-                  // the number how much it matters — so neither reads as a
-                  // sixth priority.
-                  //
-                  // Right-aligned and scrollable (reverse, like the badge row
-                  // above): on a phone too narrow for all six, the drag grip
-                  // and the gutter keep their fixed places and the marks
-                  // scroll under the finger instead, with the 1-4 row — the
-                  // one that is always there — staying put.
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    reverse: true,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (onSetMark != null)
-                          for (final mark in NodeMark.values)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: _MarkButton(
-                                mark: mark,
-                                isActive: currentMark == mark,
-                                // Tapping the active one takes the mark off,
-                                // so the same button both marks and unmarks.
-                                onTap: () => onSetMark!(
-                                  currentMark == mark ? null : mark,
-                                ),
-                              ),
-                            ),
-                        if (onSetPriority != null)
-                          _PriorityLevelRow(
-                            current: currentPriority,
-                            onSelect: onSetPriority!,
-                          ),
-                      ],
-                    ),
+                  child: _PriorityLevelRow(
+                    current: currentPriority,
+                    onSelect: onSetPriority!,
                   ),
                 ),
             ],
@@ -996,118 +934,37 @@ class _CardAction extends StatelessWidget {
   }
 }
 
-/// Row of four square buttons "1" / "2" / "3" / "4" that directly assign a
-/// [Priority] without going through up/down increments.
-class _PriorityLevelRow extends StatelessWidget {
-  final Priority? current;
-  final ValueChanged<Priority> onSelect;
-
-  const _PriorityLevelRow({required this.current, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final p in Priority.values)
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: _PriorityLevelButton(
-              priority: p,
-              isActive: current == p,
-              onTap: () => onSelect(p),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _PriorityLevelButton extends StatelessWidget {
-  final Priority priority;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _PriorityLevelButton({
-    required this.priority,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = priorityColor(priority);
-    return Material(
-      color: isActive ? color : color.withValues(alpha: 0.12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: color, width: isActive ? 0 : 1),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Center(
-            child: Text(
-              '${priority.value}',
-              style: TextStyle(
-                color: isActive ? Colors.white : color,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One of the two mark buttons on a card: 🔥 "in progress" or 🧊 "blocked".
+/// One of the two mark actions in a card's badge row: 🔥 "in progress" or
+/// 🧊 "blocked".
 ///
-/// Square and 32dp like a priority button so the bottom-right row reads as one
-/// strip, but tinted by the mark rather than by a priority colour — the two
-/// scales are orthogonal and must not look like one six-step one.
-class _MarkButton extends StatelessWidget {
+/// Shaped like a [_CardAction] so the row reads as one strip — same
+/// `IconButton`, same compact density, so it costs the row the same width and
+/// the tile the same height — but its glyph is the mark's emoji rather than an
+/// icon, and the active one is tinted so a glance says which is set.
+class _MarkAction extends StatelessWidget {
   final NodeMark mark;
   final bool isActive;
-  final VoidCallback onTap;
+  final VoidCallback onPressed;
 
-  const _MarkButton({
+  const _MarkAction({
     required this.mark,
     required this.isActive,
-    required this.onTap,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     final color = markColor(mark);
-    return Tooltip(
-      message: isActive ? 'Remove the mark' : mark.label,
-      child: Material(
-        color: isActive ? color.withValues(alpha: 0.35) : Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: BorderSide(
-            color: color.withValues(alpha: isActive ? 1 : 0.5),
-            width: 1,
-          ),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            width: _PriorityCardState._markButtonSize,
-            height: _PriorityCardState._markButtonSize,
-            // The emoji is the whole label; a screen reader gets the tooltip.
-            child: Center(
-              child: Text(mark.emoji, style: const TextStyle(fontSize: 14)),
-            ),
-          ),
-        ),
-      ),
+    return IconButton(
+      // Sized to match the 20dp icons beside it rather than left to the
+      // ambient text style, which would make the two rows disagree.
+      icon: Text(mark.emoji, style: const TextStyle(fontSize: 16, height: 1.2)),
+      onPressed: onPressed,
+      tooltip: isActive ? 'Remove the mark' : mark.label,
+      visualDensity: VisualDensity.compact,
+      style: isActive
+          ? IconButton.styleFrom(backgroundColor: color.withValues(alpha: 0.25))
+          : null,
     );
   }
 }
@@ -1184,6 +1041,75 @@ class PinnedMarkRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Row of four square buttons "1" / "2" / "3" / "4" that directly assign a
+/// [Priority] without going through up/down increments.
+class _PriorityLevelRow extends StatelessWidget {
+  final Priority? current;
+  final ValueChanged<Priority> onSelect;
+
+  const _PriorityLevelRow({required this.current, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final p in Priority.values)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: _PriorityLevelButton(
+              priority: p,
+              isActive: current == p,
+              onTap: () => onSelect(p),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PriorityLevelButton extends StatelessWidget {
+  final Priority priority;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _PriorityLevelButton({
+    required this.priority,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = priorityColor(priority);
+    return Material(
+      color: isActive ? color : color.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: color, width: isActive ? 0 : 1),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: Text(
+              '${priority.value}',
+              style: TextStyle(
+                color: isActive ? Colors.white : color,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

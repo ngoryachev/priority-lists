@@ -173,7 +173,7 @@ void main() {
     });
   });
 
-  group('the grip keeps its place whatever the page shows', () {
+  group('the grip band follows the page on screen', () {
     PriorityCard bare(
       BuildContext context, {
       required bool ownerHasLevels,
@@ -236,8 +236,8 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      // The inverse of the case above: the owner carries the 1-4 row and the
-      // child pages do not, so the two faces reserve different widths.
+      // The inverse of the case above: the owner carries the 1-4 row, the
+      // child pages do not, so the band widens as the card turns.
       await tester.pumpWidget(
         wrap(
           (context) => bare(
@@ -260,14 +260,12 @@ void main() {
       expect(find.text('1/2'), findsOneWidget);
       expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
       final gripOnChild = tester.getCenter(find.byIcon(Icons.drag_handle));
-      // The grip is anchored, not centred in what the face leaves over, so
-      // turning the page does not move it: it used to slide with the width
-      // the bottom-right row reserved, which is how it ended up covering
-      // that row's buttons and the back-gesture gutter on a narrow card.
-      expect(gripOnChild.dx, gripOnOwner.dx);
+      // The band is the full card width on a page with no 1-4 row, so the
+      // grip genuinely moves; it must still be on the card and reachable.
+      expect(gripOnChild.dx, greaterThan(gripOnOwner.dx));
       expect(
         tester.getSize(find.byType(ReorderableDragStartListener)).width,
-        44,
+        greaterThanOrEqualTo(44),
       );
     });
   });
