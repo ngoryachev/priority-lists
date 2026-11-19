@@ -664,6 +664,116 @@ void main() {
     );
   });
 
+  testWidgets('the grip keeps its whole handle on a narrow phone', (
+    tester,
+  ) async {
+    // The band the grip is centred in is bounded by two constants (the
+    // bottom-right button row, now 64dp wider for the mark buttons, and the
+    // 24dp gutter) but measured from the card's own width, so it is what runs
+    // out as the card narrows. `Center` then hands the grip a band narrower
+    // than its 44dp target, and the drag handle is cut down with it: the
+    // reorder affordance has to survive a narrow screen, not just clear the
+    // two strips next to it.
+    //
+    // 320dp is the narrowest the app is tested on; a display-scaling setting
+    // takes a wider phone below that.
+    for (final width in [320.0, 300.0, 288.0]) {
+      tester.view.physicalSize = Size(width, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final repository = await seeded([
+        node('Parent', priority: Priority.critical, createdOffset: 1),
+        node('Kid', parent: 'Parent', createdOffset: 2),
+        node('Other', priority: Priority.critical, createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      final card = find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Parent',
+      );
+      final handle = find.descendant(
+        of: card,
+        matching: find.byIcon(Icons.drag_handle),
+      );
+      expect(
+        handle.hitTestable(),
+        findsOneWidget,
+        reason: 'the drag handle is unreachable at ${width}dp',
+      );
+      // 20dp is the icon's own size: anything less is the glyph being clipped
+      // by the band around it.
+      expect(
+        tester.getRect(handle).width,
+        20.0,
+        reason: 'the drag handle is clipped at ${width}dp',
+      );
+      expect(
+        tester
+            .getRect(
+              find.descendant(
+                of: card,
+                matching: find.byType(ReorderableDragStartListener),
+              ),
+            )
+            .width,
+        greaterThanOrEqualTo(20.0),
+        reason: 'the grip has no room left to grab at ${width}dp',
+      );
+    }
+  });
+
+  testWidgets('a card with no pages keeps the grip out of its left edge too', (
+    tester,
+  ) async {
+    // The band is only bounded on the left while the card is swipeable, but
+    // what the bound protects does not depend on that: the leftmost 24dp of
+    // any card is where the platform's back swipe and an ordinary tap have to
+    // land, and the grip's immediate drag recogniser claims whatever it
+    // covers. A leaf card has no child pages, so the left bound is 0 and the
+    // grip slides 18dp further left than on the card next to it.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final repository = await seeded([node('Leaf', createdOffset: 1)]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    final card = find.byWidgetPredicate(
+      (widget) => widget is PriorityCard && widget.title == 'Leaf',
+    );
+    final content = tester.getRect(
+      find.descendant(of: card, matching: find.byType(Stack)).first,
+    );
+    final grip = tester.getRect(
+      find.descendant(
+        of: card,
+        matching: find.byType(ReorderableDragStartListener),
+      ),
+    );
+    final gutter = Rect.fromLTRB(
+      content.left,
+      grip.top,
+      content.left + 24,
+      grip.bottom,
+    );
+    expect(
+      grip.overlaps(gutter),
+      isFalse,
+      reason: 'the grip target $grip reaches into the left edge $gutter',
+    );
+
+    // What that strip is for: a tap there opens the node.
+    await tester.tapAt(Offset(gutter.left + 10, grip.center.dy));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Leaf')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('roles get no mark buttons', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(

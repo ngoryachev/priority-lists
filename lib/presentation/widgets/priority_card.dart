@@ -146,6 +146,11 @@ class PriorityCard extends StatefulWidget {
     vertical: 6,
   );
 
+  /// The accent stripe down a face's left edge. Named because the bottom-right
+  /// row's left reserve is measured in face coordinates and so has to know
+  /// what the face itself insets by.
+  static const double _faceBorderWidth = 5;
+
   /// Padding around a face's content. The tightest of the three widths the
   /// card used to choose between: with the badge row and the 1-4 row both
   /// sized by their touch targets, this is the only band left to spend on air.
@@ -382,19 +387,6 @@ class _PriorityCardState extends State<PriorityCard> {
     // Not `shownPage?.onTap ?? widget.onTap`: a child page with no tap of its
     // own must not borrow the owner's.
     final activeTap = shownPage == null ? widget.onTap : shownPage.onTap;
-    // The band the grip is centred in has to clear the 1-4 row of the face
-    // actually on screen: a child page carries its own row even where the
-    // owner has none, and the grip is hit-test-first.
-    final shownHasLevelRow = shownPage == null
-        ? widget.onSetPriority != null || widget.onSetMark != null
-        : shownPage.onSetPriority != null;
-    // Measured from the face on screen for the same reason: only an owner face
-    // carries the two mark buttons, so a child page keeps the wider band.
-    final shownRowReserve =
-        _levelRowReserve +
-        (shownPage == null && widget.onSetMark != null
-            ? 2 * _markButtonSlot
-            : 0);
 
     Widget card = Card(
       margin: PriorityCard._cardMargin,
@@ -405,19 +397,22 @@ class _PriorityCardState extends State<PriorityCard> {
           pages,
           // Before the gutter and the arrows on purpose: they are hit-tested
           // first and so keep the strips they own (see below).
+          //
+          // Anchored, not centred in what is left of the card: the grip used
+          // to sit in the middle of a band measured from the card's own width,
+          // so every dp the bottom-right row grew moved it, and on a narrow
+          // card it slid onto the gutter, lost its touch target, and below
+          // ~288dp was clipped out of existence. Its place and its 44dp are
+          // fixed now — right of the gutter, which it must never cover
+          // whether or not this card swipes — and it is the *row* that gives
+          // way instead (see [_CardFace.leftReserve]).
           if (hasGrip)
             Positioned(
-              // The band the grip is centred in, bounded by both things it is
-              // not allowed to cover: the bottom-right button row on the
-              // right, and the back-gesture gutter on the left. The band is
-              // measured from the card's own width, so it shrinks with the
-              // card while neither of those does — leave either end unpaid and
-              // the 44dp target drifts onto it as the screen narrows.
-              left: swiping ? PriorityCard._backGestureGutter : 0,
-              right: shownHasLevelRow ? shownRowReserve : 0,
+              left: PriorityCard._backGestureGutter,
               bottom: 0,
+              width: PriorityCard._gripTouchSize,
               height: PriorityCard._gripTouchSize,
-              child: Center(child: _dragGrip()),
+              child: _dragGrip(),
             ),
           if (swiping)
             // The page drag is dropped in this strip (opaque hit testing keeps
@@ -508,29 +503,27 @@ class _PriorityCardState extends State<PriorityCard> {
     return card;
   }
 
-  /// Width the bottom-right 1-4 row takes, as seen from the card: the four
-  /// 32dp buttons with their gaps, plus the face's own padding.
-  static const double _levelRowReserve = 160;
-
-  /// What one mark button adds to that row: its square and the 4dp gap in
-  /// front of it.
+  /// Strip the bottom-right button row keeps clear on its left: the
+  /// back-gesture gutter, the grip's fixed 44dp, and a gap — less the face's
+  /// own left inset, since the row is positioned inside the face while the
+  /// gutter and the grip are positioned on the card.
   ///
-  /// The band has to pay for these too. It is measured from the card's own
-  /// width, so it shrinks with the card while the button row — right-aligned
-  /// inside the face — does not: left unpaid, the grip's target, which
-  /// `Center` puts in the middle of the band, drifts over the buttons as the
-  /// screen narrows and swallows their taps. At 320dp (the narrowest the app
-  /// is tested at) the 🔥 button's centre ended up inside the grip.
-  ///
-  /// The buttons are [_markButtonSize] rather than the 1-4 row's 32dp for the
-  /// same reason, from the other side: at 320dp the card has only 36dp between
-  /// the back-gesture gutter and this row, and every dp this row gives back is
-  /// a dp of the drag grip's touch target.
-  static const double _markButtonSlot = _markButtonSize + 4;
+  /// The card's bottom edge has three claims on it and, on a 320dp phone, room
+  /// for barely two: the gutter and the grip are fixed sizes that have to be
+  /// exactly where they are, so the row — the only elastic one of the three —
+  /// is what gives way. It scrolls inside whatever is left rather than
+  /// colliding with them, the same answer the badge row above already gives
+  /// when a large text scale leaves it too narrow.
+  static const double _gripReserve =
+      PriorityCard._backGestureGutter +
+      PriorityCard._gripTouchSize +
+      4 -
+      PriorityCard._faceBorderWidth -
+      PriorityCard._facePadding;
 
-  /// Side of a mark button's square. Smaller than a priority button, which is
-  /// what pays for the drag grip at 320dp; still comfortably over the 20dp
-  /// glyph it holds.
+  /// Side of a mark button's square. A touch smaller than a priority button,
+  /// so the six-button row still fits a 320dp phone whole; comfortably over
+  /// the glyph it holds.
   static const double _markButtonSize = 28;
 
   /// Band kept clear for the grip glyph on a card that has no 1-4 row. With
@@ -578,6 +571,7 @@ class _PriorityCardState extends State<PriorityCard> {
         hasLevelRow: widget.onSetPriority != null || widget.onSetMark != null,
       ),
       rightReserve: _swipeable ? PriorityCard._dotsGutter : 0,
+      leftReserve: widget.dragIndex != null ? _gripReserve : 0,
       onTap: widget.onTap,
       onEdit: widget.onEdit,
       onDelete: widget.onDelete,
@@ -600,6 +594,7 @@ class _PriorityCardState extends State<PriorityCard> {
       currentPriority: page.currentPriority,
       bottomReserve: _bottomReserve(hasLevelRow: page.onSetPriority != null),
       rightReserve: PriorityCard._dotsGutter,
+      leftReserve: widget.dragIndex != null ? _gripReserve : 0,
       // Whose card this is: the page belongs to the owner's tile, not to the
       // child's own level.
       ownerLabel: '${widget.title} ›',
@@ -644,6 +639,11 @@ class _CardFace extends StatelessWidget {
   final double bottomReserve;
   final double rightReserve;
 
+  /// Width the bottom-right button row keeps clear on its left, for the drag
+  /// grip and the back-gesture gutter. The row scrolls inside what is left
+  /// rather than reaching under either of them.
+  final double leftReserve;
+
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -663,6 +663,7 @@ class _CardFace extends StatelessWidget {
     this.ownerLabel,
     required this.bottomReserve,
     required this.rightReserve,
+    this.leftReserve = 0,
     this.onTap,
     this.onEdit,
     this.onDelete,
@@ -680,7 +681,12 @@ class _CardFace extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: color, width: 5)),
+          border: Border(
+            left: BorderSide(
+              color: color,
+              width: PriorityCard._faceBorderWidth,
+            ),
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.all(PriorityCard._facePadding),
@@ -834,34 +840,46 @@ class _CardFace extends StatelessWidget {
               ),
               if (onSetPriority != null || onSetMark != null)
                 Positioned(
+                  left: leftReserve,
                   right: 0,
                   bottom: 0,
                   // One row: the marks first, then the 1-4 buttons. They are
                   // orthogonal — a mark says what is happening to the node,
                   // the number how much it matters — so neither reads as a
                   // sixth priority.
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (onSetMark != null)
-                        for (final mark in NodeMark.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: _MarkButton(
-                              mark: mark,
-                              isActive: currentMark == mark,
-                              // Tapping the active one takes the mark off, so
-                              // the same button both marks and unmarks.
-                              onTap: () =>
-                                  onSetMark!(currentMark == mark ? null : mark),
+                  //
+                  // Right-aligned and scrollable (reverse, like the badge row
+                  // above): on a phone too narrow for all six, the drag grip
+                  // and the gutter keep their fixed places and the marks
+                  // scroll under the finger instead, with the 1-4 row — the
+                  // one that is always there — staying put.
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (onSetMark != null)
+                          for (final mark in NodeMark.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: _MarkButton(
+                                mark: mark,
+                                isActive: currentMark == mark,
+                                // Tapping the active one takes the mark off,
+                                // so the same button both marks and unmarks.
+                                onTap: () => onSetMark!(
+                                  currentMark == mark ? null : mark,
+                                ),
+                              ),
                             ),
+                        if (onSetPriority != null)
+                          _PriorityLevelRow(
+                            current: currentPriority,
+                            onSelect: onSetPriority!,
                           ),
-                      if (onSetPriority != null)
-                        _PriorityLevelRow(
-                          current: currentPriority,
-                          onSelect: onSetPriority!,
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
             ],

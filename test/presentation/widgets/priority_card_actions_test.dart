@@ -164,15 +164,21 @@ void main() {
       }
     });
 
-    testWidgets('the grip covers neither a mark button nor the back-gesture '
-        'gutter, down to 320dp', (tester) async {
-      // With a grip, which the 360dp case above has none of. The grip's 44dp
-      // target is centred in a band measured from the card's own width, so it
-      // drifts as the card narrows — onto the button row on one side, onto the
-      // back-gesture gutter on the other. The band has to be bounded by both,
-      // and this is the one place that says so. 320dp is the narrowest the app
-      // is tested at; 300 is below anything shipping, and is here as margin.
-      for (final width in [320.0, 360.0, 400.0, 300.0]) {
+    testWidgets('the grip keeps its 44dp and its place, and never covers the '
+        'gutter, at every width', (tester) async {
+      // The card's bottom edge is claimed by three things and, on a 320dp
+      // phone, has room for barely two: the 24dp back-gesture gutter, the
+      // grip's 44dp, and the six-button row. The gutter and the grip are
+      // fixed and must always be exactly where they are; the row is the one
+      // that gives way, by scrolling. This is the one place that says so.
+      //
+      // The grip used to be centred in whatever the row left over, which made
+      // its position a function of the row's width — it covered the row's
+      // buttons on one card width, the gutter on another, and below ~288dp was
+      // clipped out of existence. The assertions below are the invariants that
+      // replaced that: same size, same place, at every width.
+      Rect? firstGrip;
+      for (final width in [400.0, 360.0, 320.0, 300.0, 288.0, 277.0]) {
         tester.view.physicalSize = Size(width, 700);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
@@ -214,54 +220,64 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        final at = 'at ${width}dp';
 
+        // Its whole 44dp target, and its glyph unclipped — not a sliver of
+        // either, however narrow the card.
         final grip = tester.getRect(find.byType(ReorderableDragStartListener));
-        for (final mark in NodeMark.values) {
-          // The button's whole square, not just the glyph inside it: the
-          // square is what takes the tap.
-          final button = tester.getRect(
-            find
-                .ancestor(
-                  of: find.text(mark.emoji),
-                  matching: find.byType(SizedBox),
-                )
-                .first,
-          );
+        // 44 and 24 spelt out rather than read back from the card: these are
+        // the touch-target guideline and the platform's back-swipe strip, so a
+        // change that shrinks either should fail here, not pass quietly.
+        expect(grip.width, 44, reason: at);
+        expect(grip.height, 44, reason: at);
+        expect(
+          tester.getSize(find.byIcon(Icons.drag_handle)).width,
+          20,
+          reason: 'the drag handle is clipped $at',
+        );
+        expect(
+          find.byIcon(Icons.drag_handle).hitTestable(),
+          findsOneWidget,
+          reason: 'the card cannot be picked up $at',
+        );
+
+        // Clear of the strip the card keeps free of its own gestures, and in
+        // the same place on every card — the position is no longer a function
+        // of what the bottom-right row costs.
+        final content = tester.getRect(find.byType(Stack).first);
+        expect(
+          grip.left - content.left,
+          24,
+          reason: 'the grip is not flush against the gutter $at',
+        );
+        final relative = grip.shift(-content.topLeft);
+        firstGrip ??= relative;
+        expect(relative, firstGrip, reason: 'the grip moved $at');
+
+        // The 1-4 row is the part of the bottom row that is always there, so
+        // it is never what scrolls away.
+        for (final p in Priority.values) {
           expect(
-            grip.overlaps(button),
-            isFalse,
-            reason: '${mark.emoji} is under the grip at ${width}dp '
-                '(grip $grip, button $button)',
+            find.text('${p.value}').hitTestable(),
+            findsOneWidget,
+            reason: 'the 1-4 row lost button ${p.value} $at',
           );
         }
-        // The other end of the band: the leftmost strip of the card, which
-        // the card keeps clear of its own gestures.
-        final content = tester.getRect(find.byType(Stack).first);
-        final gutter = Rect.fromLTRB(
-          content.left,
-          grip.top,
-          content.left + 24,
-          grip.bottom,
-        );
-        expect(
-          grip.overlaps(gutter),
-          isFalse,
-          reason: 'the grip reaches into the back-gesture gutter at ${width}dp '
-              '(grip $grip, gutter $gutter)',
-        );
-        // And the handle is still a handle: its glyph is inside its target.
-        final glyph = tester.getRect(find.byIcon(Icons.drag_handle));
-        expect(
-          grip.contains(glyph.topLeft) && grip.contains(glyph.bottomRight),
-          isTrue,
-          reason: 'the grip glyph is not covered by its own target at '
-              '${width}dp (grip $grip, glyph $glyph)',
-        );
 
-        // And the taps actually land, not just the rectangles clear.
-        await tester.tap(find.text(NodeMark.flame.emoji));
-        await tester.tap(find.text(NodeMark.ice.emoji));
-        expect(picked, [NodeMark.flame, NodeMark.ice], reason: 'at ${width}dp');
+        // The marks are fully tappable across the supported range; below it
+        // they scroll into reach rather than hiding under anything.
+        if (width >= 320) {
+          for (final mark in NodeMark.values) {
+            expect(
+              find.text(mark.emoji).hitTestable(),
+              findsOneWidget,
+              reason: '${mark.emoji} is not tappable $at',
+            );
+          }
+          await tester.tap(find.text(NodeMark.flame.emoji));
+          await tester.tap(find.text(NodeMark.ice.emoji));
+          expect(picked, [NodeMark.flame, NodeMark.ice], reason: at);
+        }
       }
     });
 
