@@ -127,11 +127,30 @@ class PriorityCard extends StatefulWidget {
   /// content cannot spare.
   static const double _gripTouchSize = 44;
 
-  /// Padding around a face's content.
-  static const double _facePadding = 10;
+  /// The card's own margin inside the tile height it is given. Part of
+  /// [compactHeight] because that height is the tile's, not the face's — left
+  /// out, it came straight off the title's line.
+  static const EdgeInsets _cardMargin = EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 6,
+  );
+
+  /// Padding around a face's content. The tightest of the three widths the
+  /// card used to choose between: with the badge row and the 1-4 row both
+  /// sized by their touch targets, this is the only band left to spend on air.
+  static const double _facePadding = 8;
 
   /// Gap between the badge row and the title.
   static const double _titleGap = 4;
+
+  /// The badge chips: their type, the line it is pinned to and their own
+  /// insets. The line height is set explicitly on the [Text] rather than
+  /// inherited — left to the ambient [DefaultTextStyle] it picks up
+  /// `bodyMedium`'s 1.43, which is taller than this measures and so comes out
+  /// of the title's line.
+  static const double _badgeFontSize = 12;
+  static const double _badgeLineHeight = 1.2;
+  static const double _badgeVerticalPadding = 4;
 
   /// Height of the overlaid 1-4 priority row, reserved at the bottom of the
   /// column so the title never slides underneath it.
@@ -143,27 +162,38 @@ class PriorityCard extends StatefulWidget {
   static const double _actionRowHeight = 40;
 
   /// The height every list tile gets: exactly what a minimal face needs and
-  /// nothing more — badge row, one line of title, the 1-4 row and the
-  /// paddings between them. Priority plays no part; colour and the badge
-  /// carry it.
+  /// nothing more — the card's margin, badge row, one whole line of title,
+  /// the 1-4 row and the paddings between them. Priority plays no part;
+  /// colour and the badge carry it.
   ///
   /// Scaled with the text scaler rather than fixed, so a card grows with the
-  /// user's font size instead of clipping its title. The numbers are upper
-  /// bounds of the real line heights (Material 3's `titleMedium` is 16/1.5,
-  /// `labelSmall` 11/1.45, the badge a bare 12pt plus its 4dp insets), so a
-  /// face always has a little slack rather than a pixel too few.
+  /// user's font size instead of squeezing its title. Every line is measured
+  /// from the very style [_CardFace] renders it in — a band this is short of
+  /// does not overflow, because the title sits in a [Flexible]: it is handed
+  /// less than its line and paints the remainder under the 1-4 row.
   static double compactHeight(BuildContext context) {
     final scaler = MediaQuery.textScalerOf(context);
-    final badgeRow = scaler.scale(12) * 1.2 + 8;
-    final titleLine = scaler.scale(16) * 1.5;
-    final ownerLabelLine = scaler.scale(11) * 1.5;
+    final textTheme = Theme.of(context).textTheme;
+    // Read off the theme rather than restated, so a type change cannot leave
+    // the tile a few dp short of the line it is supposed to pay for.
+    double line(TextStyle? style) =>
+        scaler.scale(style?.fontSize ?? 14) * (style?.height ?? 1.5);
+
+    final badgeRow =
+        scaler.scale(_badgeFontSize) * _badgeLineHeight +
+        2 * _badgeVerticalPadding;
+    final titleLine = line(textTheme.titleMedium);
+    final ownerLabelLine = line(textTheme.labelSmall);
     // The owner face pays for the action buttons, a child page for the owner
     // label instead — whichever of the two needs more is what the tile gets,
     // since one card shows both.
     final ownerFace =
         math.max(badgeRow, _actionRowHeight) + _titleGap + titleLine;
     final childFace = ownerLabelLine + badgeRow + _titleGap + titleLine;
-    return 2 * _facePadding + _levelRowHeight + math.max(ownerFace, childFace);
+    return _cardMargin.vertical +
+        2 * _facePadding +
+        _levelRowHeight +
+        math.max(ownerFace, childFace);
   }
 
   @override
@@ -349,7 +379,7 @@ class _PriorityCardState extends State<PriorityCard> {
         : shownPage.onSetPriority != null;
 
     Widget card = Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: PriorityCard._cardMargin,
       color: widget.backgroundColor,
       clipBehavior: Clip.hardEdge,
       child: Stack(
@@ -620,7 +650,7 @@ class _CardFace extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
-                            vertical: 4,
+                            vertical: PriorityCard._badgeVerticalPadding,
                           ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.15),
@@ -630,7 +660,10 @@ class _CardFace extends StatelessWidget {
                             badgeLabel,
                             style: TextStyle(
                               color: color,
-                              fontSize: 12,
+                              fontSize: PriorityCard._badgeFontSize,
+                              // Pinned, not inherited: see
+                              // [PriorityCard._badgeLineHeight].
+                              height: PriorityCard._badgeLineHeight,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -641,7 +674,7 @@ class _CardFace extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
-                                vertical: 4,
+                                vertical: PriorityCard._badgeVerticalPadding,
                               ),
                               decoration: BoxDecoration(
                                 color: color.withValues(alpha: 0.15),
@@ -660,7 +693,8 @@ class _CardFace extends StatelessWidget {
                                     '${childCount!}',
                                     style: TextStyle(
                                       color: color,
-                                      fontSize: 12,
+                                      fontSize: PriorityCard._badgeFontSize,
+                                      height: PriorityCard._badgeLineHeight,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
