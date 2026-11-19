@@ -101,6 +101,20 @@ Finder cardNamed(String title) => find.byWidgetPredicate(
 /// apart from a pinned row's bare emoji by carrying the label too.
 Finder markMenuEntry(NodeMark mark) => find.text('${mark.emoji} ${mark.label}');
 
+/// The scroller holding the pinned rows. Found through a row rather than by
+/// type: the role chip bar above it has a horizontal scroller of its own, and
+/// it comes first in the tree.
+double pinnedBlockHeight(WidgetTester tester) => tester
+    .getSize(
+      find
+          .ancestor(
+            of: find.byType(PinnedMarkRow).first,
+            matching: find.byType(SingleChildScrollView),
+          )
+          .first,
+    )
+    .height;
+
 /// Opens a card's overflow menu — the badge row's last cell, where the marks
 /// and Delete live.
 Future<void> openCardMenu(WidgetTester tester, String card) async {
@@ -210,6 +224,9 @@ void main() {
     final repository = await seeded([
       node('Plain', createdOffset: 1),
       node('Other', createdOffset: 2),
+      // Stays unmarked throughout: with no cards left the list makes way for
+      // the rows entirely, and there would be no list top to measure.
+      node('Stays', createdOffset: 3),
     ]);
     await tester.pumpWidget(app(repository));
     await tester.pumpAndSettle();
@@ -260,10 +277,60 @@ void main() {
     // The card list still has room; the rows gave way rather than the list.
     expect(cardOrder(tester), ['Plain']);
     final body = tester.getSize(find.byType(NodeScreen)).height;
-    final block = tester
-        .getSize(find.byType(SingleChildScrollView).first)
-        .height;
+    final block = pinnedBlockHeight(tester);
     expect(block, lessThan(body / 2 + 1));
+  });
+
+  testWidgets('with every child marked the rows get the whole body, not half '
+      'of it', (tester) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          for (var i = 0; i < 20; i++)
+            node('m$i', mark: NodeMark.flame, createdOffset: i),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    // No cards, so no empty list holding half the screen: the rows have it.
+    expect(find.byType(PriorityCard), findsNothing);
+    final body = tester.getSize(find.byType(NodeScreen)).height;
+    final block = pinnedBlockHeight(tester);
+    expect(
+      block,
+      greaterThan(body / 2),
+      reason: 'the rows are still capped at half the body with nothing below',
+    );
+  });
+
+  testWidgets('the emoji that unmarks is a full-sized touch target', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(await seeded([node('Burning', mark: NodeMark.flame)])),
+    );
+    await tester.pumpAndSettle();
+
+    // A marked node has no card, so this emoji is the only way out of the
+    // mark; a miss opens the node instead. 44 spelt out rather than read from
+    // the widget, so shrinking it fails here.
+    final emoji = tester.getSize(
+      find
+          .ancestor(
+            of: find.descendant(
+              of: pinnedRow('Burning'),
+              matching: find.text('🔥'),
+            ),
+            matching: find.byType(SizedBox),
+          )
+          .first,
+    );
+    expect(emoji.width, 44);
+    expect(emoji.height, 44);
   });
 
   testWidgets('a pinned row is emoji and title and nothing else', (
@@ -1256,7 +1323,9 @@ void main() {
         reason: 'marking the picked-up node dropped the move',
       );
 
-      await tester.tap(find.descendant(of: cardNamed('B'), matching: find.text('B')));
+      await tester.tap(
+        find.descendant(of: cardNamed('B'), matching: find.text('B')),
+      );
       await tester.pumpAndSettle();
 
       expect(vm.tree.nodeById('A')!.parentId, 'B');

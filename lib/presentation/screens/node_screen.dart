@@ -137,7 +137,10 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       Future.microtask(() async {
         // The pages are in before the first card is built, so a card never
         // mounts on page 0 and then jumps.
-        await Future.wait([vm.load(), if (cardPages != null) cardPages.reload()]);
+        await Future.wait([
+          vm.load(),
+          if (cardPages != null) cardPages.reload(),
+        ]);
         if (!mounted) return;
         await _restoreLastLevel(vm);
       });
@@ -295,8 +298,8 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     final accent = levelNode == null
         ? null
         : _isRoot
-            ? _roleColor(levelNode)
-            : priorityColor(levelNode.priority);
+        ? _roleColor(levelNode)
+        : priorityColor(levelNode.priority);
 
     final scaffold = Scaffold(
       appBar: AppBar(
@@ -571,12 +574,20 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     return LayoutBuilder(
       builder: (context, constraints) => Column(
         children: [
-          // The rows take exactly the height they need, and never more than
-          // half the body: a level with a dozen marked children would
-          // otherwise push the card list off the screen (and overflow). Past
-          // that the block scrolls on its own.
+          // The rows take exactly the height they need, and — while there are
+          // cards under them — never more than half the body: a level with a
+          // dozen marked children would otherwise push the card list off the
+          // screen (and overflow). Past that the block scrolls on its own.
+          //
+          // With no cards below, the cap would leave the lower half of the
+          // screen blank and the rows scrolling in a small box, so they get
+          // the whole body instead.
           ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: constraints.maxHeight / 2),
+            constraints: BoxConstraints(
+              maxHeight: children.isEmpty
+                  ? constraints.maxHeight
+                  : constraints.maxHeight / 2,
+            ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Column(
@@ -597,7 +608,7 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          Expanded(child: cards),
+          if (children.isNotEmpty) Expanded(child: cards),
         ],
       ),
     );

@@ -1023,10 +1023,17 @@ class PinnedMarkRow extends StatelessWidget {
     this.onClearMark,
   });
 
-  /// What one row is worth at the default text scale. A floor rather than a
-  /// fixed height: the title's line grows with the text scaler, and a row
-  /// pinned to 36dp would paint it outside its own box.
-  static const double minHeight = 36;
+  /// What one row is worth at the default text scale: the emoji button's own
+  /// touch target. A floor rather than a fixed height — the title's line grows
+  /// with the text scaler, and a row pinned to this would paint it outside its
+  /// own box.
+  static const double minHeight = _clearMarkTarget;
+
+  /// Touch target of the emoji that takes the mark off. A marked node has no
+  /// card, so this is the only way out of a mark: it gets the same 44dp the
+  /// drag grip gets rather than the 32dp a glyph would need, and a miss opens
+  /// the node instead.
+  static const double _clearMarkTarget = 44;
 
   @override
   Widget build(BuildContext context) {
@@ -1041,8 +1048,8 @@ class PinnedMarkRow extends StatelessWidget {
               onTap: onClearMark,
               borderRadius: BorderRadius.circular(6),
               child: SizedBox(
-                width: 32,
-                height: 32,
+                width: _clearMarkTarget,
+                height: _clearMarkTarget,
                 child: Center(
                   child: Text(mark.emoji, style: const TextStyle(fontSize: 16)),
                 ),
