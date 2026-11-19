@@ -761,10 +761,12 @@ class _CardFace extends StatelessWidget {
                                     onPressed: onEdit,
                                     tooltip: 'Edit',
                                   ),
-                                // Delete and the marks share one cell. The
-                                // row keeps the four it has always had, so
-                                // nothing that was one tap away stops being
-                                // one, and the row's width is unchanged.
+                                // Delete and the marks share one cell, so the
+                                // row keeps the four it has always had and
+                                // costs the card no extra width. Delete pays
+                                // for that: it was one tap here and is now
+                                // two, which is the deliberate trade — see
+                                // [_CardOverflowAction].
                                 if (onDelete != null || onSetMark != null)
                                   _CardOverflowAction(
                                     currentMark: currentMark,
