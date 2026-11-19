@@ -370,7 +370,11 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
                 // the strip's duration label has room to its left; only the
                 // narrow band over the strip itself takes a pointer, the rest
                 // lets taps through to the list.
-                const Positioned.fill(child: RoleTimeStrip()),
+                // The label keeps clear of the FAB's corner: this body has
+                // one.
+                const Positioned.fill(
+                  child: RoleTimeStrip(bottomInset: RoleTimeStrip.fabCorner),
+                ),
               ],
             ),
           ),

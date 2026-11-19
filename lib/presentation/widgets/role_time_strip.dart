@@ -30,7 +30,17 @@ class RoleTimeStrip extends StatefulWidget {
   /// How long a label stays up after it came up.
   static const Duration showFor = Duration(seconds: 3);
 
-  const RoleTimeStrip({super.key});
+  /// What a standard [FloatingActionButton] covers in the bottom corner of a
+  /// body: its 56px diameter plus the margin the [Scaffold] floats it by.
+  static const double fabCorner = 56 + kFloatingActionButtonMargin;
+
+  /// Height at the bottom the label keeps out of, so a stretch down there is
+  /// named just above the floating action button instead of behind it. The
+  /// strip itself still runs the full height; a body without a button leaves
+  /// this at zero.
+  final double bottomInset;
+
+  const RoleTimeStrip({super.key, this.bottomInset = 0});
 
   @override
   State<RoleTimeStrip> createState() => _RoleTimeStripState();
@@ -136,9 +146,11 @@ class _RoleTimeStripState extends State<RoleTimeStrip> {
                 child: IgnorePointer(
                   child: CustomSingleChildLayout(
                     delegate: _LabelLayout(
-                      height *
+                      centerY:
+                          height *
                           (fraction(labelled.start) + fraction(labelled.end)) /
                           2,
+                      bottomInset: widget.bottomInset,
                     ),
                     child: _DurationChip(duration: labelled.duration),
                   ),
@@ -237,11 +249,13 @@ class _DurationChip extends StatelessWidget {
 }
 
 /// Lays the chip against the right edge of the strip's height, centred on
-/// [centerY] but never hanging off the top or the bottom of it.
+/// [centerY] but never hanging off the top, nor into the bottom
+/// [bottomInset] — the floating action button's corner.
 class _LabelLayout extends SingleChildLayoutDelegate {
   final double centerY;
+  final double bottomInset;
 
-  const _LabelLayout(this.centerY);
+  const _LabelLayout({required this.centerY, required this.bottomInset});
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
@@ -252,12 +266,18 @@ class _LabelLayout extends SingleChildLayoutDelegate {
     size.width - childSize.width,
     (centerY - childSize.height / 2).clamp(
       0.0,
-      (size.height - childSize.height).clamp(0.0, double.infinity),
+      // A body shorter than the button's corner gets the top of it; there is
+      // nowhere else to go.
+      (size.height - bottomInset - childSize.height).clamp(
+        0.0,
+        double.infinity,
+      ),
     ),
   );
 
   @override
-  bool shouldRelayout(_LabelLayout old) => old.centerY != centerY;
+  bool shouldRelayout(_LabelLayout old) =>
+      old.centerY != centerY || old.bottomInset != bottomInset;
 }
 
 class _StripPainter extends CustomPainter {

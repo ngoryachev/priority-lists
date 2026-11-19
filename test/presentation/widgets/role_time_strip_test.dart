@@ -67,6 +67,13 @@ List<ActivityEvent> twoSpans({String second = 'home'}) => [
   activation(second, DateTime(2026, 1, 1, 9, 25)),
 ];
 
+/// A third switch an hour before now, so the last stretch's own middle falls
+/// into the floating action button's corner.
+List<ActivityEvent> threeSpans() => [
+  ...twoSpans(),
+  activation('work', DateTime(2026, 1, 1, 11)),
+];
+
 /// Where a moment of the day sits along the strip, as a fraction of it.
 double at(DateTime moment) =>
     moment.difference(dayStart).inMilliseconds /
@@ -116,6 +123,11 @@ Offset inBand(WidgetTester tester, double fraction) {
   final rect = stripRect(tester);
   return Offset(rect.right - 2, rect.top + rect.height * fraction);
 }
+
+/// The chip itself, padding and all: the [Material] closest around its text.
+Rect chipRect(WidgetTester tester, String label) => tester.getRect(
+  find.ancestor(of: find.text(label), matching: find.byType(Material)).first,
+);
 
 Future<TestGesture> hover(WidgetTester tester, Offset to) async {
   final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -305,6 +317,36 @@ void main() {
     await tester.pump();
 
     expect(find.text('1h 25m'), findsOneWidget);
+  });
+
+  testWidgets('a chip for the bottom of the day stays clear of the FAB', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(await app(tree(), threeSpans()));
+    await tester.pumpAndSettle();
+
+    final rect = stripRect(tester);
+    final fab = tester.getRect(find.byType(FloatingActionButton));
+    // The last stretch runs 11:00 to noon: its middle is behind the button,
+    // while its upper reach is still pointable.
+    final middle =
+        rect.top + rect.height * (at(DateTime(2026, 1, 1, 11)) + 1) / 2;
+    expect(middle, greaterThan(fab.top));
+    final spot = Offset(
+      rect.right - 2,
+      rect.top + rect.height * at(DateTime(2026, 1, 1, 11, 5)),
+    );
+    expect(spot.dy, lessThan(fab.top));
+
+    await hover(tester, spot);
+    expect(find.text('1h'), findsOneWidget);
+    expect(chipRect(tester, '1h').overlaps(fab), isFalse);
+
+    await tester.tapAt(spot);
+    await tester.pump();
+    expect(find.text('1h'), findsOneWidget);
+    expect(chipRect(tester, '1h').overlaps(fab), isFalse);
   });
 
   testWidgets('a tap on uncounted time names nothing', (tester) async {
