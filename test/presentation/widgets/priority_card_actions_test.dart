@@ -164,14 +164,14 @@ void main() {
       }
     });
 
-    testWidgets('the grip never covers a mark button, down to 320dp', (
-      tester,
-    ) async {
-      // With a grip, which the 360dp case above has none of: the grip's 44dp
-      // target is centred in the band left of the card's bottom-right row, so
-      // it drifts over that row's leftmost buttons as the card narrows unless
-      // the band pays for them too. 320dp is the narrowest the app is tested
-      // at; 300 is below anything shipping, and is here as the margin.
+    testWidgets('the grip covers neither a mark button nor the back-gesture '
+        'gutter, down to 320dp', (tester) async {
+      // With a grip, which the 360dp case above has none of. The grip's 44dp
+      // target is centred in a band measured from the card's own width, so it
+      // drifts as the card narrows — onto the button row on one side, onto the
+      // back-gesture gutter on the other. The band has to be bounded by both,
+      // and this is the one place that says so. 320dp is the narrowest the app
+      // is tested at; 300 is below anything shipping, and is here as margin.
       for (final width in [320.0, 360.0, 400.0, 300.0]) {
         tester.view.physicalSize = Size(width, 700);
         tester.view.devicePixelRatio = 1.0;
@@ -195,6 +195,17 @@ void main() {
                   fixedHeight: 120,
                   currentPriority: Priority.high,
                   dragIndex: 0,
+                  // A child page makes the card swipeable, which is what puts
+                  // the back-gesture gutter on its left edge.
+                  childPages: [
+                    PriorityCardPage(
+                      id: 'kid',
+                      title: 'Kid',
+                      badgeLabel: Priority.low.label,
+                      color: Colors.green,
+                      currentPriority: Priority.low,
+                    ),
+                  ],
                   onSetMark: picked.add,
                   onSetPriority: (_) {},
                 ),
@@ -206,7 +217,16 @@ void main() {
 
         final grip = tester.getRect(find.byType(ReorderableDragStartListener));
         for (final mark in NodeMark.values) {
-          final button = tester.getRect(find.text(mark.emoji));
+          // The button's whole square, not just the glyph inside it: the
+          // square is what takes the tap.
+          final button = tester.getRect(
+            find
+                .ancestor(
+                  of: find.text(mark.emoji),
+                  matching: find.byType(SizedBox),
+                )
+                .first,
+          );
           expect(
             grip.overlaps(button),
             isFalse,
@@ -214,6 +234,29 @@ void main() {
                 '(grip $grip, button $button)',
           );
         }
+        // The other end of the band: the leftmost strip of the card, which
+        // the card keeps clear of its own gestures.
+        final content = tester.getRect(find.byType(Stack).first);
+        final gutter = Rect.fromLTRB(
+          content.left,
+          grip.top,
+          content.left + 24,
+          grip.bottom,
+        );
+        expect(
+          grip.overlaps(gutter),
+          isFalse,
+          reason: 'the grip reaches into the back-gesture gutter at ${width}dp '
+              '(grip $grip, gutter $gutter)',
+        );
+        // And the handle is still a handle: its glyph is inside its target.
+        final glyph = tester.getRect(find.byIcon(Icons.drag_handle));
+        expect(
+          grip.contains(glyph.topLeft) && grip.contains(glyph.bottomRight),
+          isTrue,
+          reason: 'the grip glyph is not covered by its own target at '
+              '${width}dp (grip $grip, glyph $glyph)',
+        );
 
         // And the taps actually land, not just the rectangles clear.
         await tester.tap(find.text(NodeMark.flame.emoji));

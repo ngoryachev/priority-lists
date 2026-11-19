@@ -608,6 +608,62 @@ void main() {
     expect(vm.tree.nodeById('Plain')!.mark, NodeMark.ice);
   });
 
+  testWidgets('the mark buttons do not push the grip into the card\'s '
+      'back-gesture gutter', (tester) async {
+    // The other end of the same band: widening the level-row reserve for the
+    // two mark buttons moves the grip's 44dp target left, and on a narrow
+    // card it lands on the leftmost 24dp of the card — the strip the card
+    // keeps clear of its own gestures so the platform back swipe and a plain
+    // tap still work there. 320x568 is the narrowest the app is tested on.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // A grandchild makes the card swipeable, which is what puts the gutter
+    // there in the first place.
+    final repository = await seeded([
+      node('Parent', createdOffset: 1),
+      node('Kid', parent: 'Parent', createdOffset: 2),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    final card = find.byWidgetPredicate(
+      (widget) => widget is PriorityCard && widget.title == 'Parent',
+    );
+    // The Stack inside the Card is the card's content box, so the gutter is
+    // its leftmost 24dp (PriorityCard._backGestureGutter).
+    final content = tester.getRect(
+      find.descendant(of: card, matching: find.byType(Stack)).first,
+    );
+    final gutter = Rect.fromLTRB(
+      content.left,
+      content.top,
+      content.left + 24,
+      content.bottom,
+    );
+    final grip = tester.getRect(
+      find.descendant(
+        of: card,
+        matching: find.byType(ReorderableDragStartListener),
+      ),
+    );
+    expect(
+      grip.overlaps(gutter),
+      isFalse,
+      reason: 'the grip target $grip reaches into the gutter $gutter',
+    );
+
+    // And the behaviour that band protects: a tap in the gutter opens the
+    // node instead of being eaten by the grip.
+    await tester.tapAt(Offset(gutter.left + 6, grip.center.dy));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Parent')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('roles get no mark buttons', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(

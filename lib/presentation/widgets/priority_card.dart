@@ -403,12 +403,35 @@ class _PriorityCardState extends State<PriorityCard> {
       child: Stack(
         children: [
           pages,
+          // Before the gutter and the arrows on purpose: they are hit-tested
+          // first and so keep the strips they own (see below).
+          if (hasGrip)
+            Positioned(
+              // The band the grip is centred in, bounded by both things it is
+              // not allowed to cover: the bottom-right button row on the
+              // right, and the back-gesture gutter on the left. The band is
+              // measured from the card's own width, so it shrinks with the
+              // card while neither of those does — leave either end unpaid and
+              // the 44dp target drifts onto it as the screen narrows.
+              left: swiping ? PriorityCard._backGestureGutter : 0,
+              right: shownHasLevelRow ? shownRowReserve : 0,
+              bottom: 0,
+              height: PriorityCard._gripTouchSize,
+              child: Center(child: _dragGrip()),
+            ),
           if (swiping)
             // The page drag is dropped in this strip (opaque hit testing keeps
             // the PageView out of the gesture arena here) so the platform's
             // back swipe still works. The enclosing list's scroll and the
             // route's back gesture are *ancestors* of this card, so they stay
             // in the arena — only the page turn is given up.
+            //
+            // Hit-tested ahead of the grip, which is why it is declared after
+            // it: on the narrowest phone the card has no room for a 24dp
+            // gutter, a 44dp grip target and the whole button row at once, and
+            // what gives is a slice of the grip's slack — not this strip,
+            // whose whole point is that the card's own gestures stay out of
+            // it. The grip's glyph sits clear of it either way.
             Positioned(
               left: 0,
               top: 0,
@@ -467,17 +490,6 @@ class _PriorityCardState extends State<PriorityCard> {
                 ),
               ),
             ),
-          if (hasGrip)
-            Positioned(
-              left: 0,
-              // Clear of the 1-4 row: at 360dp the row is pinned bottom-right
-              // and exact centring would cost either the grip's touch target
-              // or the buttons' hittability.
-              right: shownHasLevelRow ? shownRowReserve : 0,
-              bottom: 0,
-              height: PriorityCard._gripTouchSize,
-              child: Center(child: _dragGrip()),
-            ),
         ],
       ),
     );
@@ -500,16 +512,26 @@ class _PriorityCardState extends State<PriorityCard> {
   /// 32dp buttons with their gaps, plus the face's own padding.
   static const double _levelRowReserve = 160;
 
-  /// What one mark button adds to that row: its 32dp square and the 4dp gap in
+  /// What one mark button adds to that row: its square and the 4dp gap in
   /// front of it.
   ///
   /// The band has to pay for these too. It is measured from the card's own
   /// width, so it shrinks with the card while the button row — right-aligned
-  /// inside the face — does not: left unpaid, the grip's 44dp target, which
+  /// inside the face — does not: left unpaid, the grip's target, which
   /// `Center` puts in the middle of the band, drifts over the buttons as the
   /// screen narrows and swallows their taps. At 320dp (the narrowest the app
   /// is tested at) the 🔥 button's centre ended up inside the grip.
-  static const double _markButtonSlot = 36;
+  ///
+  /// The buttons are [_markButtonSize] rather than the 1-4 row's 32dp for the
+  /// same reason, from the other side: at 320dp the card has only 36dp between
+  /// the back-gesture gutter and this row, and every dp this row gives back is
+  /// a dp of the drag grip's touch target.
+  static const double _markButtonSlot = _markButtonSize + 4;
+
+  /// Side of a mark button's square. Smaller than a priority button, which is
+  /// what pays for the drag grip at 320dp; still comfortably over the 20dp
+  /// glyph it holds.
+  static const double _markButtonSize = 28;
 
   /// Band kept clear for the grip glyph on a card that has no 1-4 row. With
   /// the row there its 32dp already covers the glyph, so the grip costs the
@@ -1059,8 +1081,8 @@ class _MarkButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(6),
           child: SizedBox(
-            width: 32,
-            height: 32,
+            width: _PriorityCardState._markButtonSize,
+            height: _PriorityCardState._markButtonSize,
             // The emoji is the whole label; a screen reader gets the tooltip.
             child: Center(
               child: Text(mark.emoji, style: const TextStyle(fontSize: 14)),
