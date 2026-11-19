@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/models/color_preset.dart';
+import '../../domain/models/node_mark.dart';
 import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
 import '../../domain/repositories/priority_node_repository.dart';
@@ -82,6 +83,7 @@ class SupabasePriorityNodeRepository implements PriorityNodeRepository {
         'priority': node.priority.value,
         'position': node.position,
         'color_value': node.colorPreset?.colorValue,
+        'mark': node.mark?.value,
         'created_at': node.createdAt.toUtc().toIso8601String(),
         'updated_at': node.updatedAt.toUtc().toIso8601String(),
       };
@@ -95,6 +97,9 @@ class SupabasePriorityNodeRepository implements PriorityNodeRepository {
         position: (json['position'] as num?)?.toInt() ?? 0,
         colorPreset:
             ColorPreset.tryFromColorValue((json['color_value'] as num?)?.toInt()),
+        // A value this build does not know — or a column an older schema has
+        // not grown yet — reads as unmarked.
+        mark: NodeMark.tryFromValue(json['mark'] as String?),
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
       );

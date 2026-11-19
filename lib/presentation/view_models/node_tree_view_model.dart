@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../data/services/activity_logger.dart';
 import '../../domain/models/color_preset.dart';
+import '../../domain/models/node_mark.dart';
 import '../../domain/models/node_tree.dart';
 import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
@@ -171,6 +172,36 @@ class NodeTreeViewModel extends ChangeNotifier {
       log: (treeBefore) {
         if (before != null) _logger?.changed(before, updated, treeBefore);
       },
+    );
+  }
+
+  /// Sets or clears a node's 🔥 / 🧊 mark. Pass null to remove it; setting 🧊
+  /// on a 🔥 node simply replaces it.
+  ///
+  /// A mark is orthogonal to the priority, so this writes nothing but `mark`
+  /// and `updatedAt`: [_saveExclusive] is called with `claimsCritical: false`,
+  /// which hands the level back untouched and so goes out as a single
+  /// [PriorityNodeRepository.saveNode]. No sibling is evicted and no `position`
+  /// is renumbered — the node comes back to exactly its old place in the list
+  /// when the mark is removed.
+  Future<void> setMark(PriorityNode node, NodeMark? mark) async {
+    // Read from the tree rather than trusting the caller's copy: the level may
+    // have been rebuilt since the card was built.
+    final current = _tree.nodeById(node.id);
+    if (current == null || current.mark == mark) return;
+
+    final now = DateTime.now();
+    final updated = current.copyWith(
+      mark: mark,
+      clearMark: mark == null,
+      updatedAt: now,
+    );
+    await _saveExclusive(
+      updated,
+      now: now,
+      // A mark never touches the red slot, whatever the node's priority is.
+      claimsCritical: false,
+      log: (treeBefore) => _logger?.marked(current, updated, treeBefore),
     );
   }
 

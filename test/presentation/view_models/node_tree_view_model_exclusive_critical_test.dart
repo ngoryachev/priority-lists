@@ -4,6 +4,7 @@ import 'package:priority_lists/data/repositories/in_memory_priority_node_reposit
 import 'package:priority_lists/data/services/activity_logger.dart';
 import 'package:priority_lists/domain/models/activity_event.dart';
 import 'package:priority_lists/domain/models/color_preset.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/domain/models/priority_node.dart';
 import 'package:priority_lists/domain/repositories/priority_node_repository.dart';
@@ -209,6 +210,67 @@ void main() {
       expect(vm.tree.nodeById('deep')!.priority, Priority.critical);
       expect(vm.tree.nodeById('root')!.updatedAt, DateTime(2026),
           reason: 'an unrelated level is not rewritten');
+    });
+  });
+
+  group('marks are no way into it', () {
+    const roleId = 'Role';
+
+    /// A level whose first child holds the red slot.
+    Future<void> seedLevel() async {
+      await repository.saveNodes([
+        raw(roleId, Priority.critical),
+        raw('red', Priority.critical, parentId: roleId),
+        raw('o', Priority.high, parentId: roleId, position: 1),
+        raw('m', Priority.medium, parentId: roleId, position: 2),
+      ]);
+      await vm.load();
+    }
+
+    test('marking a sibling of the red child demotes nobody', () async {
+      await seedLevel();
+      final positions = {
+        for (final n in vm.tree.childrenOf(roleId)) n.id: n.position,
+      };
+
+      await vm.setMark(vm.tree.nodeById('m')!, NodeMark.flame);
+
+      expect(idsOf(roleId), ['red', 'o', 'm']);
+      expect(vm.tree.nodeById('red')!.priority, Priority.critical);
+      expect(
+        {for (final n in vm.tree.childrenOf(roleId)) n.id: n.position},
+        positions,
+        reason: 'a mark renumbers nothing',
+      );
+      expectAtMostOneRed();
+    });
+
+    test('marking the red child keeps it red and keeps the level still',
+        () async {
+      await seedLevel();
+
+      await vm.setMark(vm.tree.nodeById('red')!, NodeMark.ice);
+      await vm.setMark(vm.tree.nodeById('red')!, null);
+
+      expect(idsOf(roleId), ['red', 'o', 'm']);
+      expect(vm.tree.nodeById('red')!.priority, Priority.critical);
+      expect(vm.tree.nodeById('o')!.updatedAt, DateTime(2026),
+          reason: 'a sibling is not rewritten for somebody else\'s mark');
+      expectAtMostOneRed();
+    });
+
+    test('marking a role does not switch the active one', () async {
+      await repository.saveNodes([
+        raw('work', Priority.critical),
+        raw('home', Priority.high, position: 1),
+      ]);
+      await vm.load();
+
+      await vm.setMark(vm.tree.nodeById('home')!, NodeMark.flame);
+
+      expect(vm.activeRole?.id, 'work');
+      expect(vm.rolesInChipOrder.map((r) => r.id), ['work', 'home']);
+      expectAtMostOneRed();
     });
   });
 

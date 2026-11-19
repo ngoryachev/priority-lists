@@ -64,6 +64,22 @@ class ActivityLogger {
     );
   }
 
+  /// A node was marked 🔥 / 🧊, or had its mark removed. A mark is orthogonal
+  /// to the priority, so it gets its own action rather than riding on
+  /// [ActivityAction.prioritized] — `RoleTimeline` reads the details of every
+  /// top-level event for an `X → Critical` clause, and these details carry no
+  /// arrow at all, so a marked role is never mistaken for a role switch.
+  void marked(PriorityNode before, PriorityNode after, NodeTree tree) {
+    if (before.mark == after.mark) return;
+    final mark = after.mark;
+    _record(
+      action: ActivityAction.marked,
+      node: after,
+      path: _pathUnder(tree, after.parentId),
+      details: mark == null ? 'Mark removed' : '${mark.emoji} ${mark.label}',
+    );
+  }
+
   /// A sibling lost the red slot: [by] became `critical` under the same parent
   /// and the exclusive-critical rule pushed this node down one level.
   ///

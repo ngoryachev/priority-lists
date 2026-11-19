@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_lists/data/repositories/in_memory_priority_node_repository.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/domain/models/priority_node.dart';
 import 'package:priority_lists/domain/repositories/priority_node_repository.dart';
@@ -37,6 +38,33 @@ class _FailingRepository implements PriorityNodeRepository {
     if (failWrites) throw Exception('nope');
     await inner.deleteNode(id);
   }
+}
+
+/// Counts the two write paths apart, to show a mark takes the single-node one.
+class _CountingRepository implements PriorityNodeRepository {
+  final PriorityNodeRepository inner;
+  int singleSaves = 0;
+  final List<List<String>> batchSaves = [];
+
+  _CountingRepository(this.inner);
+
+  @override
+  Future<List<PriorityNode>> getAllNodes() => inner.getAllNodes();
+
+  @override
+  Future<void> saveNode(PriorityNode node) async {
+    singleSaves++;
+    await inner.saveNode(node);
+  }
+
+  @override
+  Future<void> saveNodes(List<PriorityNode> nodes) async {
+    batchSaves.add(nodes.map((n) => n.id).toList());
+    await inner.saveNodes(nodes);
+  }
+
+  @override
+  Future<void> deleteNode(String id) => inner.deleteNode(id);
 }
 
 void main() {
@@ -559,6 +587,132 @@ void main() {
         expect(guarded.tree.nodeById('r')!.priority, Priority.critical,
             reason: 'no half-applied eviction');
         expect(guarded.tree.nodeById('m')!.priority, Priority.medium);
+      });
+    });
+
+    group('setMark', () {
+      /// A role with three children, in the order the level shows them.
+      Future<void> seedLevel() async {
+        await repository.saveNodes([
+          PriorityNode(
+            id: 'role',
+            title: 'Role',
+            priority: Priority.critical,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+          for (final (i, spec) in [
+            ('a', Priority.critical),
+            ('b', Priority.high),
+            ('c', Priority.low),
+          ].indexed)
+            PriorityNode(
+              id: spec.$1,
+              parentId: 'role',
+              title: spec.$1,
+              priority: spec.$2,
+              position: i,
+              createdAt: DateTime(2026),
+              updatedAt: DateTime(2026),
+            ),
+        ]);
+        await vm.load();
+      }
+
+      /// The level as (id, priority, position), to assert nothing shifted.
+      List<(String, Priority, int)> shape() => [
+            for (final n in vm.tree.childrenOf('role'))
+              (n.id, n.priority, n.position),
+          ];
+
+      test('marking leaves every priority and position untouched', () async {
+        await seedLevel();
+        final before = shape();
+        final updatedBefore = vm.tree.nodeById('b')!.updatedAt;
+
+        await vm.setMark(vm.tree.nodeById('b')!, NodeMark.flame);
+
+        expect(vm.tree.nodeById('b')!.mark, NodeMark.flame);
+        expect(shape(), before);
+        expect(
+          vm.tree.nodeById('b')!.updatedAt.isAfter(updatedBefore),
+          isTrue,
+          reason: 'the mark is a write, so updatedAt moves',
+        );
+      });
+
+      test('🔥 is replaced by 🧊 rather than added to', () async {
+        await seedLevel();
+        final before = shape();
+
+        await vm.setMark(vm.tree.nodeById('b')!, NodeMark.flame);
+        await vm.setMark(vm.tree.nodeById('b')!, NodeMark.ice);
+
+        expect(vm.tree.nodeById('b')!.mark, NodeMark.ice);
+        expect(shape(), before);
+      });
+
+      test('clearing a mark puts nothing else back', () async {
+        await seedLevel();
+        final before = shape();
+
+        await vm.setMark(vm.tree.nodeById('c')!, NodeMark.ice);
+        await vm.setMark(vm.tree.nodeById('c')!, null);
+
+        expect(vm.tree.nodeById('c')!.mark, isNull);
+        expect(shape(), before);
+      });
+
+      test('marking the red child does not cost it the red slot', () async {
+        await seedLevel();
+
+        await vm.setMark(vm.tree.nodeById('a')!, NodeMark.flame);
+
+        expect(vm.tree.nodeById('a')!.priority, Priority.critical);
+        expect(vm.tree.activeRole?.id, 'role');
+        expect(
+          vm.tree
+              .childrenOf('role')
+              .where((n) => n.priority == Priority.critical)
+              .map((n) => n.id),
+          ['a'],
+        );
+      });
+
+      test('only the marked node is written', () async {
+        await seedLevel();
+        final counting = _CountingRepository(repository);
+        final counted = NodeTreeViewModel(counting);
+        await counted.load();
+
+        await counted.setMark(counted.tree.nodeById('b')!, NodeMark.flame);
+
+        expect(counting.singleSaves, 1);
+        expect(counting.batchSaves, isEmpty,
+            reason: 'no eviction, so no level-wide batch');
+      });
+
+      test('a node that is no longer in the tree is not written', () async {
+        await seedLevel();
+        final gone = vm.tree.nodeById('c')!;
+        await vm.deleteNode('c');
+
+        await vm.setMark(gone, NodeMark.flame);
+
+        expect(vm.tree.nodeById('c'), isNull);
+        expect(vm.error, isNull);
+      });
+
+      test('a rejected mark is not kept in memory', () async {
+        await seedLevel();
+        final failing = _FailingRepository(repository);
+        final guarded = NodeTreeViewModel(failing);
+        await guarded.load();
+
+        await guarded.setMark(guarded.tree.nodeById('b')!, NodeMark.flame);
+
+        expect(guarded.error, isNotNull);
+        expect(guarded.tree.nodeById('b')!.mark, isNull);
       });
     });
 

@@ -1,4 +1,5 @@
 import '../../domain/models/color_preset.dart';
+import '../../domain/models/node_mark.dart';
 import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
 
@@ -11,6 +12,10 @@ class PriorityNodeDto {
   final int priority;
   final int position;
   final int? colorValue;
+
+  /// Stored [NodeMark.value], or null for an unmarked node.
+  final String? mark;
+
   final String createdAt;
   final String updatedAt;
 
@@ -22,6 +27,7 @@ class PriorityNodeDto {
     required this.priority,
     required this.position,
     required this.colorValue,
+    this.mark,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -38,6 +44,9 @@ class PriorityNodeDto {
       // sorted by age, exactly as they were.
       position: (json['position'] as int?) ?? 0,
       colorValue: json['colorValue'] as int?,
+      // Files written before marks existed carry no key at all, which reads
+      // as unmarked — the same tolerance as 'position' and 'colorValue'.
+      mark: json['mark'] as String?,
       createdAt: json['createdAt'] as String,
       updatedAt: json['updatedAt'] as String,
     );
@@ -52,6 +61,7 @@ class PriorityNodeDto {
       'priority': priority,
       'position': position,
       'colorValue': colorValue,
+      'mark': mark,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
@@ -66,6 +76,7 @@ class PriorityNodeDto {
       priority: node.priority.value,
       position: node.position,
       colorValue: node.colorPreset?.colorValue,
+      mark: node.mark?.value,
       createdAt: node.createdAt.toIso8601String(),
       updatedAt: node.updatedAt.toIso8601String(),
     );
@@ -80,6 +91,7 @@ class PriorityNodeDto {
       priority: Priority.fromValue(priority),
       position: position,
       colorPreset: ColorPreset.tryFromColorValue(colorValue),
+      mark: NodeMark.tryFromValue(mark),
       createdAt: DateTime.parse(createdAt),
       updatedAt: DateTime.parse(updatedAt),
     );

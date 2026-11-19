@@ -38,12 +38,57 @@ ActivityEvent displace(String role, DateTime at) => ActivityEvent(
   details: 'Critical → High, displaced by "other"',
 );
 
+/// A top-level node was marked 🔥 / 🧊, or had its mark taken off. Written
+/// with an empty path, exactly as the logger writes it for a role — which is
+/// the shape `_roleChange` inspects.
+ActivityEvent marked(String role, DateTime at, String details) => ActivityEvent(
+  id: 'm${_ids++}',
+  at: at,
+  action: ActivityAction.marked,
+  nodeId: role,
+  nodeTitle: role,
+  details: details,
+);
+
 void main() {
   group('day start', () {
     test('a day runs from 06:00 to 06:00', () {
       expect(RoleTimeline.dayStartFor(t(5, 59)), t(6, 0, 17));
       expect(RoleTimeline.dayStartFor(t(6)), t(6));
       expect(RoleTimeline.dayStartFor(t(23)), t(6));
+    });
+  });
+
+  group('marks', () {
+    const detailsWritten = ['🔥 In progress', '🧊 Blocked', 'Mark removed'];
+
+    test('a mark on a role is not read as a role switch', () {
+      for (final details in detailsWritten) {
+        final spans = RoleTimeline.build(
+          events: [activate('work', t(9)), marked('home', t(10), details)],
+          now: t(11),
+          currentRoleId: 'work',
+        );
+        expect(
+          spans.map((s) => s.roleId).toSet(),
+          {'work'},
+          reason: '"$details" must not switch the day to "home"',
+        );
+      }
+    });
+
+    test('a day of nothing but marks counts towards the current role', () {
+      final spans = RoleTimeline.build(
+        events: [
+          for (final details in detailsWritten) marked('home', t(9), details),
+        ],
+        now: t(10),
+        currentRoleId: 'work',
+      );
+
+      // The marks are ordinary actions: they keep the clock running for the
+      // role that is active, and name no switch of their own.
+      expect(spans.map((s) => s.roleId), ['work']);
     });
   });
 

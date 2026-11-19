@@ -1,0 +1,1638 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:priority_lists/data/repositories/in_memory_priority_node_repository.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
+import 'package:priority_lists/domain/models/priority.dart';
+import 'package:priority_lists/domain/models/priority_node.dart';
+import 'package:priority_lists/domain/repositories/priority_node_repository.dart';
+import 'package:priority_lists/presentation/screens/node_screen.dart';
+import 'package:priority_lists/presentation/view_models/filter_view_model.dart';
+import 'package:priority_lists/presentation/view_models/node_tree_view_model.dart';
+import 'package:priority_lists/presentation/widgets/priority_card.dart';
+import 'package:priority_lists/presentation/widgets/role_selector_bar.dart';
+import 'package:provider/provider.dart';
+
+/// Marked children (🔥 / 🧊) leave the level's card list and are pinned above
+/// it as one compact line each.
+
+PriorityNode node(
+  String id, {
+  String? parent,
+  Priority priority = Priority.high,
+  NodeMark? mark,
+  int position = 0,
+  int createdOffset = 0,
+}) {
+  final created = DateTime(2026, 1, 1).add(Duration(minutes: createdOffset));
+  return PriorityNode(
+    id: id,
+    parentId: parent,
+    title: id,
+    priority: priority,
+    position: position,
+    mark: mark,
+    createdAt: created,
+    updatedAt: created,
+  );
+}
+
+const roleId = 'Role';
+
+Future<PriorityNodeRepository> seeded(List<PriorityNode> nodes) async {
+  final repository = InMemoryPriorityNodeRepository();
+  await repository.saveNodes([
+    node(roleId, priority: Priority.critical),
+    for (final n in nodes) n.parentId == null ? n.withParent(roleId) : n,
+  ]);
+  return repository;
+}
+
+Widget app(
+  PriorityNodeRepository repository, {
+  FilterViewModel? filter,
+  NodeTreeViewModel? vm,
+}) {
+  return MaterialApp(
+    home: MultiProvider(
+      providers: [
+        Provider<PriorityNodeRepository>.value(value: repository),
+        if (vm == null)
+          ChangeNotifierProvider(create: (_) => NodeTreeViewModel(repository))
+        else
+          ChangeNotifierProvider.value(value: vm),
+        if (filter == null)
+          ChangeNotifierProvider(create: (_) => FilterViewModel())
+        else
+          ChangeNotifierProvider.value(value: filter),
+      ],
+      child: const NodeScreen(),
+    ),
+  );
+}
+
+void usePhoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(400, 900);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}
+
+/// Titles of the cards still in the list, in list order.
+List<String> cardOrder(WidgetTester tester) => tester
+    .widgetList<PriorityCard>(find.byType(PriorityCard))
+    .map((card) => card.title)
+    .toList();
+
+/// Titles of the pinned rows, top to bottom.
+List<String> pinnedOrder(WidgetTester tester) => tester
+    .widgetList<PinnedMarkRow>(find.byType(PinnedMarkRow))
+    .map((row) => row.title)
+    .toList();
+
+Finder pinnedRow(String title) => find.byWidgetPredicate(
+  (widget) => widget is PinnedMarkRow && widget.title == title,
+);
+
+/// A card by the node it shows.
+Finder cardNamed(String title) => find.byWidgetPredicate(
+  (widget) => widget is PriorityCard && widget.title == title,
+);
+
+/// A mark's entry in a card's overflow menu, once that menu is open. Told
+/// apart from a pinned row's bare emoji by carrying the label too.
+Finder markMenuEntry(NodeMark mark) => find.text('${mark.emoji} ${mark.label}');
+
+/// The scroller holding the pinned rows. Found through a row rather than by
+/// type: the role chip bar above it has a horizontal scroller of its own, and
+/// it comes first in the tree.
+double pinnedBlockHeight(WidgetTester tester) => tester
+    .getSize(
+      find
+          .ancestor(
+            of: find.byType(PinnedMarkRow).first,
+            matching: find.byType(SingleChildScrollView),
+          )
+          .first,
+    )
+    .height;
+
+/// Opens a card's overflow menu — the badge row's last cell, where the marks
+/// and Delete live.
+Future<void> openCardMenu(WidgetTester tester, String card) async {
+  await tester.tap(
+    find.descendant(
+      of: cardNamed(card),
+      matching: find.byIcon(Icons.more_horiz),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Marks a card's node through that menu.
+Future<void> setMarkFromMenu(
+  WidgetTester tester,
+  String card,
+  NodeMark mark,
+) async {
+  await openCardMenu(tester, card);
+  await tester.tap(markMenuEntry(mark));
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('a marked child leaves the list and is pinned above it', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          node('Plain', createdOffset: 1),
+          node('Burning', mark: NodeMark.flame, createdOffset: 2),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['Plain']);
+    expect(pinnedOrder(tester), ['Burning']);
+    // Above the list, not inside it.
+    expect(
+      tester.getCenter(pinnedRow('Burning')).dy,
+      lessThan(tester.getCenter(find.byType(PriorityCard)).dy),
+    );
+    expect(
+      find.descendant(
+        of: find.byType(ReorderableListView),
+        matching: pinnedRow('Burning'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('🔥 comes before 🧊 and each section keeps the tree order', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          // Deliberately shuffled: the sections are read off the level's own
+          // (priority, position, createdAt) order, not off the seed order.
+          node(
+            'Ice low',
+            priority: Priority.low,
+            mark: NodeMark.ice,
+            createdOffset: 1,
+          ),
+          node(
+            'Flame low',
+            priority: Priority.low,
+            mark: NodeMark.flame,
+            createdOffset: 2,
+          ),
+          node(
+            'Ice red',
+            priority: Priority.critical,
+            mark: NodeMark.ice,
+            createdOffset: 3,
+          ),
+          node(
+            'Flame red',
+            priority: Priority.critical,
+            mark: NodeMark.flame,
+            createdOffset: 4,
+          ),
+          node('Plain', createdOffset: 5),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(pinnedOrder(tester), [
+      'Flame red',
+      'Flame low',
+      'Ice red',
+      'Ice low',
+    ]);
+    expect(cardOrder(tester), ['Plain']);
+  });
+
+  testWidgets('an empty section takes no vertical space at all', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = await seeded([
+      node('Plain', createdOffset: 1),
+      node('Other', createdOffset: 2),
+      // Stays unmarked throughout: with no cards left the list makes way for
+      // the rows entirely, and there would be no list top to measure.
+      node('Stays', createdOffset: 3),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    double listTop() => tester.getTopLeft(find.byType(ReorderableListView)).dy;
+
+    // Both sections empty: not a widget between the role bar and the list.
+    final noRows = listTop();
+    expect(find.byType(PinnedMarkRow), findsNothing);
+
+    final vm = tester
+        .state<State>(find.byType(NodeScreen))
+        .context
+        .read<NodeTreeViewModel>();
+
+    // One 🔥 and no 🧊 at all.
+    await vm.setMark(vm.tree.nodeById('Plain')!, NodeMark.flame);
+    await tester.pumpAndSettle();
+    expect(pinnedOrder(tester), ['Plain']);
+    final rowHeight = tester.getSize(find.byType(PinnedMarkRow).first).height;
+    final oneRow = listTop();
+    // The block's own 8dp top padding, and then exactly one row — the empty
+    // 🧊 section contributes nothing, not even a header.
+    expect(oneRow - noRows, closeTo(rowHeight + 8, 0.01));
+
+    // The 🧊 section opening costs exactly its one row.
+    await vm.setMark(vm.tree.nodeById('Other')!, NodeMark.ice);
+    await tester.pumpAndSettle();
+    expect(pinnedOrder(tester), ['Plain', 'Other']);
+    expect(listTop() - oneRow, closeTo(rowHeight, 0.01));
+  });
+
+  testWidgets('a level full of marked children scrolls its rows instead of '
+      'overflowing', (tester) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          for (var i = 0; i < 40; i++)
+            node('m$i', mark: NodeMark.flame, createdOffset: i),
+          node('Plain', createdOffset: 100),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    // The card list still has room; the rows gave way rather than the list.
+    expect(cardOrder(tester), ['Plain']);
+    final body = tester.getSize(find.byType(NodeScreen)).height;
+    final block = pinnedBlockHeight(tester);
+    expect(block, lessThan(body / 2 + 1));
+  });
+
+  testWidgets('with every child marked the rows get the whole body, not half '
+      'of it', (tester) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          for (var i = 0; i < 20; i++)
+            node('m$i', mark: NodeMark.flame, createdOffset: i),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    // No cards, so no empty list holding half the screen: the rows have it.
+    expect(find.byType(PriorityCard), findsNothing);
+    final body = tester.getSize(find.byType(NodeScreen)).height;
+    final block = pinnedBlockHeight(tester);
+    expect(
+      block,
+      greaterThan(body / 2),
+      reason: 'the rows are still capped at half the body with nothing below',
+    );
+  });
+
+  testWidgets('the emoji that unmarks is a full-sized touch target', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(await seeded([node('Burning', mark: NodeMark.flame)])),
+    );
+    await tester.pumpAndSettle();
+
+    // A marked node has no card, so this emoji is the only way out of the
+    // mark; a miss opens the node instead. 44 spelt out rather than read from
+    // the widget, so shrinking it fails here.
+    final emoji = tester.getSize(
+      find
+          .ancestor(
+            of: find.descendant(
+              of: pinnedRow('Burning'),
+              matching: find.text('🔥'),
+            ),
+            matching: find.byType(SizedBox),
+          )
+          .first,
+    );
+    expect(emoji.width, 44);
+    expect(emoji.height, 44);
+  });
+
+  testWidgets('a pinned row is emoji and title and nothing else', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+          node('Kid', parent: 'Burning', createdOffset: 1),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final row = pinnedRow('Burning');
+    expect(find.descendant(of: row, matching: find.text('🔥')), findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.text('Burning')),
+      findsOneWidget,
+    );
+    final title = tester.widget<Text>(
+      find.descendant(of: row, matching: find.text('Burning')),
+    );
+    expect(title.maxLines, 1);
+    expect(title.overflow, TextOverflow.ellipsis);
+
+    // No badge, no 1-4 row, no child count, no actions, no pages.
+    expect(
+      find.descendant(of: row, matching: find.text(Priority.critical.label)),
+      findsNothing,
+    );
+    for (final p in Priority.values) {
+      expect(
+        find.descendant(of: row, matching: find.text('${p.value}')),
+        findsNothing,
+      );
+    }
+    for (final icon in [
+      Icons.subdirectory_arrow_right,
+      Icons.edit_outlined,
+      Icons.delete_outline,
+      Icons.move_to_inbox,
+      Icons.arrow_upward,
+      Icons.drag_handle,
+      Icons.more_vert,
+    ]) {
+      expect(
+        find.descendant(of: row, matching: find.byIcon(icon)),
+        findsNothing,
+        reason: 'a pinned row must not carry $icon',
+      );
+    }
+    expect(
+      find.descendant(of: row, matching: find.byType(PageView)),
+      findsNothing,
+    );
+    // The marked node's own title is not also on a card.
+    expect(cardOrder(tester), isEmpty);
+  });
+
+  testWidgets('tapping a pinned row\'s title opens that level', (tester) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+          node('Kid', parent: 'Burning', createdOffset: 1),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(of: pinnedRow('Burning'), matching: find.text('Burning')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Burning')),
+      findsOneWidget,
+    );
+    expect(cardOrder(tester), ['Kid']);
+  });
+
+  testWidgets(
+    'tapping the emoji unmarks and the card is back in its old place',
+    (tester) async {
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', priority: Priority.critical, position: 0, createdOffset: 1),
+        node('B', priority: Priority.critical, position: 1, createdOffset: 2),
+        node('C', priority: Priority.critical, position: 2, createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      await setMarkFromMenu(tester, 'B', NodeMark.ice);
+      expect(pinnedOrder(tester), ['B']);
+      expect(cardOrder(tester), ['A', 'C']);
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('B'), matching: find.text('🧊')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PinnedMarkRow), findsNothing);
+      expect(cardOrder(tester), ['A', 'B', 'C']);
+      // Its priority and position are the ones it had before the mark.
+      final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+      expect(stored['B']!.mark, isNull);
+      expect(stored['B']!.priority, Priority.critical);
+      expect(stored['B']!.position, 1);
+    },
+  );
+
+  testWidgets(
+    'the card\'s buttons mark the node and swap one mark for the other',
+    (tester) async {
+      usePhoneSize(tester);
+      final repository = await seeded([node('A'), node('B', createdOffset: 1)]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+      expect(pinnedOrder(tester), ['A']);
+      expect(cardOrder(tester), ['B']);
+
+      // 🔥 → 🧊 from the row: unmark, then mark the other way round.
+      await tester.tap(
+        find.descendant(of: pinnedRow('A'), matching: find.text('🔥')),
+      );
+      await tester.pumpAndSettle();
+      await setMarkFromMenu(tester, 'A', NodeMark.ice);
+
+      expect(pinnedOrder(tester), ['A']);
+      expect(
+        find.descendant(of: pinnedRow('A'), matching: find.text('🧊')),
+        findsOneWidget,
+      );
+      final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+      expect(stored['A']!.mark, NodeMark.ice);
+    },
+  );
+
+  testWidgets('editing a marked node through the form keeps its mark', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = await seeded([
+      node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+      node('Plain', createdOffset: 1),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    // A marked node has no card, so Edit is reached from its own level.
+    await tester.tap(
+      find.descendant(of: pinnedRow('Burning'), matching: find.text('Burning')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'Renamed');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // The form knows nothing about marks, and `copyWith` without `clearMark`
+    // must leave it where it was.
+    final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+    expect(stored['Burning']!.title, 'Renamed');
+    expect(stored['Burning']!.mark, NodeMark.flame);
+    expect(pinnedOrder(tester), ['Renamed']);
+  });
+
+  testWidgets('Delete from the card\'s menu still goes through the confirm '
+      'dialog', (tester) async {
+    usePhoneSize(tester);
+    final repository = await seeded([
+      node('Doomed', createdOffset: 1),
+      node('Kept', createdOffset: 2),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    await openCardMenu(tester, 'Doomed');
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    // The same dialog as before — Delete moved into the menu, not out of the
+    // confirmation.
+    expect(find.widgetWithText(FilledButton, 'Delete'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(cardOrder(tester), ['Doomed', 'Kept'], reason: 'cancel keeps it');
+
+    await openCardMenu(tester, 'Doomed');
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['Kept']);
+    expect(
+      (await repository.getAllNodes()).map((n) => n.id),
+      isNot(contains('Doomed')),
+    );
+  });
+
+  testWidgets('a level whose only children are marked shows no placeholder', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          node('Burning', mark: NodeMark.flame),
+          node('Frozen', mark: NodeMark.ice, createdOffset: 1),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(pinnedOrder(tester), ['Burning', 'Frozen']);
+    expect(find.textContaining('Nothing here yet'), findsNothing);
+    expect(find.textContaining('hidden by the priority filter'), findsNothing);
+  });
+
+  testWidgets('the priority filter hides cards but never a pinned row', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final filter = FilterViewModel();
+    await tester.pumpWidget(
+      app(
+        await seeded([
+          node('Frozen low', priority: Priority.low, mark: NodeMark.ice),
+          node('Plain low', priority: Priority.low, createdOffset: 1),
+          node('Plain red', priority: Priority.critical, createdOffset: 2),
+        ]),
+        filter: filter,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['Plain red', 'Plain low']);
+    expect(pinnedOrder(tester), ['Frozen low']);
+
+    filter.setLevel(1); // only critical stays visible
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['Plain red']);
+    expect(
+      pinnedOrder(tester),
+      ['Frozen low'],
+      reason: 'a pinned row is the user saying "this one, now"',
+    );
+
+    // Even when every card is filtered away: the rows are still there, so the
+    // placeholder must not appear.
+    filter.setLevel(1);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('hidden by the priority filter'), findsNothing);
+  });
+
+  testWidgets(
+    'a filter that hides every card leaves the rows and no placeholder',
+    (tester) async {
+      usePhoneSize(tester);
+      final filter = FilterViewModel();
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Frozen low', priority: Priority.low, mark: NodeMark.ice),
+            node('Plain low', priority: Priority.low, createdOffset: 1),
+          ]),
+          filter: filter,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      filter.setLevel(1);
+      await tester.pumpAndSettle();
+
+      expect(cardOrder(tester), isEmpty);
+      expect(pinnedOrder(tester), ['Frozen low']);
+      expect(
+        find.textContaining('hidden by the priority filter'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('dragging the cards that are left reorders the right nodes', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = await seeded([
+      node('First', priority: Priority.critical, position: 0, createdOffset: 1),
+      node(
+        'Pinned',
+        priority: Priority.critical,
+        position: 1,
+        mark: NodeMark.flame,
+        createdOffset: 2,
+      ),
+      node(
+        'Second',
+        priority: Priority.critical,
+        position: 2,
+        createdOffset: 3,
+      ),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['First', 'Second']);
+
+    // The second card's handle — index 1 of the *cards*, which is what the
+    // reorder indices have to be counted in.
+    final handle = find.byIcon(Icons.drag_handle).at(1);
+    final gesture = await tester.startGesture(tester.getCenter(handle));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(0, -20));
+    await tester.pump();
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(0, -40));
+      await tester.pump();
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['Second', 'First']);
+    // The marked sibling was woven back into its place, not dragged along.
+    final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+    expect(stored['Pinned']!.mark, NodeMark.flame);
+    final level =
+        (await repository.getAllNodes())
+            .where((n) => n.parentId == roleId)
+            .toList()
+          ..sort((a, b) => a.position.compareTo(b.position));
+    expect(level.map((n) => n.id), ['Second', 'First', 'Pinned']);
+  });
+
+  testWidgets('the mark menu is reachable on the tightest phone', (
+    tester,
+  ) async {
+    // 320x568 is the narrowest screen the app is tested on (iPhone SE, see
+    // node_screen_mobile_test). The marks are menu entries, so the card's
+    // width cannot clip them — which it did when they were buttons in either
+    // of the card's rows.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final repository = await seeded([node('Plain', createdOffset: 1)]);
+    final vm = NodeTreeViewModel(repository);
+    await tester.pumpWidget(app(repository, vm: vm));
+    await tester.pumpAndSettle();
+
+    await openCardMenu(tester, 'Plain');
+    for (final mark in NodeMark.values) {
+      expect(
+        markMenuEntry(mark).hitTestable(),
+        findsOneWidget,
+        reason: '${mark.emoji} is not reachable from a 320dp card',
+      );
+    }
+
+    await tester.tap(markMenuEntry(NodeMark.flame));
+    await tester.pumpAndSettle();
+    expect(vm.tree.nodeById('Plain')!.mark, NodeMark.flame);
+
+    // Marking it took its card away — it is a pinned row now — so the 🧊
+    // button is reached by unmarking from that row first.
+    await tester.tap(
+      find.descendant(
+        of: pinnedRow('Plain'),
+        matching: find.text(NodeMark.flame.emoji),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(vm.tree.nodeById('Plain')!.mark, isNull);
+
+    await setMarkFromMenu(tester, 'Plain', NodeMark.ice);
+    expect(vm.tree.nodeById('Plain')!.mark, NodeMark.ice);
+  });
+
+  testWidgets('the grip stays out of the card\'s back-gesture gutter', (
+    tester,
+  ) async {
+    // Nothing the marks added may move the grip. Earlier attempts put mark
+    // buttons left of the 1-4 row and widened the level-row reserve to pay
+    // for them, which pushed the grip's 44dp target onto the leftmost 24dp
+    // of the card — the strip the card
+    // keeps clear of its own gestures so the platform back swipe and a plain
+    // tap still work there. 320x568 is the narrowest the app is tested on.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // A grandchild makes the card swipeable, which is what puts the gutter
+    // there in the first place.
+    final repository = await seeded([
+      node('Parent', createdOffset: 1),
+      node('Kid', parent: 'Parent', createdOffset: 2),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    final card = find.byWidgetPredicate(
+      (widget) => widget is PriorityCard && widget.title == 'Parent',
+    );
+    // The Stack inside the Card is the card's content box, so the gutter is
+    // its leftmost 24dp (PriorityCard._backGestureGutter).
+    final content = tester.getRect(
+      find.descendant(of: card, matching: find.byType(Stack)).first,
+    );
+    final gutter = Rect.fromLTRB(
+      content.left,
+      content.top,
+      content.left + 24,
+      content.bottom,
+    );
+    final grip = tester.getRect(
+      find.descendant(
+        of: card,
+        matching: find.byType(ReorderableDragStartListener),
+      ),
+    );
+    expect(
+      grip.overlaps(gutter),
+      isFalse,
+      reason: 'the grip target $grip reaches into the gutter $gutter',
+    );
+
+    // And the behaviour that band protects: a tap in the gutter opens the
+    // node instead of being eaten by the grip.
+    await tester.tapAt(Offset(gutter.left + 6, grip.center.dy));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Parent')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the grip keeps its whole handle on a narrow phone', (
+    tester,
+  ) async {
+    // The band the grip is centred in is bounded by the bottom-right button
+    // row but measured from the card's own width, so it is what runs out as
+    // the card narrows: `Center` would hand the grip a band narrower than its
+    // 44dp target and the drag handle would be cut down with it. The reorder
+    // affordance has to survive a narrow screen, not just clear the two
+    // strips next to it — which is why the marks are not in that row.
+    //
+    // 320dp is the narrowest the app is tested on; a display-scaling setting
+    // takes a wider phone below that.
+    for (final width in [320.0, 300.0, 288.0]) {
+      tester.view.physicalSize = Size(width, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final repository = await seeded([
+        node('Parent', priority: Priority.critical, createdOffset: 1),
+        node('Kid', parent: 'Parent', createdOffset: 2),
+        node('Other', priority: Priority.critical, createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      final card = find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Parent',
+      );
+      final handle = find.descendant(
+        of: card,
+        matching: find.byIcon(Icons.drag_handle),
+      );
+      expect(
+        handle.hitTestable(),
+        findsOneWidget,
+        reason: 'the drag handle is unreachable at ${width}dp',
+      );
+      // 20dp is the icon's own size: anything less is the glyph being clipped
+      // by the band around it.
+      expect(
+        tester.getRect(handle).width,
+        20.0,
+        reason: 'the drag handle is clipped at ${width}dp',
+      );
+      expect(
+        tester
+            .getRect(
+              find.descendant(
+                of: card,
+                matching: find.byType(ReorderableDragStartListener),
+              ),
+            )
+            .width,
+        greaterThanOrEqualTo(20.0),
+        reason: 'the grip has no room left to grab at ${width}dp',
+      );
+    }
+  });
+
+  testWidgets('a card with no pages keeps the grip out of its left edge too', (
+    tester,
+  ) async {
+    // The band is only bounded on the left while the card is swipeable, but
+    // what the bound protects does not depend on that: the leftmost 24dp of
+    // any card is where the platform's back swipe and an ordinary tap have to
+    // land, and the grip's immediate drag recogniser claims whatever it
+    // covers. A leaf card has no child pages, so the left bound is 0 and the
+    // grip slides 18dp further left than on the card next to it.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final repository = await seeded([node('Leaf', createdOffset: 1)]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    final card = find.byWidgetPredicate(
+      (widget) => widget is PriorityCard && widget.title == 'Leaf',
+    );
+    final content = tester.getRect(
+      find.descendant(of: card, matching: find.byType(Stack)).first,
+    );
+    final grip = tester.getRect(
+      find.descendant(
+        of: card,
+        matching: find.byType(ReorderableDragStartListener),
+      ),
+    );
+    final gutter = Rect.fromLTRB(
+      content.left,
+      grip.top,
+      content.left + 24,
+      grip.bottom,
+    );
+    expect(
+      grip.overlaps(gutter),
+      isFalse,
+      reason: 'the grip target $grip reaches into the left edge $gutter',
+    );
+
+    // What that strip is for: a tap there opens the node.
+    await tester.tapAt(Offset(gutter.left + 10, grip.center.dy));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Leaf')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('roles get no mark affordance at all', (tester) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      app(await seeded([node('Child', createdOffset: 1)])),
+    );
+    await tester.pumpAndSettle();
+
+    final bar = find.byType(RoleSelectorBar);
+    expect(bar, findsOneWidget);
+    for (final mark in NodeMark.values) {
+      expect(
+        find.descendant(of: bar, matching: find.text(mark.emoji)),
+        findsNothing,
+        reason: 'the chip bar is unchanged',
+      );
+    }
+    // The role's own children do offer them, from the card's menu.
+    await openCardMenu(tester, 'Child');
+    for (final mark in NodeMark.values) {
+      expect(markMenuEntry(mark), findsOneWidget);
+    }
+  });
+
+  group('while a node is being moved', () {
+    Future<void> pickUp(WidgetTester tester, String title) async {
+      await tester.tap(
+        find.descendant(
+          of: find.byWidgetPredicate(
+            (widget) => widget is PriorityCard && widget.title == title,
+          ),
+          matching: find.byIcon(Icons.move_to_inbox),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a pinned row says it is a drop target, and stops saying it', (
+      tester,
+    ) async {
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+            node('Mover', priority: Priority.high, createdOffset: 1),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      bool rowIsTinted() =>
+          tester.widget<PinnedMarkRow>(pinnedRow('Burning')).isDropTarget;
+
+      // Idle: a tap on the title navigates, so the row looks like itself.
+      expect(rowIsTinted(), isFalse);
+
+      await pickUp(tester, 'Mover');
+      // Now the same tap reparents a subtree, and the row says so — the cards
+      // beside it already turn green and relabel to "Put here".
+      expect(rowIsTinted(), isTrue);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(rowIsTinted(), isFalse);
+    });
+
+    testWidgets(
+      'tapping a pinned row\'s title puts the moving node inside it',
+      (tester) async {
+        usePhoneSize(tester);
+        final repository = await seeded([
+          node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+          node('Mover', priority: Priority.high, createdOffset: 1),
+        ]);
+        await tester.pumpWidget(app(repository));
+        await tester.pumpAndSettle();
+
+        await pickUp(tester, 'Mover');
+        expect(find.textContaining('Moving "Mover"'), findsOneWidget);
+
+        await tester.tap(
+          find.descendant(
+            of: pinnedRow('Burning'),
+            matching: find.text('Burning'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final stored = {
+          for (final n in await repository.getAllNodes()) n.id: n,
+        };
+        expect(stored['Mover']!.parentId, 'Burning');
+        // The move is over and the row is still pinned where it was.
+        expect(find.textContaining('Moving "Mover"'), findsNothing);
+        expect(pinnedOrder(tester), ['Burning']);
+      },
+    );
+
+    testWidgets('a marked node cannot be picked up from its row', (
+      tester,
+    ) async {
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+            node('Plain', priority: Priority.high, createdOffset: 1),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // One "move into" on the level, on the one card that is left.
+      expect(find.byIcon(Icons.move_to_inbox), findsOneWidget);
+      expect(
+        find.descendant(
+          of: pinnedRow('Burning'),
+          matching: find.byIcon(Icons.move_to_inbox),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the moving node\'s own row is no drop target when a mark '
+        'reaches it mid-move', (tester) async {
+      // A node picked up from its card can still get a mark from elsewhere
+      // (another device, a sync) and slide into the pinned block while it is
+      // being moved. Its own row must not offer to put it inside itself:
+      // node_screen excludes it from the tint, and the tap cancels, exactly
+      // as the moving card's own tap does.
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+        node('Mover', priority: Priority.high, createdOffset: 1),
+      ]);
+      final vm = NodeTreeViewModel(repository);
+      await tester.pumpWidget(app(repository, vm: vm));
+      await tester.pumpAndSettle();
+
+      await pickUp(tester, 'Mover');
+      expect(find.textContaining('Moving "Mover"'), findsOneWidget);
+
+      await vm.setMark(vm.tree.nodeById('Mover')!, NodeMark.ice);
+      await tester.pumpAndSettle();
+
+      // It left the list for a row of its own, and the move is still on.
+      expect(pinnedOrder(tester), ['Burning', 'Mover']);
+      expect(find.textContaining('Moving "Mover"'), findsOneWidget);
+      expect(
+        tester.widget<PinnedMarkRow>(pinnedRow('Mover')).isDropTarget,
+        isFalse,
+        reason: 'a node cannot be put inside itself',
+      );
+      expect(
+        tester.widget<PinnedMarkRow>(pinnedRow('Burning')).isDropTarget,
+        isTrue,
+      );
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('Mover'), matching: find.text('Mover')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Moving "Mover"'), findsNothing);
+      final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+      expect(stored['Mover']!.parentId, roleId, reason: 'nothing was moved');
+    });
+  });
+
+  group('the mark menu on a narrow phone', () {
+    /// The card as the level's list builds it: the list's own 8dp padding and
+    /// the card's 12dp margin come off the width before anything on the card
+    /// gets any, so a card measured on its own is 16dp wider than this one.
+    Future<Finder> cardAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      // A bare tree first: the card is keyed by its node id, so pumping a
+      // second screen would reuse the same State — and with it the page the
+      // previous width's swipe left it on.
+      await tester.pumpWidget(const SizedBox());
+
+      final repository = await seeded([
+        node('Parent', createdOffset: 1),
+        // A child makes the card swipeable: its pages are the gesture that
+        // anything along the card's bottom edge would compete with.
+        node('Kid', parent: 'Parent', createdOffset: 2),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      return find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Parent',
+      );
+    }
+
+    testWidgets('both are reachable from a 320dp card', (tester) async {
+      // 320dp is the narrowest the app is tested on. The marks are entries in
+      // the badge row's overflow menu, so the card's width cannot clip them —
+      // which it did when they were buttons in either of the card's rows.
+      await cardAt(tester, 320);
+      await openCardMenu(tester, 'Parent');
+
+      for (final mark in NodeMark.values) {
+        expect(
+          markMenuEntry(mark).hitTestable(),
+          findsOneWidget,
+          reason: '${mark.emoji} is not reachable at 320dp',
+        );
+      }
+      // An unmarked node has nothing to remove.
+      expect(find.text('Remove mark'), findsNothing);
+    });
+
+    testWidgets('setting a mark from a 320dp card works', (tester) async {
+      await cardAt(tester, 320);
+      await setMarkFromMenu(tester, 'Parent', NodeMark.flame);
+
+      // It left the list for a pinned row, which is the whole point of it.
+      expect(pinnedOrder(tester), ['Parent']);
+      expect(cardOrder(tester), isEmpty);
+    });
+
+    testWidgets('a sideways swipe over the bottom of the card turns the page', (
+      tester,
+    ) async {
+      // The card's second axis. Nothing along its bottom edge may claim a
+      // horizontal drag: an earlier placement put the marks next to the 1-4
+      // row, which made that row a scroller on a narrow card and killed the
+      // swipe in the bottom strip of every tile.
+      for (final width in [320.0, 360.0]) {
+        final card = await cardAt(tester, width);
+        final childPage = find.descendant(of: card, matching: find.text('Kid'));
+        expect(childPage, findsNothing, reason: 'at ${width}dp');
+
+        // From the "2" button: along the card's bottom edge, nowhere near the
+        // grip on the left.
+        await tester.drag(
+          find.descendant(of: card, matching: find.text('2')),
+          const Offset(-250, 0),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          childPage,
+          findsOneWidget,
+          reason:
+              'the swipe did not turn the card to its child page '
+              'at ${width}dp',
+        );
+      }
+    });
+  });
+
+  group('the mark actions share the badge row with the others', () {
+    /// A level one step below a role, which is where a card carries every
+    /// action it can have: "move up one level" only exists when the node has
+    /// a grandparent, and a card with children is also the only kind that has
+    /// a page swipe to lose — the two conditions coincide, so this is the card
+    /// the row has to fit.
+    Future<Finder> subLevelCard(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      // The card is keyed by its node id, so a second screen at another width
+      // would reuse the same State and the page its last swipe left it on.
+      await tester.pumpWidget(const SizedBox());
+
+      final repository = await seeded([
+        node('Mid', createdOffset: 1),
+        node('Leaf', parent: 'Mid', createdOffset: 2),
+        node('Grand', parent: 'Leaf', createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mid'));
+      await tester.pumpAndSettle();
+
+      return find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Leaf',
+      );
+    }
+
+    testWidgets('every action is still reachable at 360dp', (tester) async {
+      // The row holds the four cells it has always held: move up, move into,
+      // edit and the overflow button that Delete moved into. The marks are
+      // entries in that menu, so the row cannot run out of width for them —
+      // the earlier placements put them in this row or the bottom one and
+      // pushed what was already there off a scrollable end.
+      final card = await subLevelCard(tester, 360);
+
+      for (final entry in {
+        'Move up one level': Icons.arrow_upward,
+        'Move into another node': Icons.move_to_inbox,
+        'Edit': Icons.edit_outlined,
+        'More actions': Icons.more_horiz,
+      }.entries) {
+        expect(
+          find
+              .descendant(of: card, matching: find.byIcon(entry.value))
+              .hitTestable(),
+          findsOneWidget,
+          reason: '"${entry.key}" is not tappable at 360dp',
+        );
+      }
+
+      // And what that last cell holds: both marks, and Delete.
+      await openCardMenu(tester, 'Leaf');
+      for (final mark in NodeMark.values) {
+        expect(
+          markMenuEntry(mark).hitTestable(),
+          findsOneWidget,
+          reason: '${mark.emoji} is not reachable at 360dp',
+        );
+      }
+      expect(find.text('Delete').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('the main screen keeps "move into" at 320dp', (tester) async {
+      // Not only the deeper levels: the role's own children carry one action
+      // fewer, and the row still runs out of width at 320dp — the width the
+      // group above declares as the narrowest the app is tested on.
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Parent', createdOffset: 1),
+            node('Kid', parent: 'Parent', createdOffset: 2),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Parent',
+      );
+      expect(
+        find
+            .descendant(of: card, matching: find.byIcon(Icons.move_to_inbox))
+            .hitTestable(),
+        findsOneWidget,
+        reason: '"Move into another node" is not tappable at 320dp',
+      );
+    });
+
+    testWidgets('a sideways swipe over the badge row still turns the page', (
+      tester,
+    ) async {
+      // The card's second axis. Once the badge row has more than it can show,
+      // its scroller claims horizontal drags (a `ScrollPhysics` accepts them
+      // as soon as min != max) and beats the enclosing `PageView`, so the
+      // swipe is dead in the 40dp band the row occupies.
+      for (final width in [400.0, 360.0]) {
+        final card = await subLevelCard(tester, width);
+        final childPage = find.descendant(
+          of: card,
+          matching: find.text('Grand'),
+        );
+        expect(childPage, findsNothing, reason: 'at ${width}dp');
+
+        // Over the overflow button: in the badge row, well clear of the grip
+        // and of the back-gesture strip on the card's left edge.
+        await tester.drag(
+          find.descendant(of: card, matching: find.byIcon(Icons.more_horiz)),
+          const Offset(-250, 0),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          childPage,
+          findsOneWidget,
+          reason:
+              'a swipe over the badge row did not turn the card to its '
+              'child page at ${width}dp',
+        );
+      }
+    });
+  });
+
+  group('the cell the marks share with Delete', () {
+    /// The badge row's horizontal scroller.
+    Finder badgeRowOf(Finder card) => find.descendant(
+      of: card,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.left,
+      ),
+    );
+
+    Finder buttonAround(Finder card, IconData icon) => find.ancestor(
+      of: find.descendant(of: card, matching: find.byIcon(icon)).first,
+      matching: find.byType(IconButton),
+    );
+
+    testWidgets('costs the row exactly what the Delete button did', (
+      tester,
+    ) async {
+      // The whole placement rests on this: the overflow button occupies one
+      // 40dp cell, like every [_CardAction] before it, so the row holds the
+      // same four cells and the same 160dp of content it held on the base
+      // branch. A fifth cell would push the leftmost action off the row's
+      // scrollable end and hand the row's `Scrollable` the horizontal drags
+      // the card needs for its child pages — which is how the two earlier
+      // placements of the marks broke.
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final repository = await seeded([
+        node('Mid', createdOffset: 1),
+        node('Leaf', parent: 'Mid', createdOffset: 2),
+        node('Grand', parent: 'Leaf', createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+      // One level below a role: the card that carries every action there is.
+      await tester.tap(find.text('Mid'));
+      await tester.pumpAndSettle();
+
+      final card = cardNamed('Leaf');
+      expect(
+        tester.getSize(buttonAround(card, Icons.more_horiz)),
+        tester.getSize(buttonAround(card, Icons.edit_outlined)),
+        reason: 'the overflow cell is not the size of an action cell',
+      );
+
+      final position = tester.state<ScrollableState>(badgeRowOf(card)).position;
+      expect(
+        position.viewportDimension + position.maxScrollExtent,
+        160,
+        reason:
+            'the badge row holds something other than four 40dp cells '
+            '(move up, move into, edit, overflow)',
+      );
+    });
+
+    testWidgets('its menu holds up at a doubled text scale', (tester) async {
+      // Every other surface of this card has a large-text guard; the menu is
+      // new and had none. The entries wrap rather than overflow, and the one
+      // that is tapped still marks the node.
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      final repository = await seeded([
+        node('Plain', createdOffset: 1),
+        node('Other', createdOffset: 2),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      await openCardMenu(tester, 'Plain');
+      expect(tester.takeException(), isNull);
+      for (final mark in NodeMark.values) {
+        expect(
+          markMenuEntry(mark).hitTestable(),
+          findsOneWidget,
+          reason: '${mark.emoji} is not reachable at a 2.0 text scale',
+        );
+      }
+
+      await tester.tap(markMenuEntry(NodeMark.flame));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(pinnedOrder(tester), ['Plain']);
+    });
+
+    testWidgets('a mark set on the node that is being moved keeps the move '
+        'alive', (tester) async {
+      // The menu stays open to the card while it is picked up, so a mark can
+      // land on the moving node. It leaves the list for a pinned row, and the
+      // move has to survive that: the banner stays, and dropping it still
+      // works and keeps the mark.
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', createdOffset: 1),
+        node('B', createdOffset: 2),
+      ]);
+      final vm = NodeTreeViewModel(repository);
+      await tester.pumpWidget(app(repository, vm: vm));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: cardNamed('A'),
+          matching: find.byIcon(Icons.move_to_inbox),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+      expect(pinnedOrder(tester), ['A']);
+      expect(
+        find.textContaining('Moving'),
+        findsWidgets,
+        reason: 'marking the picked-up node dropped the move',
+      );
+
+      await tester.tap(
+        find.descendant(of: cardNamed('B'), matching: find.text('B')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(vm.tree.nodeById('A')!.parentId, 'B');
+      expect(vm.tree.nodeById('A')!.mark, NodeMark.flame);
+      expect(find.textContaining('Moving'), findsNothing);
+    });
+  });
+
+  group('with no cards left under the rows', () {
+    /// The scroller the pinned rows live in.
+    Finder pinnedBlock() => find
+        .ancestor(
+          of: find.byType(PinnedMarkRow).first,
+          matching: find.byType(SingleChildScrollView),
+        )
+        .first;
+
+    testWidgets('the rows past the fold are reachable and still open a level', (
+      tester,
+    ) async {
+      // The block only scrolls on its own once it runs out of body, which is
+      // exactly the case the full-height branch creates. A row down there has
+      // to behave like one at the top.
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            for (var i = 0; i < 20; i++)
+              node('m$i', mark: NodeMark.flame, createdOffset: i),
+            node('Kid', parent: 'm19', createdOffset: 99),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.dragUntilVisible(
+        pinnedRow('m19'),
+        pinnedBlock(),
+        const Offset(0, -80),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('m19'), matching: find.text('m19')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: find.byType(AppBar), matching: find.text('m19')),
+        findsOneWidget,
+      );
+      expect(cardOrder(tester), ['Kid']);
+    });
+
+    testWidgets('a dozen rows that would not fit in half the body are all '
+        'on screen', (tester) async {
+      // What the full-height branch buys: twelve rows are taller than half
+      // the body and shorter than the whole of it, so with nothing below them
+      // none of them has to be scrolled to.
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            for (var i = 0; i < 12; i++)
+              node('m$i', mark: NodeMark.flame, createdOffset: i),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final body = tester.getSize(find.byType(NodeScreen)).height;
+      expect(
+        pinnedBlockHeight(tester),
+        greaterThan(body / 2),
+        reason: 'twelve rows are meant to outgrow half the body',
+      );
+      for (var i = 0; i < 12; i++) {
+        expect(
+          find
+              .descendant(of: pinnedRow('m$i'), matching: find.text('m$i'))
+              .hitTestable(),
+          findsOneWidget,
+          reason: 'm$i is below the fold with nothing under it',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('marking the last card and unmarking it swaps the layout both '
+        'ways', (tester) async {
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', priority: Priority.critical, position: 0, createdOffset: 1),
+        node('B', priority: Priority.critical, position: 1, createdOffset: 2),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+      await setMarkFromMenu(tester, 'B', NodeMark.ice);
+
+      expect(cardOrder(tester), isEmpty);
+      expect(pinnedOrder(tester), ['A', 'B']);
+      expect(find.textContaining('Nothing here yet'), findsNothing);
+      expect(
+        find.byType(ReorderableListView),
+        findsNothing,
+        reason: 'an empty card list is still holding half the body',
+      );
+      expect(tester.takeException(), isNull);
+
+      // And back: the card list returns, the row keeping the position it had
+      // before any of this.
+      await tester.tap(
+        find.descendant(of: pinnedRow('B'), matching: find.text('🧊')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(cardOrder(tester), ['B']);
+      expect(pinnedOrder(tester), ['A']);
+      expect(find.byType(ReorderableListView), findsOneWidget);
+      final body = tester.getSize(find.byType(NodeScreen)).height;
+      expect(pinnedBlockHeight(tester), lessThan(body / 2 + 1));
+      final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+      expect(stored['B']!.position, 1);
+      expect(stored['B']!.priority, Priority.critical);
+    });
+
+    testWidgets('a filter that hides the last card hands the body over and '
+        'takes it back', (tester) async {
+      usePhoneSize(tester);
+      final filter = FilterViewModel();
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Frozen low', priority: Priority.low, mark: NodeMark.ice),
+            node('Plain low', priority: Priority.low, createdOffset: 1),
+          ]),
+          filter: filter,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final body = tester.getSize(find.byType(NodeScreen)).height;
+      expect(pinnedBlockHeight(tester), lessThan(body / 2 + 1));
+
+      filter.setLevel(1); // only critical stays visible
+      await tester.pumpAndSettle();
+      expect(cardOrder(tester), isEmpty);
+      expect(
+        find.byType(ReorderableListView),
+        findsNothing,
+        reason: 'an empty card list is still holding half the body',
+      );
+      expect(tester.takeException(), isNull);
+
+      filter.setLevel(4);
+      await tester.pumpAndSettle();
+      expect(cardOrder(tester), ['Plain low']);
+      expect(pinnedOrder(tester), ['Frozen low']);
+      expect(find.byType(ReorderableListView), findsOneWidget);
+      expect(pinnedBlockHeight(tester), lessThan(body / 2 + 1));
+    });
+
+    testWidgets('a pinned row is still a drop target with no cards around it', (
+      tester,
+    ) async {
+      // The card list is what normally carries the drop targets; with it gone
+      // the rows are the only ones left, so the move has to land on one.
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', createdOffset: 1),
+        node('B', mark: NodeMark.ice, createdOffset: 2),
+      ]);
+      final vm = NodeTreeViewModel(repository);
+      await tester.pumpWidget(app(repository, vm: vm));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: cardNamed('A'),
+          matching: find.byIcon(Icons.move_to_inbox),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+
+      expect(cardOrder(tester), isEmpty);
+      expect(pinnedOrder(tester), ['A', 'B']);
+      expect(find.textContaining('Moving'), findsWidgets);
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('B'), matching: find.text('B')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(vm.tree.nodeById('A')!.parentId, 'B');
+      expect(vm.tree.nodeById('A')!.mark, NodeMark.flame);
+      expect(find.textContaining('Moving'), findsNothing);
+    });
+
+    testWidgets('the far edge of the emoji unmarks rather than opening the '
+        'node', (tester) async {
+      // 40dp from the row's left edge is outside the 32dp box the emoji used
+      // to have and inside the 44dp one it has now: the tap must take the
+      // mark off, not fall through to the title and push a level.
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Burning', mark: NodeMark.flame),
+            node('Kid', parent: 'Burning', createdOffset: 1),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final row = tester.getRect(pinnedRow('Burning'));
+      await tester.tapAt(Offset(row.left + 40, row.center.dy));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PinnedMarkRow), findsNothing);
+      expect(cardOrder(tester), ['Burning']);
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Burning'),
+        ),
+        findsNothing,
+        reason: 'the tap fell through to the title and opened the level',
+      );
+    });
+  });
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_lists/data/repositories/in_memory_priority_node_repository.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/domain/models/priority_node.dart';
 import 'package:priority_lists/domain/repositories/priority_node_repository.dart';
@@ -18,6 +19,7 @@ PriorityNode node(
   String id, {
   String? parent,
   Priority priority = Priority.high,
+  NodeMark? mark,
   int createdOffset = 0,
 }) {
   final created = DateTime(2026, 1, 1).add(Duration(minutes: createdOffset));
@@ -27,6 +29,7 @@ PriorityNode node(
     title: id,
     description: '',
     priority: priority,
+    mark: mark,
     createdAt: created,
     updatedAt: created,
   );
@@ -562,6 +565,40 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(shownTitle(tester, 'Parent'), 'c1');
+    });
+  });
+
+  group('a marked child on a page', () {
+    testWidgets('wears its emoji in front of the title', (tester) async {
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Parent', priority: Priority.critical),
+            node('c1', parent: 'Parent', mark: NodeMark.flame, createdOffset: 1),
+            node('c2', parent: 'Parent', mark: NodeMark.ice, createdOffset: 2),
+            node('c3', parent: 'Parent', createdOffset: 3),
+          ]),
+          cardPages: CardPageViewModel(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final expected in ['🔥 c1', '🧊 c2', 'c3']) {
+        await swipe(tester, 'Parent');
+        expect(shownTitle(tester, 'Parent'), expected);
+        // Nothing else changes here: no mark buttons on a child page.
+        for (final mark in NodeMark.values) {
+          expect(
+            find.descendant(
+              of: cardOf('Parent'),
+              matching: find.text(mark.emoji),
+            ),
+            findsNothing,
+            reason: 'the ${mark.emoji} button belongs to the child\'s level',
+          );
+        }
+      }
     });
   });
 }

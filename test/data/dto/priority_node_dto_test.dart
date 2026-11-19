@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_lists/data/dto/priority_node_dto.dart';
 import 'package:priority_lists/domain/models/color_preset.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/domain/models/priority_node.dart';
 
@@ -17,6 +18,7 @@ void main() {
         'priority': 2,
         'position': 4,
         'colorValue': ColorPreset.blue.colorValue,
+        'mark': NodeMark.flame.value,
         'createdAt': '2024-01-15T10:30:00.000',
         'updatedAt': '2024-01-15T10:30:00.000',
       };
@@ -32,6 +34,7 @@ void main() {
       expect(entity.priority, Priority.high);
       expect(entity.position, 4);
       expect(entity.colorPreset, ColorPreset.blue);
+      expect(entity.mark, NodeMark.flame);
     });
 
     test('round-trips an entity without a parent or colour', () {
@@ -70,6 +73,67 @@ void main() {
       // No stored order either: 0 leaves such nodes sorted by age.
       expect(entity.position, 0);
       expect(entity.parentId, isNull);
+    });
+
+    test('a stored row with no mark key loads as unmarked', () {
+      final entity = PriorityNodeDto.fromJson({
+        'id': 'n',
+        'title': 'T',
+        'priority': 1,
+        'position': 3,
+        'createdAt': '2024-01-15T10:30:00.000',
+        'updatedAt': '2024-01-15T10:30:00.000',
+      }).toEntity();
+
+      expect(entity.mark, isNull);
+      // Nothing else is read differently for want of the key.
+      expect(entity.priority, Priority.critical);
+      expect(entity.position, 3);
+    });
+
+    test('a mark value this build does not know degrades to unmarked', () {
+      final entity = PriorityNodeDto.fromJson({
+        'id': 'n',
+        'title': 'T',
+        'priority': 1,
+        'mark': 'thunder',
+        'createdAt': '2024-01-15T10:30:00.000',
+        'updatedAt': '2024-01-15T10:30:00.000',
+      }).toEntity();
+
+      expect(entity.mark, isNull);
+    });
+
+    test('both marks round-trip through an entity', () {
+      for (final mark in NodeMark.values) {
+        final node = PriorityNode(
+          id: 'n',
+          title: 'T',
+          priority: Priority.low,
+          mark: mark,
+          createdAt: now,
+          updatedAt: now,
+        );
+        final json = PriorityNodeDto.fromEntity(node).toJson();
+        expect(json['mark'], mark.value);
+        expect(PriorityNodeDto.fromJson(json).toEntity().mark, mark);
+      }
+    });
+
+    test('an unmarked entity writes a null mark, not a missing key', () {
+      final json = PriorityNodeDto.fromEntity(
+        PriorityNode(
+          id: 'n',
+          title: 'T',
+          priority: Priority.low,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ).toJson();
+
+      expect(json.containsKey('mark'), isTrue);
+      expect(json['mark'], isNull);
+      expect(PriorityNodeDto.fromJson(json).toEntity().mark, isNull);
     });
 
     test('a colour that is no longer a preset degrades to none', () {

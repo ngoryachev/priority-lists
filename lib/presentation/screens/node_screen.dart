@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../domain/models/node_mark.dart';
 import '../../domain/models/node_tree.dart';
 import '../../domain/models/priority.dart';
 import '../../domain/models/priority_node.dart';
@@ -136,7 +137,10 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       Future.microtask(() async {
         // The pages are in before the first card is built, so a card never
         // mounts on page 0 and then jumps.
-        await Future.wait([vm.load(), if (cardPages != null) cardPages.reload()]);
+        await Future.wait([
+          vm.load(),
+          if (cardPages != null) cardPages.reload(),
+        ]);
         if (!mounted) return;
         await _restoreLastLevel(vm);
       });
@@ -294,8 +298,8 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     final accent = levelNode == null
         ? null
         : _isRoot
-            ? _roleColor(levelNode)
-            : priorityColor(levelNode.priority);
+        ? _roleColor(levelNode)
+        : priorityColor(levelNode.priority);
 
     final scaffold = Scaffold(
       appBar: AppBar(
@@ -429,13 +433,15 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       return Center(child: Text('Error: ${vm.error}'));
     }
 
-    final children = tree
-        .childrenOf(levelId)
+    final levelChildren = tree.childrenOf(levelId);
+    final children = levelChildren
         .where((child) => filter.isVisible(child.priority))
         .toList();
 
     // The moving node can vanish under us (deleted, filtered out); drop the
     // mode rather than keep a banner for a card that is no longer there.
+    // Checked against the whole filtered level, marked children included, so a
+    // mark set from another device mid-move cannot cancel the move.
     final moving = tree.nodeById(_movingId);
     if (_movingId != null &&
         (moving == null || !children.any((c) => c.id == _movingId))) {
@@ -444,8 +450,26 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
       });
     }
 
-    if (children.isEmpty) {
-      final hidden = tree.childrenOf(levelId).isNotEmpty;
+    // In the list view the marked children leave the card list for the pinned
+    // rows above it, 🔥 first and then 🧊, each section in the level's own
+    // order. The priority filter does not reach them — a pinned row is the
+    // user saying "this one, now", which outranks a filter they set earlier —
+    // so they are read off the unfiltered level.
+    //
+    // The bubble canvas is untouched: it keeps showing every child, marked or
+    // not, as an ordinary bubble.
+    final pinned = _showBubbleView
+        ? const <PriorityNode>[]
+        : [
+            for (final mark in NodeMark.values)
+              ...levelChildren.where((child) => child.mark == mark),
+          ];
+    final cards = _showBubbleView
+        ? children
+        : children.where((child) => child.mark == null).toList();
+
+    if (cards.isEmpty && pinned.isEmpty) {
+      final hidden = levelChildren.isNotEmpty;
       return Center(
         child: Text(
           hidden
@@ -457,8 +481,8 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     }
 
     final list = _showBubbleView
-        ? _buildBubbles(vm, tree, filter, children)
-        : _buildList(vm, tree, filter, children, levelId);
+        ? _buildBubbles(vm, tree, filter, cards)
+        : _buildList(vm, tree, filter, cards, pinned, levelId);
     if (moving == null) return list;
 
     return Column(
@@ -526,7 +550,76 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// The level's cards, with the marked children pinned above them.
+  ///
+  /// [children] is the card list — the level minus whatever the mark or the
+  /// filter took out of it — and [pinned] the marked ones in section order.
+  /// Both the reorder indices and `visible:` come from [children] alone, so
+  /// the drag stays consistent with what the user sees; the marked siblings
+  /// are absent from it and get woven back into their place by
+  /// [NodeTreeViewModel.reorderChildren], exactly like filter-hidden ones.
   Widget _buildList(
+    NodeTreeViewModel vm,
+    NodeTree tree,
+    FilterViewModel filter,
+    List<PriorityNode> children,
+    List<PriorityNode> pinned,
+    String? levelId,
+  ) {
+    final cards = _buildCardList(vm, tree, filter, children, levelId);
+    if (pinned.isEmpty) return cards;
+
+    // No section headers: the emoji on each row says which section it is. An
+    // empty section contributes no widget at all and so costs no height.
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        children: [
+          // The rows take exactly the height they need, and — while there are
+          // cards under them — never more than half the body: a level with a
+          // dozen marked children would otherwise push the card list off the
+          // screen (and overflow). Past that the block scrolls on its own.
+          //
+          // With no cards below, the cap would leave the lower half of the
+          // screen blank and the rows scrolling in a small box, so they get
+          // the whole body instead.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: children.isEmpty
+                  ? constraints.maxHeight
+                  : constraints.maxHeight / 2,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Column(
+                children: [
+                  for (final child in pinned)
+                    PinnedMarkRow(
+                      key: ValueKey('pinned-${child.id}'),
+                      mark: child.mark!,
+                      title: child.title,
+                      // The same tap a card has: [_openNode] normally, and a
+                      // drop target while a node is being moved. A pinned row
+                      // offers no "move into", so a marked node cannot be
+                      // picked up from it — its mark comes off first.
+                      onTap: _tapFor(vm, child, false),
+                      onClearMark: () => vm.setMark(child, null),
+                      // Green while it is a target, exactly as the cards go:
+                      // a tap on the title reparents a subtree then, and an
+                      // untinted row would look like it still just navigates.
+                      // Not the moving node's own row, whose tap cancels.
+                      isDropTarget: _movingId != null && child.id != _movingId,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (children.isNotEmpty) Expanded(child: cards),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardList(
     NodeTreeViewModel vm,
     NodeTree tree,
     FilterViewModel filter,
@@ -597,6 +690,11 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
                   : () => vm.moveNode(child.id, moveUpTarget),
               onMoveInto: () => setState(() => _movingId = child.id),
               onSetPriority: (p) => vm.updateNode(child.copyWith(priority: p)),
+              // Only a card on a level carries these: a marked node is pinned
+              // above the list and unmarked from its own row, and the roles'
+              // chip bar has no marks at all.
+              currentMark: child.mark,
+              onSetMark: (mark) => vm.setMark(child, mark),
             ),
           ),
         );
@@ -631,7 +729,12 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
               .where((child) => filter.isVisible(child.priority)))
         PriorityCardPage(
           id: child.id,
-          title: child.title,
+          // A marked child wears its emoji here too, so a glance at the page
+          // says the same thing the pinned row one level down would. The mark
+          // itself is only settable where the child lives.
+          title: child.mark == null
+              ? child.title
+              : '${child.mark!.emoji} ${child.title}',
           badgeLabel: child.priority.label,
           color: priorityColor(child.priority),
           backgroundColor: priorityColor(
