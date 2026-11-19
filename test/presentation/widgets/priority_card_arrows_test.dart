@@ -28,16 +28,18 @@ void main() {
       body: Center(
         child: SizedBox(
           width: 400,
-          child: PriorityCard(
-            key: key,
-            title: 'Owner',
-            badgeLabel: Priority.critical.label,
-            color: Colors.red,
-            fixedHeight: 200,
-            childPages: pages(3),
-            initialChildId: initialChildId,
-            pageArrows: pageArrows,
-            onChildPageChanged: reported.add,
+          child: Builder(
+            builder: (context) => PriorityCard(
+              key: key,
+              title: 'Owner',
+              badgeLabel: Priority.critical.label,
+              color: Colors.red,
+              fixedHeight: PriorityCard.compactHeight(context),
+              childPages: pages(3),
+              initialChildId: initialChildId,
+              pageArrows: pageArrows,
+              onChildPageChanged: reported.add,
+            ),
           ),
         ),
       ),
@@ -109,12 +111,14 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: PriorityCard(
-            title: 'Owner',
-            badgeLabel: Priority.critical.label,
-            color: Colors.red,
-            fixedHeight: 200,
-            childPages: pages(2),
+          body: Builder(
+            builder: (context) => PriorityCard(
+              title: 'Owner',
+              badgeLabel: Priority.critical.label,
+              color: Colors.red,
+              fixedHeight: PriorityCard.compactHeight(context),
+              childPages: pages(2),
+            ),
           ),
         ),
       ),

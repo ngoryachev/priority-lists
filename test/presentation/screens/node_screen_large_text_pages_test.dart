@@ -11,9 +11,9 @@ import 'package:priority_lists/presentation/widgets/priority_card.dart';
 import 'package:provider/provider.dart';
 
 /// A real level, on a real phone, with the text scaled up: the card's child
-/// pages carry an extra line the owner's own face does not, and the tile
-/// heights the list builds (160dp, or the 132dp floor) have the least room
-/// to spare of anything the app renders.
+/// pages carry an extra line the owner's own face does not, and the tile the
+/// list builds is sized to exactly what that face needs — so it has the least
+/// room to spare of anything the app renders.
 
 PriorityNode node(
   String id, {
@@ -35,7 +35,8 @@ PriorityNode node(
 }
 
 /// One parent per priority, each with children of its own that have long
-/// titles, a description and grandchildren (so the chips row is populated).
+/// titles, a description and grandchildren (so the child-count badge and the
+/// child pages are both populated).
 Future<PriorityNodeRepository> seeded() async {
   final nodes = <PriorityNode>[];
   var offset = 0;
@@ -96,9 +97,9 @@ Finder levelButton(String level) => find.byWidgetPredicate(
 );
 
 void main() {
-  // 1.6 is what the existing mobile tests use, 1.7 is the last scale at which
-  // a tight tile still renders the owner label, 1.8 the first one past it.
-  for (final scale in [1.6, 1.7, 1.8]) {
+  // 1.0 and 1.3 are the everyday scales, 1.6 is what the existing mobile
+  // tests use, 2.0 the top of Android's range.
+  for (final scale in [1.0, 1.3, 1.6, 2.0]) {
     testWidgets('a 360x800 level swipes through its children at ${scale}x '
         'without overflowing', (tester) async {
       tester.view.physicalSize = const Size(360, 800);

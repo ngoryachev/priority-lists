@@ -3,21 +3,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/presentation/widgets/priority_card.dart';
 
-/// The owner label on a child page is dropped once the text is scaled past
-/// what a tight tile has room for. These probe the edges of that rule: the
-/// scale just below the cut (where the label is still paid for and the tile
-/// has the least slack left), the scale just above it, and whether a card
-/// with pages ever overflows where the same card without pages does not.
+/// The owner label on a child page is the one line a child face carries that
+/// the owner's own face does not, and [PriorityCard.compactHeight] is measured
+/// with it in. These probe that it survives at every text scale the app is
+/// checked at, and that having pages never costs a tile more than the same
+/// tile without them.
 
 void main() {
-  Widget wrap(Widget child, {double textScale = 1.0}) => MaterialApp(
+  /// Builds inside the scaled [MediaQuery], so a builder can ask for the tile
+  /// height the list would hand out at that scale.
+  Widget wrap(WidgetBuilder build, {double textScale = 1.0}) => MaterialApp(
     home: Scaffold(
       body: Builder(
         builder: (context) => MediaQuery(
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child,
+          child: Builder(builder: build),
         ),
       ),
     ),
@@ -34,16 +36,14 @@ void main() {
         color: Colors.orange,
         backgroundColor: Colors.orange.withValues(alpha: 0.15),
         childCount: i,
-        subtitle: 'Something describing child $i at some length',
-        chipLabels: const ['one', 'two', 'three'],
         currentPriority: Priority.high,
         onTap: () {},
         onSetPriority: (_) {},
       ),
   ];
 
-  PriorityCard card({
-    required double height,
+  PriorityCard card(
+    BuildContext context, {
     bool withPages = true,
     String? initialChildId,
   }) => PriorityCard(
@@ -52,10 +52,8 @@ void main() {
     badgeLabel: Priority.critical.label,
     color: Colors.red,
     backgroundColor: Colors.red.withValues(alpha: 0.15),
-    fixedHeight: height,
+    fixedHeight: PriorityCard.compactHeight(context),
     childCount: 5,
-    subtitle: 'The owner description, long enough to wrap on a phone',
-    chipLabels: const ['first child', 'second child'],
     currentPriority: Priority.critical,
     dragIndex: 0,
     childPages: withPages ? pages(5) : const [],
@@ -74,73 +72,44 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  /// Both tile heights a priority asks for on an 800dp phone (0.20 -> 160dp,
-  /// 0.10 -> the 132dp floor), plus two taller ones a big tablet would give.
-  const heights = <double>[132, 160, 200, 260];
-
   group('a child page under scaled-up text', () {
-    // 1.7 is the last scale at which a tight tile still renders the owner
-    // label, so it has the least vertical slack of any scale; 1.75 and 1.8
-    // are the first ones past the cut.
-    for (final scale in [1.6, 1.7, 1.75, 1.8]) {
-      for (final height in heights) {
-        testWidgets('${height.toInt()}dp at ${scale}x does not overflow and '
-            'keeps the grip and the 1-4 row', (tester) async {
-          useNarrowPhone(tester);
-          await tester.pumpWidget(
-            wrap(card(height: height, initialChildId: 'c0'),
-                textScale: scale),
-          );
-          await tester.pumpAndSettle();
+    // 1.0 and 1.3 are the everyday scales, 2.0 the top of Android's range and
+    // well into the iOS accessibility sizes.
+    for (final scale in [1.0, 1.3, 1.6, 2.0]) {
+      testWidgets('${scale}x does not overflow and keeps the owner label, the '
+          'grip and the 1-4 row', (tester) async {
+        useNarrowPhone(tester);
+        await tester.pumpWidget(
+          wrap(
+            (context) => card(context, initialChildId: 'c0'),
+            textScale: scale,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-          expect(tester.takeException(), isNull);
-          expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
-          for (final level in ['1', '2', '3', '4']) {
-            expect(
-              find.text(level).hitTestable(),
-              findsOneWidget,
-              reason: '$level at ${scale}x on ${height.toInt()}dp',
-            );
-          }
-          // Whether the label is there or not, the child's own title is the
-          // line that must survive.
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.drag_handle).hitTestable(), findsOneWidget);
+        for (final level in ['1', '2', '3', '4']) {
           expect(
-            find.textContaining('Child number 0'),
+            find.text(level).hitTestable(),
             findsOneWidget,
-            reason: 'the child title at ${scale}x on ${height.toInt()}dp',
+            reason: '$level at ${scale}x',
           );
-        });
-      }
+        }
+        // Whose card this page hangs off, and the child's own title: both are
+        // paid for by the tile's height at every scale.
+        expect(
+          find.textContaining('$ownerTitle ›'),
+          findsOneWidget,
+          reason: 'the owner label at ${scale}x',
+        );
+        expect(
+          find.textContaining('Child number 0'),
+          findsOneWidget,
+          reason: 'the child title at ${scale}x',
+        );
+      });
     }
-
-    testWidgets('the label survives on a tile with room and goes on one '
-        'without', (tester) async {
-      useNarrowPhone(tester);
-      Finder label() => find.textContaining('$ownerTitle ›');
-
-      // The 132dp floor tile, the tightest the list ever builds.
-      await tester.pumpWidget(
-        wrap(card(height: 132, initialChildId: 'c0'), textScale: 1.7),
-      );
-      await tester.pumpAndSettle();
-      expect(label(), findsOneWidget, reason: '1.7x still fits');
-
-      await tester.pumpWidget(
-        wrap(card(height: 132, initialChildId: 'c0'), textScale: 1.8),
-      );
-      await tester.pumpAndSettle();
-      expect(label(), findsNothing, reason: '1.8x no longer fits');
-      // The counter still says whose slot this is, so the page is not
-      // mistakable for the owner's own face.
-      expect(find.text('1/5'), findsOneWidget);
-
-      // A tall tile has the room at any scale and keeps the label.
-      await tester.pumpWidget(
-        wrap(card(height: 260, initialChildId: 'c0'), textScale: 2.0),
-      );
-      await tester.pumpAndSettle();
-      expect(label(), findsOneWidget, reason: 'a tall tile keeps it');
-    });
   });
 
   group('pages never cost a tile more than the tile had', () {
@@ -149,59 +118,63 @@ void main() {
     // 2.4x the badge row overflows sideways either way (the card as it was
     // before this axis existed); what this asserts is that the second axis
     // is never what makes the difference.
-    for (final height in heights) {
-      testWidgets('a ${height.toInt()}dp owner page breaks at exactly the '
-          'scale the page-less card does', (tester) async {
-        useNarrowPhone(tester);
-        final diverged = <String>[];
+    testWidgets('the owner page breaks at exactly the scale the page-less '
+        'card does', (tester) async {
+      useNarrowPhone(tester);
+      final diverged = <String>[];
 
-        for (var step = 10; step <= 30; step++) {
-          final scale = step / 10;
-          await tester.pumpWidget(
-            wrap(card(height: height, withPages: false), textScale: scale),
+      for (var step = 10; step <= 30; step++) {
+        final scale = step / 10;
+        await tester.pumpWidget(
+          wrap(
+            (context) => card(context, withPages: false),
+            textScale: scale,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final plainBroke = tester.takeException() != null;
+
+        await tester.pumpWidget(
+          wrap((context) => card(context), textScale: scale),
+        );
+        await tester.pumpAndSettle();
+        final pagedBroke = tester.takeException() != null;
+
+        if (plainBroke != pagedBroke) {
+          diverged.add(
+            '${scale}x: with pages ${pagedBroke ? "overflows" : "fits"}, '
+            'without them ${plainBroke ? "overflows" : "fits"}',
           );
-          await tester.pumpAndSettle();
-          final plainBroke = tester.takeException() != null;
-
-          await tester.pumpWidget(
-            wrap(card(height: height), textScale: scale),
-          );
-          await tester.pumpAndSettle();
-          final pagedBroke = tester.takeException() != null;
-
-          if (plainBroke != pagedBroke) {
-            diverged.add(
-              '${scale}x: with pages ${pagedBroke ? "overflows" : "fits"}, '
-              'without them ${plainBroke ? "overflows" : "fits"}',
-            );
-          }
         }
+      }
 
-        expect(diverged, isEmpty);
-      });
-    }
+      expect(diverged, isEmpty);
+    });
 
-    for (final height in heights) {
-      testWidgets('${height.toInt()}dp at 2.0x: a child page fits where the '
-          'page-less card does', (tester) async {
-        useNarrowPhone(tester);
-        await tester.pumpWidget(
-          wrap(card(height: height, withPages: false), textScale: 2.0),
-        );
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull, reason: 'the page-less card');
+    testWidgets('at 2.0x a child page fits where the page-less card does', (
+      tester,
+    ) async {
+      useNarrowPhone(tester);
+      await tester.pumpWidget(
+        wrap((context) => card(context, withPages: false), textScale: 2.0),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'the page-less card');
 
-        await tester.pumpWidget(
-          wrap(card(height: height, initialChildId: 'c0'), textScale: 2.0),
-        );
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull, reason: 'the child page');
-      });
-    }
+      await tester.pumpWidget(
+        wrap(
+          (context) => card(context, initialChildId: 'c0'),
+          textScale: 2.0,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'the child page');
+    });
   });
 
   group('the grip band follows the page on screen', () {
-    PriorityCard bare({
+    PriorityCard bare(
+      BuildContext context, {
       required bool ownerHasLevels,
       required bool childHasLevels,
       String? initialChildId,
@@ -210,7 +183,7 @@ void main() {
       title: ownerTitle,
       badgeLabel: Priority.critical.label,
       color: Colors.red,
-      fixedHeight: 160,
+      fixedHeight: PriorityCard.compactHeight(context),
       dragIndex: 0,
       childPages: [
         for (var i = 0; i < 2; i++)
@@ -229,8 +202,9 @@ void main() {
       onSetPriority: ownerHasLevels ? (_) {} : null,
     );
 
-    testWidgets('a child row stays hittable under an owner that has none',
-        (tester) async {
+    testWidgets('a child row stays hittable under an owner that has none', (
+      tester,
+    ) async {
       // 320dp wide is the narrowest phone the app is checked on; a grip band
       // sized from the wrong face covers the buttons there first.
       tester.view.physicalSize = const Size(320, 568);
@@ -239,7 +213,8 @@ void main() {
 
       await tester.pumpWidget(
         wrap(
-          bare(
+          (context) => bare(
+            context,
             ownerHasLevels: false,
             childHasLevels: true,
             initialChildId: 'c0',
@@ -263,7 +238,13 @@ void main() {
       // The inverse of the case above: the owner carries the 1-4 row, the
       // child pages do not, so the band widens as the card turns.
       await tester.pumpWidget(
-        wrap(bare(ownerHasLevels: true, childHasLevels: false)),
+        wrap(
+          (context) => bare(
+            context,
+            ownerHasLevels: true,
+            childHasLevels: false,
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 

@@ -13,7 +13,6 @@ void main() {
         badgeLabel: Priority.critical.label,
         color: Colors.red,
         fixedHeight: 400,
-        subtitle: 'desc',
         currentPriority: Priority.critical,
         onEdit: () {},
         onDelete: () {},

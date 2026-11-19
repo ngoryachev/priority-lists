@@ -81,8 +81,7 @@ Widget wrapLikeProduction(
   );
 }
 
-/// The default 800x600 test view is too short for medium tiles to clear the
-/// compact threshold, which is what gates chips.
+/// A phone the list has room to scroll on, rather than the 800x600 default.
 void usePhoneSize(WidgetTester tester) {
   tester.view.physicalSize = const Size(400, 900);
   tester.view.devicePixelRatio = 1.0;
@@ -91,8 +90,8 @@ void usePhoneSize(WidgetTester tester) {
 
 void main() {
   group('NodeScreen', () {
-    testWidgets('the main screen lists the active role\'s children with chips',
-        (tester) async {
+    testWidgets('the main screen lists the active role\'s children, nesting '
+        'flagged by a badge', (tester) async {
       usePhoneSize(tester);
       final repository = await seeded([
         node('Work', priority: Priority.critical),
@@ -106,9 +105,10 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Work'), findsOneWidget);
-      expect(find.textContaining('Fix bug'), findsWidgets);
-      // Nesting is flagged by a child-count badge on the tile itself.
+      // Nesting is flagged by the child-count badge and nothing else — a
+      // child's own title is a swipe or a tap away, not on the owner's face.
       expect(find.byIcon(Icons.subdirectory_arrow_right), findsNWidgets(2));
+      expect(find.textContaining('Fix bug'), findsNothing);
     });
 
     testWidgets('drills down when the providers sit below the Navigator',
@@ -213,7 +213,8 @@ void main() {
       expect(find.widgetWithText(AppBar, 'L0'), findsOneWidget);
     });
 
-    testWidgets('chips honor the priority filter', (tester) async {
+    testWidgets("the priority filter reaches a tile's child pages",
+        (tester) async {
       usePhoneSize(tester);
       final filter = FilterViewModel();
       final repository = await seeded([
@@ -223,7 +224,9 @@ void main() {
 
       await tester.pumpWidget(wrap(repository, filter: filter));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Fix bug'), findsWidgets);
+      await tester.drag(find.byType(PriorityCard), const Offset(-300, 0));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Fix bug'), findsOneWidget);
 
       filter.setLevel(1); // only critical stays visible
       await tester.pumpAndSettle();
