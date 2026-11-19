@@ -375,6 +375,14 @@ void main() {
     test('an action written by a newer build reads as a plain edit', () {
       expect(ActivityAction.fromName('archived'), ActivityAction.updated);
     });
+
+    test('the mark action is persisted by name and reads back', () {
+      // The name is what lands in the log row, so it is pinned here: changing
+      // it would make every already-written mark row read as "Edited".
+      expect(ActivityAction.marked.name, 'marked');
+      expect(ActivityAction.marked.label, 'Marked');
+      expect(ActivityAction.fromName('marked'), ActivityAction.marked);
+    });
   });
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/presentation/widgets/priority_card.dart';
 
@@ -266,6 +267,70 @@ void main() {
         tester.getSize(find.byType(ReorderableDragStartListener)).width,
         greaterThanOrEqualTo(44),
       );
+    });
+  });
+
+  group('a pinned mark row', () {
+    const pinnedTitle = 'A marked node with a title longer than one line holds';
+
+    testWidgets('keeps its one line whole at every text scale', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      for (final scale in [1.0, 1.3, 2.0, 3.0]) {
+        await tester.pumpWidget(
+          wrap(
+            (context) => const Column(
+              children: [
+                PinnedMarkRow(mark: NodeMark.flame, title: pinnedTitle),
+              ],
+            ),
+            textScale: scale,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull, reason: 'at scale $scale');
+        final row = tester.getSize(find.byType(PinnedMarkRow));
+        final title = tester.getSize(find.text(pinnedTitle));
+        // The row grows with the line rather than clipping it, and never
+        // shrinks below the compact floor.
+        expect(
+          row.height,
+          greaterThanOrEqualTo(title.height),
+          reason: 'the title is painted outside the row at scale $scale',
+        );
+        expect(row.height, greaterThanOrEqualTo(PinnedMarkRow.minHeight));
+        // Still one line, whatever the scale.
+        expect(tester.widget<Text>(find.text(pinnedTitle)).maxLines, 1);
+      }
+    });
+
+    testWidgets('the emoji stays tappable at a large scale', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      var cleared = 0;
+      await tester.pumpWidget(
+        wrap(
+          (context) => Column(
+            children: [
+              PinnedMarkRow(
+                mark: NodeMark.ice,
+                title: pinnedTitle,
+                onClearMark: () => cleared++,
+              ),
+            ],
+          ),
+          textScale: 2.0,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(NodeMark.ice.emoji));
+      expect(cleared, 1);
     });
   });
 }

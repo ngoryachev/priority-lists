@@ -4,6 +4,7 @@ import 'package:priority_lists/data/repositories/in_memory_priority_node_reposit
 import 'package:priority_lists/data/services/activity_logger.dart';
 import 'package:priority_lists/domain/models/activity_event.dart';
 import 'package:priority_lists/domain/models/color_preset.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/domain/models/priority_node.dart';
 import 'package:priority_lists/domain/repositories/activity_log_repository.dart';
@@ -107,6 +108,43 @@ void main() {
     expect(displaced.action, ActivityAction.prioritized);
     expect(displaced.nodeTitle, 'Rewrite billing');
     expect(displaced.details, 'Critical → High, displaced by "Prod is down"');
+  });
+
+  test('a mark is logged as its own kind, with the emoji in the details',
+      () async {
+    final node = await seed('Fix login');
+
+    await vm.setMark(node, NodeMark.flame);
+    await vm.setMark(node, NodeMark.ice);
+    await vm.setMark(node, null);
+
+    final events = await entries();
+    expect(
+      events.skip(1).map((e) => e.action),
+      everyElement(ActivityAction.marked),
+    );
+    expect(
+      events.skip(1).map((e) => e.details),
+      ['🔥 In progress', '🧊 Blocked', 'Mark removed'],
+    );
+    expect(events.last.nodeTitle, 'Fix login');
+    // Not a priority change: the digest reads "Marked", and nothing in the
+    // details looks like the `X → Critical` clause RoleTimeline parses.
+    expect(events.last.action.label, 'Marked');
+    for (final event in events.skip(1)) {
+      expect(event.details, isNot(contains('→')));
+    }
+  });
+
+  test('a mark that changes nothing is not logged', () async {
+    final node = await seed('Fix login');
+
+    await vm.setMark(node, null);
+    await vm.setMark(node, NodeMark.flame);
+    await vm.setMark(vm.tree.nodeById(node.id)!, NodeMark.flame);
+
+    // The creation and one mark; the two no-ops wrote nothing.
+    expect((await entries()).length, 2);
   });
 
   test('an edit names the fields that changed', () async {

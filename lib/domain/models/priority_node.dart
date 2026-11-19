@@ -1,4 +1,5 @@
 import 'color_preset.dart';
+import 'node_mark.dart';
 import 'priority.dart';
 
 /// A single node of the priority tree.
@@ -27,6 +28,11 @@ class PriorityNode {
   /// Optional accent colour. Null means "inherit from the ancestor chain".
   final ColorPreset? colorPreset;
 
+  /// Working state, orthogonal to [priority]: null for the usual case, 🔥 for
+  /// "in progress" and 🧊 for "blocked / waiting". A marked node is lifted out
+  /// of its level's card list and pinned above it.
+  final NodeMark? mark;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -38,6 +44,7 @@ class PriorityNode {
     required this.priority,
     this.position = 0,
     this.colorPreset,
+    this.mark,
     required this.createdAt,
     required this.updatedAt,
   }) {
@@ -58,6 +65,7 @@ class PriorityNode {
 
   /// [clearColorPreset] exists because [colorPreset] is nullable: passing null
   /// means "leave it alone", so dropping the colour needs its own flag.
+  /// [clearMark] is the same thing for [mark].
   PriorityNode copyWith({
     String? title,
     String? description,
@@ -65,6 +73,8 @@ class PriorityNode {
     int? position,
     ColorPreset? colorPreset,
     bool clearColorPreset = false,
+    NodeMark? mark,
+    bool clearMark = false,
     DateTime? updatedAt,
   }) {
     return PriorityNode(
@@ -75,6 +85,7 @@ class PriorityNode {
       priority: priority ?? this.priority,
       position: position ?? this.position,
       colorPreset: clearColorPreset ? null : (colorPreset ?? this.colorPreset),
+      mark: clearMark ? null : (mark ?? this.mark),
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -92,6 +103,7 @@ class PriorityNode {
       priority: priority,
       position: position,
       colorPreset: colorPreset,
+      mark: mark,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -2,11 +2,19 @@
 ///
 /// [updated] covers edits of title/description/colour; a priority change gets
 /// its own kind because it is the most frequent deliberate act in this app and
-/// the one worth reading back on a standup.
+/// the one worth reading back on a standup. So does a mark (🔥 / 🧊), which is
+/// orthogonal to the priority and must not be mistaken for one — `RoleTimeline`
+/// reads the details of *any* top-level event to find role switches, so a
+/// mark must not be logged as a priority change.
+///
+/// The name is what gets persisted, and [fromName] falls back to [updated]: a
+/// row written by a newer build reads as "Edited" in an older one rather than
+/// breaking the log.
 enum ActivityAction {
   created('Added'),
   updated('Edited'),
   prioritized('Re-prioritised'),
+  marked('Marked'),
   moved('Moved'),
   reordered('Reordered'),
   deleted('Deleted');

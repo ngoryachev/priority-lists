@@ -81,6 +81,34 @@ void main() {
     expect(find.text('Medium → High · in Work'), findsOneWidget);
   });
 
+  testWidgets('a mark row has its own icon, and every action has one',
+      (tester) async {
+    final log = InMemoryActivityLogRepository();
+    // One row per action, so the two exhaustive switches behind the icon and
+    // the colour are exercised rather than trusted.
+    for (final (i, action) in ActivityAction.values.indexed) {
+      await log.append(event('$i', todayAt(9).add(Duration(minutes: i)),
+          action: action, title: action.name, details: 'd$i'));
+    }
+    await log.append(event('mark', todayAt(8),
+        action: ActivityAction.marked,
+        title: 'Fix login',
+        details: '🔥 In progress'));
+
+    await tester.pumpWidget(screen(log));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('🔥 In progress'), findsOneWidget);
+    // The mark's own icon, and no other row borrowing it.
+    expect(find.byIcon(Icons.push_pin_outlined), findsNWidgets(2));
+    expect(
+      find.byTooltip('Marked'),
+      findsNWidgets(2),
+      reason: 'the row names the action it stands for',
+    );
+  });
+
   testWidgets('says so when the period is empty', (tester) async {
     await tester.pumpWidget(screen(InMemoryActivityLogRepository()));
     await tester.pumpAndSettle();

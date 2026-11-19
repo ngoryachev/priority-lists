@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_lists/data/repositories/local_priority_node_repository.dart';
 import 'package:priority_lists/domain/models/color_preset.dart';
+import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
 import 'package:priority_lists/domain/models/priority_node.dart';
 
@@ -63,6 +64,56 @@ void main() {
       expect(nodes, hasLength(1));
       expect(nodes.single.title, 'Renamed');
       expect(nodes.single.priority, Priority.critical);
+    });
+
+    test('a mark survives a save and a read back', () async {
+      await repository.saveNode(
+        node('root').copyWith(mark: NodeMark.flame, position: 5),
+      );
+      await repository.saveNode(node('other').copyWith(mark: NodeMark.ice));
+      await repository.saveNode(node('plain'));
+
+      final nodes = await repository.getAllNodes();
+      final byId = {for (final n in nodes) n.id: n};
+      expect(byId['root']!.mark, NodeMark.flame);
+      // The mark rides alongside the rest, not instead of it.
+      expect(byId['root']!.position, 5);
+      expect(byId['root']!.priority, Priority.medium);
+      expect(byId['other']!.mark, NodeMark.ice);
+      expect(byId['plain']!.mark, isNull);
+    });
+
+    test('clearing a mark is persisted, not just dropped locally', () async {
+      await repository.saveNode(node('root').copyWith(mark: NodeMark.flame));
+      await repository.saveNode(node('root').copyWith(clearMark: true));
+
+      expect((await repository.getAllNodes()).single.mark, isNull);
+    });
+
+    test('a stored file written without the mark key loads as unmarked',
+        () async {
+      await File(filePath).writeAsString(
+        jsonEncode({
+          'nodes': [
+            {
+              'id': 'root',
+              'parentId': null,
+              'title': 'Root',
+              'description': '',
+              'priority': 2,
+              'position': 1,
+              'colorValue': null,
+              'createdAt': '2026-01-01T00:00:00.000',
+              'updatedAt': '2026-01-01T00:00:00.000',
+            },
+          ],
+        }),
+      );
+
+      final stored = (await repository.getAllNodes()).single;
+      expect(stored.mark, isNull);
+      expect(stored.priority, Priority.high);
+      expect(stored.position, 1);
     });
 
     test('saveNodes upserts a whole batch', () async {

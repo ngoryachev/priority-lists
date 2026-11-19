@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../domain/models/node_mark.dart';
 import '../../domain/models/priority.dart';
 import '../utils/priority_colors.dart';
 
@@ -59,6 +60,10 @@ class PriorityCard extends StatefulWidget {
   final double? fixedHeight;
   final Priority? currentPriority;
 
+  /// The node's 🔥 / 🧊 mark, or null when it has none. Only read when
+  /// [onSetMark] is set, which is what makes the mark buttons appear.
+  final NodeMark? currentMark;
+
   /// Position in the enclosing [ReorderableListView]. When set, the card shows
   /// a drag handle; null outside a reorderable list.
   final int? dragIndex;
@@ -87,6 +92,10 @@ class PriorityCard extends StatefulWidget {
   final VoidCallback? onDelete;
   final ValueChanged<Priority>? onSetPriority;
 
+  /// Sets the node's mark, or clears it when the active one is tapped again.
+  /// Null — on a child page, and on a role — leaves the buttons off entirely.
+  final ValueChanged<NodeMark?>? onSetMark;
+
   /// Lifts the node one level up, next to its current parent.
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveInto;
@@ -100,6 +109,7 @@ class PriorityCard extends StatefulWidget {
     this.backgroundColor,
     this.fixedHeight,
     this.currentPriority,
+    this.currentMark,
     this.dragIndex,
     this.childPages = const [],
     this.initialChildId,
@@ -109,6 +119,7 @@ class PriorityCard extends StatefulWidget {
     this.onEdit,
     this.onDelete,
     this.onSetPriority,
+    this.onSetMark,
     this.onMoveUp,
     this.onMoveInto,
   });
@@ -375,7 +386,7 @@ class _PriorityCardState extends State<PriorityCard> {
     // actually on screen: a child page carries its own row even where the
     // owner has none, and the grip is hit-test-first.
     final shownHasLevelRow = shownPage == null
-        ? widget.onSetPriority != null
+        ? widget.onSetPriority != null || widget.onSetMark != null
         : shownPage.onSetPriority != null;
 
     Widget card = Card(
@@ -480,6 +491,14 @@ class _PriorityCardState extends State<PriorityCard> {
 
   /// Width the bottom-right 1-4 row takes, as seen from the card: the four
   /// 32dp buttons with their gaps, plus the face's own padding.
+  ///
+  /// Deliberately not widened for the two mark buttons that sit left of that
+  /// row on an owner face. What this band has to keep clear is the grip's own
+  /// 44dp target, which `Center` puts in the middle of it — at 360dp that
+  /// lands at 66-110dp from the card's left edge, while the six-button row
+  /// starts at 112dp. The rest of the band is empty: `Center` hit-tests its
+  /// child only, so a tap next to the grip falls straight through to the
+  /// button or the title underneath it.
   static const double _levelRowReserve = 160;
 
   /// Band kept clear for the grip glyph on a card that has no 1-4 row. With
@@ -522,7 +541,10 @@ class _PriorityCardState extends State<PriorityCard> {
       color: widget.color,
       childCount: widget.childCount,
       currentPriority: widget.currentPriority,
-      bottomReserve: _bottomReserve(hasLevelRow: widget.onSetPriority != null),
+      currentMark: widget.currentMark,
+      bottomReserve: _bottomReserve(
+        hasLevelRow: widget.onSetPriority != null || widget.onSetMark != null,
+      ),
       rightReserve: _swipeable ? PriorityCard._dotsGutter : 0,
       onTap: widget.onTap,
       onEdit: widget.onEdit,
@@ -530,6 +552,9 @@ class _PriorityCardState extends State<PriorityCard> {
       onMoveUp: widget.onMoveUp,
       onMoveInto: widget.onMoveInto,
       onSetPriority: widget.onSetPriority,
+      // Marks belong to the level the node lives on, like edit and delete; a
+      // child page carries none.
+      onSetMark: widget.onSetMark,
     );
   }
 
@@ -575,6 +600,11 @@ class _CardFace extends StatelessWidget {
   final int? childCount;
   final Priority? currentPriority;
 
+  /// The node's mark, and the callback that sets it. Null [onSetMark] leaves
+  /// the two buttons out, which is every face but a level's own card.
+  final NodeMark? currentMark;
+  final ValueChanged<NodeMark?>? onSetMark;
+
   /// Small line above the badge row naming the tile this page hangs off —
   /// only set on child pages.
   final String? ownerLabel;
@@ -596,6 +626,8 @@ class _CardFace extends StatelessWidget {
     this.background,
     this.childCount,
     this.currentPriority,
+    this.currentMark,
+    this.onSetMark,
     this.ownerLabel,
     required this.bottomReserve,
     required this.rightReserve,
@@ -768,13 +800,36 @@ class _CardFace extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onSetPriority != null)
+              if (onSetPriority != null || onSetMark != null)
                 Positioned(
                   right: 0,
                   bottom: 0,
-                  child: _PriorityLevelRow(
-                    current: currentPriority,
-                    onSelect: onSetPriority!,
+                  // One row: the marks first, then the 1-4 buttons. They are
+                  // orthogonal — a mark says what is happening to the node,
+                  // the number how much it matters — so neither reads as a
+                  // sixth priority.
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (onSetMark != null)
+                        for (final mark in NodeMark.values)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: _MarkButton(
+                              mark: mark,
+                              isActive: currentMark == mark,
+                              // Tapping the active one takes the mark off, so
+                              // the same button both marks and unmarks.
+                              onTap: () =>
+                                  onSetMark!(currentMark == mark ? null : mark),
+                            ),
+                          ),
+                      if (onSetPriority != null)
+                        _PriorityLevelRow(
+                          current: currentPriority,
+                          onSelect: onSetPriority!,
+                        ),
+                    ],
                   ),
                 ),
             ],
@@ -955,6 +1010,130 @@ class _PriorityLevelButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One of the two mark buttons on a card: 🔥 "in progress" or 🧊 "blocked".
+///
+/// Square and 32dp like a priority button so the bottom-right row reads as one
+/// strip, but tinted by the mark rather than by a priority colour — the two
+/// scales are orthogonal and must not look like one six-step one.
+class _MarkButton extends StatelessWidget {
+  final NodeMark mark;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _MarkButton({
+    required this.mark,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = markColor(mark);
+    return Tooltip(
+      message: isActive ? 'Remove the mark' : mark.label,
+      child: Material(
+        color: isActive ? color.withValues(alpha: 0.35) : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(
+            color: color.withValues(alpha: isActive ? 1 : 0.5),
+            width: 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            // The emoji is the whole label; a screen reader gets the tooltip.
+            child: Center(
+              child: Text(mark.emoji, style: const TextStyle(fontSize: 14)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A marked node as it appears pinned above its level's card list: one compact
+/// line of emoji and title, and nothing else.
+///
+/// Deliberately not a [PriorityCard]: no badge, no 1-4 row, no chips, no
+/// description, no actions and no child pages. A pinned row says only "this
+/// one is on fire / on ice" and takes a single line to say it. The level the
+/// node lives on is one tap away, where all of that is.
+class PinnedMarkRow extends StatelessWidget {
+  final NodeMark mark;
+  final String title;
+
+  /// Opens the node, exactly like a card tap — or, while a node is being
+  /// moved, puts it inside this one.
+  final VoidCallback? onTap;
+
+  /// Takes the mark off, after which the node reappears in the card list at
+  /// its unchanged priority and position.
+  final VoidCallback? onClearMark;
+
+  const PinnedMarkRow({
+    super.key,
+    required this.mark,
+    required this.title,
+    this.onTap,
+    this.onClearMark,
+  });
+
+  /// What one row is worth at the default text scale. A floor rather than a
+  /// fixed height: the title's line grows with the text scaler, and a row
+  /// pinned to 36dp would paint it outside its own box.
+  static const double minHeight = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = markColor(mark);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: minHeight),
+      child: Row(
+        children: [
+          Tooltip(
+            message: 'Remove the mark',
+            child: InkWell(
+              onTap: onClearMark,
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                width: 32,
+                height: 32,
+                child: Center(
+                  child: Text(mark.emoji, style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
