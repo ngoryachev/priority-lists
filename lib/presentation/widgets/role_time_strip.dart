@@ -39,6 +39,11 @@ class RoleTimeStrip extends StatefulWidget {
 class _RoleTimeStripState extends State<RoleTimeStrip> {
   /// The stretch whose duration is on screen, if any.
   RoleSpan? _labelled;
+
+  /// What the mouse is over inside the band, label or no label. Kept apart
+  /// from [_labelled] so a chip that has had its three seconds does not blink
+  /// back under a pointer that is merely resting there.
+  RoleSpan? _under;
   Timer? _hide;
 
   @override
@@ -47,11 +52,9 @@ class _RoleTimeStripState extends State<RoleTimeStrip> {
     super.dispose();
   }
 
-  /// Puts [span]'s duration up, or takes the label down when there is nothing
-  /// at the height the pointer went to. Landing on another stretch restarts
-  /// the three seconds; staying on the same one changes nothing.
+  /// Puts [span]'s duration up for three seconds, starting them over, or
+  /// takes the label down when [span] is null.
   void _show(RoleSpan? span) {
-    if (span == _labelled) return;
     _hide?.cancel();
     setState(() => _labelled = span);
     if (span == null) return;
@@ -60,6 +63,22 @@ class _RoleTimeStripState extends State<RoleTimeStrip> {
     _hide = Timer(RoleTimeStrip.showFor, () {
       if (mounted) setState(() => _labelled = null);
     });
+  }
+
+  /// Hover: only a change of what is under the pointer says anything. Resting
+  /// inside one stretch leaves the chip to its three seconds and does not
+  /// bring it back afterwards; moving onto another one names that one.
+  void _hover(RoleSpan? span) {
+    if (span == _under) return;
+    _under = span;
+    _show(span);
+  }
+
+  /// A tap always names the stretch under it again, three seconds from now,
+  /// even the one already on screen.
+  void _tap(RoleSpan? span) {
+    _under = span;
+    _show(span);
   }
 
   @override
@@ -136,13 +155,16 @@ class _RoleTimeStripState extends State<RoleTimeStrip> {
               // the tap, which is what matters here, is still the band's.
               child: MouseRegion(
                 opaque: false,
-                onHover: (event) => _show(spanAt(event.localPosition.dy)),
+                onHover: (event) => _hover(spanAt(event.localPosition.dy)),
+                // Out of the band and back in is a change like any other: the
+                // next hover inside the same stretch names it again.
+                onExit: (_) => _under = null,
                 // Translucent, and the tap taken on up rather than on down:
                 // the band wins a tap over the card beneath it, while a
                 // vertical drag goes to the list as before.
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
-                  onTapUp: (details) => _show(spanAt(details.localPosition.dy)),
+                  onTapUp: (details) => _tap(spanAt(details.localPosition.dy)),
                   child: Semantics(
                     label: 'Time per role today',
                     child: Stack(

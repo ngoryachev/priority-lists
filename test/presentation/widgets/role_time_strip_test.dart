@@ -239,6 +239,74 @@ void main() {
     expect(find.text('2h 35m'), findsNothing);
   });
 
+  testWidgets('tapping the same stretch again gives it three seconds more', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(await app(tree(), twoSpans()));
+    await tester.pumpAndSettle();
+
+    final spot = inBand(tester, at(DateTime(2026, 1, 1, 8, 40)));
+    await tester.tapAt(spot);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 2900));
+    expect(find.text('1h 25m'), findsOneWidget);
+
+    await tester.tapAt(spot);
+    await tester.pump();
+
+    // The first three seconds are up by now; the re-tap's own are running.
+    await tester.pump(const Duration(milliseconds: 2500));
+    expect(find.text('1h 25m'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+    expect(find.text('1h 25m'), findsNothing);
+  });
+
+  testWidgets('hover inside one stretch does not blink the chip back', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(await app(tree(), twoSpans()));
+    await tester.pumpAndSettle();
+
+    final mouse = await hover(
+      tester,
+      inBand(tester, at(DateTime(2026, 1, 1, 8, 40))),
+    );
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.text('1h 25m'), findsNothing);
+
+    // Still the same stretch, just another height in it.
+    await mouse.moveTo(inBand(tester, at(DateTime(2026, 1, 1, 9))));
+    await tester.pump();
+
+    expect(find.text('1h 25m'), findsNothing);
+  });
+
+  testWidgets('leaving the band and coming back names the stretch again', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(await app(tree(), twoSpans()));
+    await tester.pumpAndSettle();
+
+    final spot = inBand(tester, at(DateTime(2026, 1, 1, 8, 40)));
+    final mouse = await hover(tester, spot);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.text('1h 25m'), findsNothing);
+
+    // Out of the band — over the app bar — and back in.
+    await mouse.moveTo(const Offset(5, 5));
+    await tester.pump();
+    await mouse.moveTo(spot);
+    await tester.pump();
+
+    expect(find.text('1h 25m'), findsOneWidget);
+  });
+
   testWidgets('a tap on uncounted time names nothing', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(await app(tree(), twoSpans()));
