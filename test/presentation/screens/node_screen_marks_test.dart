@@ -563,6 +563,51 @@ void main() {
     expect(level.map((n) => n.id), ['Second', 'First', 'Pinned']);
   });
 
+  testWidgets('a card\'s mark buttons stay tappable on the tightest phone', (
+    tester,
+  ) async {
+    // 320x568 is the narrowest screen the app is tested on (iPhone SE, see
+    // node_screen_mobile_test). The drag grip is centred in the band left of
+    // PriorityCard's level-row reserve, and that reserve still pays only for
+    // the four 1-4 buttons — so on a card this narrow the grip's 44dp target
+    // drifts over the mark buttons that now sit left of them.
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final repository = await seeded([node('Plain', createdOffset: 1)]);
+    final vm = NodeTreeViewModel(repository);
+    await tester.pumpWidget(app(repository, vm: vm));
+    await tester.pumpAndSettle();
+
+    for (final mark in NodeMark.values) {
+      expect(
+        markButtonOn('Plain', mark).hitTestable(),
+        findsOneWidget,
+        reason: '${mark.emoji} is covered by the drag grip at 320dp',
+      );
+    }
+
+    await tester.tap(markButtonOn('Plain', NodeMark.flame));
+    await tester.pumpAndSettle();
+    expect(vm.tree.nodeById('Plain')!.mark, NodeMark.flame);
+
+    // Marking it took its card away — it is a pinned row now — so the 🧊
+    // button is reached by unmarking from that row first.
+    await tester.tap(
+      find.descendant(
+        of: pinnedRow('Plain'),
+        matching: find.text(NodeMark.flame.emoji),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(vm.tree.nodeById('Plain')!.mark, isNull);
+
+    await tester.tap(markButtonOn('Plain', NodeMark.ice));
+    await tester.pumpAndSettle();
+    expect(vm.tree.nodeById('Plain')!.mark, NodeMark.ice);
+  });
+
   testWidgets('roles get no mark buttons', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(

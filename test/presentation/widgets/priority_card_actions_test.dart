@@ -164,6 +164,64 @@ void main() {
       }
     });
 
+    testWidgets('the grip never covers a mark button, down to 320dp', (
+      tester,
+    ) async {
+      // With a grip, which the 360dp case above has none of: the grip's 44dp
+      // target is centred in the band left of the card's bottom-right row, so
+      // it drifts over that row's leftmost buttons as the card narrows unless
+      // the band pays for them too. 320dp is the narrowest the app is tested
+      // at; 300 is below anything shipping, and is here as the margin.
+      for (final width in [320.0, 360.0, 400.0, 300.0]) {
+        tester.view.physicalSize = Size(width, 700);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final picked = <NodeMark?>[];
+        await tester.pumpWidget(
+          wrap(
+            ReorderableListView(
+              onReorder: (_, _) {},
+              buildDefaultDragHandles: false,
+              children: [
+                PriorityCard(
+                  key: const ValueKey('card'),
+                  title: 'Some item',
+                  badgeLabel: Priority.high.label,
+                  color: Colors.orange,
+                  // Any height a tile could have: the bottom-right row and the
+                  // grip are both pinned to the card's bottom edge, so it is
+                  // the card's *width* this is about.
+                  fixedHeight: 120,
+                  currentPriority: Priority.high,
+                  dragIndex: 0,
+                  onSetMark: picked.add,
+                  onSetPriority: (_) {},
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final grip = tester.getRect(find.byType(ReorderableDragStartListener));
+        for (final mark in NodeMark.values) {
+          final button = tester.getRect(find.text(mark.emoji));
+          expect(
+            grip.overlaps(button),
+            isFalse,
+            reason: '${mark.emoji} is under the grip at ${width}dp '
+                '(grip $grip, button $button)',
+          );
+        }
+
+        // And the taps actually land, not just the rectangles clear.
+        await tester.tap(find.text(NodeMark.flame.emoji));
+        await tester.tap(find.text(NodeMark.ice.emoji));
+        expect(picked, [NodeMark.flame, NodeMark.ice], reason: 'at ${width}dp');
+      }
+    });
+
     testWidgets('a child page carries no mark buttons', (tester) async {
       await tester.pumpWidget(wrap(SizedBox(
         width: 360,

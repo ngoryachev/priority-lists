@@ -388,6 +388,13 @@ class _PriorityCardState extends State<PriorityCard> {
     final shownHasLevelRow = shownPage == null
         ? widget.onSetPriority != null || widget.onSetMark != null
         : shownPage.onSetPriority != null;
+    // Measured from the face on screen for the same reason: only an owner face
+    // carries the two mark buttons, so a child page keeps the wider band.
+    final shownRowReserve =
+        _levelRowReserve +
+        (shownPage == null && widget.onSetMark != null
+            ? 2 * _markButtonSlot
+            : 0);
 
     Widget card = Card(
       margin: PriorityCard._cardMargin,
@@ -466,7 +473,7 @@ class _PriorityCardState extends State<PriorityCard> {
               // Clear of the 1-4 row: at 360dp the row is pinned bottom-right
               // and exact centring would cost either the grip's touch target
               // or the buttons' hittability.
-              right: shownHasLevelRow ? _levelRowReserve : 0,
+              right: shownHasLevelRow ? shownRowReserve : 0,
               bottom: 0,
               height: PriorityCard._gripTouchSize,
               child: Center(child: _dragGrip()),
@@ -491,15 +498,18 @@ class _PriorityCardState extends State<PriorityCard> {
 
   /// Width the bottom-right 1-4 row takes, as seen from the card: the four
   /// 32dp buttons with their gaps, plus the face's own padding.
-  ///
-  /// Deliberately not widened for the two mark buttons that sit left of that
-  /// row on an owner face. What this band has to keep clear is the grip's own
-  /// 44dp target, which `Center` puts in the middle of it — at 360dp that
-  /// lands at 66-110dp from the card's left edge, while the six-button row
-  /// starts at 112dp. The rest of the band is empty: `Center` hit-tests its
-  /// child only, so a tap next to the grip falls straight through to the
-  /// button or the title underneath it.
   static const double _levelRowReserve = 160;
+
+  /// What one mark button adds to that row: its 32dp square and the 4dp gap in
+  /// front of it.
+  ///
+  /// The band has to pay for these too. It is measured from the card's own
+  /// width, so it shrinks with the card while the button row — right-aligned
+  /// inside the face — does not: left unpaid, the grip's 44dp target, which
+  /// `Center` puts in the middle of the band, drifts over the buttons as the
+  /// screen narrows and swallows their taps. At 320dp (the narrowest the app
+  /// is tested at) the 🔥 button's centre ended up inside the grip.
+  static const double _markButtonSlot = 36;
 
   /// Band kept clear for the grip glyph on a card that has no 1-4 row. With
   /// the row there its 32dp already covers the glyph, so the grip costs the
