@@ -1333,4 +1333,228 @@ void main() {
       expect(find.textContaining('Moving'), findsNothing);
     });
   });
+
+  group('with no cards left under the rows', () {
+    /// The scroller the pinned rows live in.
+    Finder pinnedBlock() => find
+        .ancestor(
+          of: find.byType(PinnedMarkRow).first,
+          matching: find.byType(SingleChildScrollView),
+        )
+        .first;
+
+    testWidgets('the rows past the fold are reachable and still open a level', (
+      tester,
+    ) async {
+      // The block only scrolls on its own once it runs out of body, which is
+      // exactly the case the full-height branch creates. A row down there has
+      // to behave like one at the top.
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            for (var i = 0; i < 20; i++)
+              node('m$i', mark: NodeMark.flame, createdOffset: i),
+            node('Kid', parent: 'm19', createdOffset: 99),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.dragUntilVisible(
+        pinnedRow('m19'),
+        pinnedBlock(),
+        const Offset(0, -80),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('m19'), matching: find.text('m19')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: find.byType(AppBar), matching: find.text('m19')),
+        findsOneWidget,
+      );
+      expect(cardOrder(tester), ['Kid']);
+    });
+
+    testWidgets('a dozen rows that would not fit in half the body are all '
+        'on screen', (tester) async {
+      // What the full-height branch buys: twelve rows are taller than half
+      // the body and shorter than the whole of it, so with nothing below them
+      // none of them has to be scrolled to.
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            for (var i = 0; i < 12; i++)
+              node('m$i', mark: NodeMark.flame, createdOffset: i),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final body = tester.getSize(find.byType(NodeScreen)).height;
+      expect(
+        pinnedBlockHeight(tester),
+        greaterThan(body / 2),
+        reason: 'twelve rows are meant to outgrow half the body',
+      );
+      for (var i = 0; i < 12; i++) {
+        expect(
+          find
+              .descendant(of: pinnedRow('m$i'), matching: find.text('m$i'))
+              .hitTestable(),
+          findsOneWidget,
+          reason: 'm$i is below the fold with nothing under it',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('marking the last card and unmarking it swaps the layout both '
+        'ways', (tester) async {
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', priority: Priority.critical, position: 0, createdOffset: 1),
+        node('B', priority: Priority.critical, position: 1, createdOffset: 2),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+      await setMarkFromMenu(tester, 'B', NodeMark.ice);
+
+      expect(cardOrder(tester), isEmpty);
+      expect(pinnedOrder(tester), ['A', 'B']);
+      expect(find.textContaining('Nothing here yet'), findsNothing);
+      expect(
+        find.byType(ReorderableListView),
+        findsNothing,
+        reason: 'an empty card list is still holding half the body',
+      );
+      expect(tester.takeException(), isNull);
+
+      // And back: the card list returns, the row keeping the position it had
+      // before any of this.
+      await tester.tap(
+        find.descendant(of: pinnedRow('B'), matching: find.text('🧊')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(cardOrder(tester), ['B']);
+      expect(pinnedOrder(tester), ['A']);
+      expect(find.byType(ReorderableListView), findsOneWidget);
+      final body = tester.getSize(find.byType(NodeScreen)).height;
+      expect(pinnedBlockHeight(tester), lessThan(body / 2 + 1));
+      final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+      expect(stored['B']!.position, 1);
+      expect(stored['B']!.priority, Priority.critical);
+    });
+
+    testWidgets('a filter that hides the last card hands the body over and '
+        'takes it back', (tester) async {
+      usePhoneSize(tester);
+      final filter = FilterViewModel();
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Frozen low', priority: Priority.low, mark: NodeMark.ice),
+            node('Plain low', priority: Priority.low, createdOffset: 1),
+          ]),
+          filter: filter,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final body = tester.getSize(find.byType(NodeScreen)).height;
+      expect(pinnedBlockHeight(tester), lessThan(body / 2 + 1));
+
+      filter.setLevel(1); // only critical stays visible
+      await tester.pumpAndSettle();
+      expect(cardOrder(tester), isEmpty);
+      expect(
+        find.byType(ReorderableListView),
+        findsNothing,
+        reason: 'an empty card list is still holding half the body',
+      );
+      expect(tester.takeException(), isNull);
+
+      filter.setLevel(4);
+      await tester.pumpAndSettle();
+      expect(cardOrder(tester), ['Plain low']);
+      expect(pinnedOrder(tester), ['Frozen low']);
+      expect(find.byType(ReorderableListView), findsOneWidget);
+      expect(pinnedBlockHeight(tester), lessThan(body / 2 + 1));
+    });
+
+    testWidgets('a pinned row is still a drop target with no cards around it', (
+      tester,
+    ) async {
+      // The card list is what normally carries the drop targets; with it gone
+      // the rows are the only ones left, so the move has to land on one.
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', createdOffset: 1),
+        node('B', mark: NodeMark.ice, createdOffset: 2),
+      ]);
+      final vm = NodeTreeViewModel(repository);
+      await tester.pumpWidget(app(repository, vm: vm));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: cardNamed('A'),
+          matching: find.byIcon(Icons.move_to_inbox),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+
+      expect(cardOrder(tester), isEmpty);
+      expect(pinnedOrder(tester), ['A', 'B']);
+      expect(find.textContaining('Moving'), findsWidgets);
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('B'), matching: find.text('B')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(vm.tree.nodeById('A')!.parentId, 'B');
+      expect(vm.tree.nodeById('A')!.mark, NodeMark.flame);
+      expect(find.textContaining('Moving'), findsNothing);
+    });
+
+    testWidgets('the far edge of the emoji unmarks rather than opening the '
+        'node', (tester) async {
+      // 40dp from the row's left edge is outside the 32dp box the emoji used
+      // to have and inside the 44dp one it has now: the tap must take the
+      // mark off, not fall through to the title and push a level.
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Burning', mark: NodeMark.flame),
+            node('Kid', parent: 'Burning', createdOffset: 1),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final row = tester.getRect(pinnedRow('Burning'));
+      await tester.tapAt(Offset(row.left + 40, row.center.dy));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PinnedMarkRow), findsNothing);
+      expect(cardOrder(tester), ['Burning']);
+      expect(
+        find.descendant(of: find.byType(AppBar), matching: find.text('Burning')),
+        findsNothing,
+        reason: 'the tap fell through to the title and opened the level',
+      );
+    });
+  });
 }
