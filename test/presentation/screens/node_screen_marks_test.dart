@@ -684,14 +684,13 @@ void main() {
     expect(level.map((n) => n.id), ['Second', 'First', 'Pinned']);
   });
 
-  testWidgets('a card\'s mark buttons stay tappable on the tightest phone', (
+  testWidgets('the mark menu is reachable on the tightest phone', (
     tester,
   ) async {
     // 320x568 is the narrowest screen the app is tested on (iPhone SE, see
-    // node_screen_mobile_test). The drag grip is centred in the band left of
-    // PriorityCard's level-row reserve, and that reserve still pays only for
-    // the four 1-4 buttons — so on a card this narrow the grip's 44dp target
-    // drifts over the mark buttons that now sit left of them.
+    // node_screen_mobile_test). The marks are menu entries, so the card's
+    // width cannot clip them — which it did when they were buttons in either
+    // of the card's rows.
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -729,11 +728,13 @@ void main() {
     expect(vm.tree.nodeById('Plain')!.mark, NodeMark.ice);
   });
 
-  testWidgets('the mark buttons do not push the grip into the card\'s '
-      'back-gesture gutter', (tester) async {
-    // The other end of the same band: widening the level-row reserve for the
-    // two mark buttons moves the grip's 44dp target left, and on a narrow
-    // card it lands on the leftmost 24dp of the card — the strip the card
+  testWidgets('the grip stays out of the card\'s back-gesture gutter', (
+    tester,
+  ) async {
+    // Nothing the marks added may move the grip. Earlier attempts put mark
+    // buttons left of the 1-4 row and widened the level-row reserve to pay
+    // for them, which pushed the grip's 44dp target onto the leftmost 24dp
+    // of the card — the strip the card
     // keeps clear of its own gestures so the platform back swipe and a plain
     // tap still work there. 320x568 is the narrowest the app is tested on.
     tester.view.physicalSize = const Size(320, 568);
@@ -788,13 +789,12 @@ void main() {
   testWidgets('the grip keeps its whole handle on a narrow phone', (
     tester,
   ) async {
-    // The band the grip is centred in is bounded by two constants (the
-    // bottom-right button row, now 64dp wider for the mark buttons, and the
-    // 24dp gutter) but measured from the card's own width, so it is what runs
-    // out as the card narrows. `Center` then hands the grip a band narrower
-    // than its 44dp target, and the drag handle is cut down with it: the
-    // reorder affordance has to survive a narrow screen, not just clear the
-    // two strips next to it.
+    // The band the grip is centred in is bounded by the bottom-right button
+    // row but measured from the card's own width, so it is what runs out as
+    // the card narrows: `Center` would hand the grip a band narrower than its
+    // 44dp target and the drag handle would be cut down with it. The reorder
+    // affordance has to survive a narrow screen, not just clear the two
+    // strips next to it — which is why the marks are not in that row.
     //
     // 320dp is the narrowest the app is tested on; a display-scaling setting
     // takes a wider phone below that.
@@ -895,7 +895,7 @@ void main() {
     );
   });
 
-  testWidgets('roles get no mark buttons', (tester) async {
+  testWidgets('roles get no mark affordance at all', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(
       app(await seeded([node('Child', createdOffset: 1)])),
@@ -930,6 +930,36 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
+
+    testWidgets('a pinned row says it is a drop target, and stops saying it', (
+      tester,
+    ) async {
+      usePhoneSize(tester);
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+            node('Mover', priority: Priority.high, createdOffset: 1),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      bool rowIsTinted() =>
+          tester.widget<PinnedMarkRow>(pinnedRow('Burning')).isDropTarget;
+
+      // Idle: a tap on the title navigates, so the row looks like itself.
+      expect(rowIsTinted(), isFalse);
+
+      await pickUp(tester, 'Mover');
+      // Now the same tap reparents a subtree, and the row says so — the cards
+      // beside it already turn green and relabel to "Put here".
+      expect(rowIsTinted(), isTrue);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(rowIsTinted(), isFalse);
+    });
 
     testWidgets(
       'tapping a pinned row\'s title puts the moving node inside it',
@@ -989,7 +1019,7 @@ void main() {
     });
   });
 
-  group('the mark buttons on a narrow phone', () {
+  group('the mark menu on a narrow phone', () {
     /// The card as the level's list builds it: the list's own 8dp padding and
     /// the card's 12dp margin come off the width before anything on the card
     /// gets any, so a card measured on its own is 16dp wider than this one.
@@ -1551,7 +1581,10 @@ void main() {
       expect(find.byType(PinnedMarkRow), findsNothing);
       expect(cardOrder(tester), ['Burning']);
       expect(
-        find.descendant(of: find.byType(AppBar), matching: find.text('Burning')),
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Burning'),
+        ),
         findsNothing,
         reason: 'the tap fell through to the title and opened the level',
       );

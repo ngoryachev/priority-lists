@@ -603,6 +603,11 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
                       // picked up from it — its mark comes off first.
                       onTap: _tapFor(vm, child, false),
                       onClearMark: () => vm.setMark(child, null),
+                      // Green while it is a target, exactly as the cards go:
+                      // a tap on the title reparents a subtree then, and an
+                      // untinted row would look like it still just navigates.
+                      // Not the moving node's own row, whose tap cancels.
+                      isDropTarget: _movingId != null && child.id != _movingId,
                     ),
                 ],
               ),

@@ -935,6 +935,12 @@ class _CardAction extends StatelessWidget {
 ///
 /// Both marks are always offered, so swapping 🔥 for 🧊 is one tap; "Remove
 /// mark" only appears when there is one to remove.
+///
+/// That last part, and the disabling of the mark already set, are for a card
+/// built with a mark on it — which the level list never does: a marked node
+/// leaves the list for a [PinnedMarkRow], and its emoji is where the mark
+/// comes off. They are kept so the card is correct wherever else it is used,
+/// rather than silently wrong.
 class _CardOverflowAction extends StatelessWidget {
   final NodeMark? currentMark;
   final ValueChanged<NodeMark?>? onSetMark;
@@ -1015,12 +1021,18 @@ class PinnedMarkRow extends StatelessWidget {
   /// its unchanged priority and position.
   final VoidCallback? onClearMark;
 
+  /// A node is being moved and [onTap] means "put it inside this one" rather
+  /// than "open this one". Says so in green, the way the cards do: without it
+  /// the row looks idle while a tap on its title reparents a subtree.
+  final bool isDropTarget;
+
   const PinnedMarkRow({
     super.key,
     required this.mark,
     required this.title,
     this.onTap,
     this.onClearMark,
+    this.isDropTarget = false,
   });
 
   /// What one row is worth at the default text scale: the emoji button's own
@@ -1037,44 +1049,59 @@ class PinnedMarkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = markColor(mark);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: minHeight),
-      child: Row(
-        children: [
-          Tooltip(
-            message: 'Remove the mark',
-            child: InkWell(
-              onTap: onClearMark,
-              borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                width: _clearMarkTarget,
-                height: _clearMarkTarget,
-                child: Center(
-                  child: Text(mark.emoji, style: const TextStyle(fontSize: 16)),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: color,
+    // In move mode the row is a drop target, and it says so in the same green
+    // the cards use — it stays one line of emoji and title either way, so the
+    // tint is the whole cue.
+    final color = isDropTarget ? Colors.green.shade700 : markColor(mark);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: isDropTarget ? Colors.green.withValues(alpha: 0.35) : null,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: minHeight),
+        child: Row(
+          children: [
+            Tooltip(
+              message: 'Remove the mark',
+              child: InkWell(
+                onTap: onClearMark,
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: _clearMarkTarget,
+                  height: _clearMarkTarget,
+                  child: Center(
+                    child: Text(
+                      mark.emoji,
+                      style: const TextStyle(fontSize: 16),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
