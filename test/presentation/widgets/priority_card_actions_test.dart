@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_lists/domain/models/node_mark.dart';
 import 'package:priority_lists/domain/models/priority.dart';
+import 'package:priority_lists/presentation/utils/priority_colors.dart';
 import 'package:priority_lists/presentation/widgets/priority_card.dart';
 
 void main() {
@@ -361,6 +362,63 @@ void main() {
       expect(find.text('Kid'), findsOneWidget);
       expect(find.byIcon(Icons.more_horiz), findsNothing);
       expect(find.text('1'), findsOneWidget, reason: 'the 1-4 row rides along');
+    });
+  });
+
+  group('a pinned row in move mode', () {
+    /// The background the row paints, or null when it paints none.
+    Color? rowTint(WidgetTester tester) {
+      final box = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byType(PinnedMarkRow),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      return (box.decoration as BoxDecoration).color;
+    }
+
+    Color? titleColor(WidgetTester tester) =>
+        tester.widget<Text>(find.text('Burning')).style?.color;
+
+    testWidgets('an idle row paints no tint and keeps the mark\'s colour', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          const SizedBox(
+            width: 360,
+            child: PinnedMarkRow(mark: NodeMark.flame, title: 'Burning'),
+          ),
+        ),
+      );
+
+      expect(rowTint(tester), isNull);
+      expect(titleColor(tester), markColor(NodeMark.flame));
+    });
+
+    testWidgets('a drop target paints the same green the cards do', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          const SizedBox(
+            width: 360,
+            child: PinnedMarkRow(
+              mark: NodeMark.flame,
+              title: 'Burning',
+              isDropTarget: true,
+            ),
+          ),
+        ),
+      );
+
+      // The flag has to reach the pixels: a row that only knows it is a
+      // target but looks untouched is the bug it is there to prevent.
+      expect(rowTint(tester), Colors.green.withValues(alpha: 0.35));
+      expect(titleColor(tester), Colors.green.shade700);
+      expect(titleColor(tester), isNot(markColor(NodeMark.flame)));
     });
   });
 }

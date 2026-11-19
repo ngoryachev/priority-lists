@@ -1017,6 +1017,51 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets('the moving node\'s own row is no drop target when a mark '
+        'reaches it mid-move', (tester) async {
+      // A node picked up from its card can still get a mark from elsewhere
+      // (another device, a sync) and slide into the pinned block while it is
+      // being moved. Its own row must not offer to put it inside itself:
+      // node_screen excludes it from the tint, and the tap cancels, exactly
+      // as the moving card's own tap does.
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('Burning', priority: Priority.critical, mark: NodeMark.flame),
+        node('Mover', priority: Priority.high, createdOffset: 1),
+      ]);
+      final vm = NodeTreeViewModel(repository);
+      await tester.pumpWidget(app(repository, vm: vm));
+      await tester.pumpAndSettle();
+
+      await pickUp(tester, 'Mover');
+      expect(find.textContaining('Moving "Mover"'), findsOneWidget);
+
+      await vm.setMark(vm.tree.nodeById('Mover')!, NodeMark.ice);
+      await tester.pumpAndSettle();
+
+      // It left the list for a row of its own, and the move is still on.
+      expect(pinnedOrder(tester), ['Burning', 'Mover']);
+      expect(find.textContaining('Moving "Mover"'), findsOneWidget);
+      expect(
+        tester.widget<PinnedMarkRow>(pinnedRow('Mover')).isDropTarget,
+        isFalse,
+        reason: 'a node cannot be put inside itself',
+      );
+      expect(
+        tester.widget<PinnedMarkRow>(pinnedRow('Burning')).isDropTarget,
+        isTrue,
+      );
+
+      await tester.tap(
+        find.descendant(of: pinnedRow('Mover'), matching: find.text('Mover')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Moving "Mover"'), findsNothing);
+      final stored = {for (final n in await repository.getAllNodes()) n.id: n};
+      expect(stored['Mover']!.parentId, roleId, reason: 'nothing was moved');
+    });
   });
 
   group('the mark menu on a narrow phone', () {
