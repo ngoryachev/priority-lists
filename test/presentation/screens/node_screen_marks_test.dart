@@ -92,14 +92,37 @@ Finder pinnedRow(String title) => find.byWidgetPredicate(
   (widget) => widget is PinnedMarkRow && widget.title == title,
 );
 
-/// The mark button on a card, told apart from a pinned row's emoji by its
-/// ancestor.
-Finder markButtonOn(String card, NodeMark mark) => find.descendant(
-  of: find.byWidgetPredicate(
-    (widget) => widget is PriorityCard && widget.title == card,
-  ),
-  matching: find.text(mark.emoji),
+/// A card by the node it shows.
+Finder cardNamed(String title) => find.byWidgetPredicate(
+  (widget) => widget is PriorityCard && widget.title == title,
 );
+
+/// A mark's entry in a card's overflow menu, once that menu is open. Told
+/// apart from a pinned row's bare emoji by carrying the label too.
+Finder markMenuEntry(NodeMark mark) => find.text('${mark.emoji} ${mark.label}');
+
+/// Opens a card's overflow menu — the badge row's last cell, where the marks
+/// and Delete live.
+Future<void> openCardMenu(WidgetTester tester, String card) async {
+  await tester.tap(
+    find.descendant(
+      of: cardNamed(card),
+      matching: find.byIcon(Icons.more_horiz),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Marks a card's node through that menu.
+Future<void> setMarkFromMenu(
+  WidgetTester tester,
+  String card,
+  NodeMark mark,
+) async {
+  await openCardMenu(tester, card);
+  await tester.tap(markMenuEntry(mark));
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets('a marked child leaves the list and is pinned above it', (
@@ -339,8 +362,7 @@ void main() {
       await tester.pumpWidget(app(repository));
       await tester.pumpAndSettle();
 
-      await tester.tap(markButtonOn('B', NodeMark.ice));
-      await tester.pumpAndSettle();
+      await setMarkFromMenu(tester, 'B', NodeMark.ice);
       expect(pinnedOrder(tester), ['B']);
       expect(cardOrder(tester), ['A', 'C']);
 
@@ -367,8 +389,7 @@ void main() {
       await tester.pumpWidget(app(repository));
       await tester.pumpAndSettle();
 
-      await tester.tap(markButtonOn('A', NodeMark.flame));
-      await tester.pumpAndSettle();
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
       expect(pinnedOrder(tester), ['A']);
       expect(cardOrder(tester), ['B']);
 
@@ -377,8 +398,7 @@ void main() {
         find.descendant(of: pinnedRow('A'), matching: find.text('🔥')),
       );
       await tester.pumpAndSettle();
-      await tester.tap(markButtonOn('A', NodeMark.ice));
-      await tester.pumpAndSettle();
+      await setMarkFromMenu(tester, 'A', NodeMark.ice);
 
       expect(pinnedOrder(tester), ['A']);
       expect(
@@ -426,6 +446,40 @@ void main() {
     expect(stored['Burning']!.title, 'Renamed');
     expect(stored['Burning']!.mark, NodeMark.flame);
     expect(pinnedOrder(tester), ['Renamed']);
+  });
+
+  testWidgets('Delete from the card\'s menu still goes through the confirm '
+      'dialog', (tester) async {
+    usePhoneSize(tester);
+    final repository = await seeded([
+      node('Doomed', createdOffset: 1),
+      node('Kept', createdOffset: 2),
+    ]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+
+    await openCardMenu(tester, 'Doomed');
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    // The same dialog as before — Delete moved into the menu, not out of the
+    // confirmation.
+    expect(find.widgetWithText(FilledButton, 'Delete'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(cardOrder(tester), ['Doomed', 'Kept'], reason: 'cancel keeps it');
+
+    await openCardMenu(tester, 'Doomed');
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(cardOrder(tester), ['Kept']);
+    expect(
+      (await repository.getAllNodes()).map((n) => n.id),
+      isNot(contains('Doomed')),
+    );
   });
 
   testWidgets('a level whose only children are marked shows no placeholder', (
@@ -580,15 +634,16 @@ void main() {
     await tester.pumpWidget(app(repository, vm: vm));
     await tester.pumpAndSettle();
 
+    await openCardMenu(tester, 'Plain');
     for (final mark in NodeMark.values) {
       expect(
-        markButtonOn('Plain', mark).hitTestable(),
+        markMenuEntry(mark).hitTestable(),
         findsOneWidget,
-        reason: '${mark.emoji} is covered by the drag grip at 320dp',
+        reason: '${mark.emoji} is not reachable from a 320dp card',
       );
     }
 
-    await tester.tap(markButtonOn('Plain', NodeMark.flame));
+    await tester.tap(markMenuEntry(NodeMark.flame));
     await tester.pumpAndSettle();
     expect(vm.tree.nodeById('Plain')!.mark, NodeMark.flame);
 
@@ -603,8 +658,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(vm.tree.nodeById('Plain')!.mark, isNull);
 
-    await tester.tap(markButtonOn('Plain', NodeMark.ice));
-    await tester.pumpAndSettle();
+    await setMarkFromMenu(tester, 'Plain', NodeMark.ice);
     expect(vm.tree.nodeById('Plain')!.mark, NodeMark.ice);
   });
 
@@ -790,8 +844,11 @@ void main() {
         reason: 'the chip bar is unchanged',
       );
     }
-    // The role's own children do carry them.
-    expect(markButtonOn('Child', NodeMark.flame), findsOneWidget);
+    // The role's own children do offer them, from the card's menu.
+    await openCardMenu(tester, 'Child');
+    for (final mark in NodeMark.values) {
+      expect(markMenuEntry(mark), findsOneWidget);
+    }
   });
 
   group('while a node is being moved', () {
@@ -892,44 +949,27 @@ void main() {
       );
     }
 
-    testWidgets('both are whole and tappable at 320dp', (tester) async {
-      // 320dp is the narrowest the app is tested on. The marks sit in the
-      // badge row with edit and delete — which already scrolls when it runs
-      // out of width — rather than next to the 1-4 buttons, where six
-      // buttons, the 44dp grip and the 24dp back-gesture strip do not fit a
-      // card this narrow between them.
-      final card = await cardAt(tester, 320);
+    testWidgets('both are reachable from a 320dp card', (tester) async {
+      // 320dp is the narrowest the app is tested on. The marks are entries in
+      // the badge row's overflow menu, so the card's width cannot clip them —
+      // which it did when they were buttons in either of the card's rows.
+      await cardAt(tester, 320);
+      await openCardMenu(tester, 'Parent');
 
       for (final mark in NodeMark.values) {
-        final glyph = find.descendant(
-          of: card,
-          matching: find.text(mark.emoji),
-        );
         expect(
-          glyph.hitTestable(),
+          markMenuEntry(mark).hitTestable(),
           findsOneWidget,
-          reason: '${mark.emoji} is not tappable at 320dp',
-        );
-        // Whole, not sliced by the edge of a scroller or of the card.
-        final button = tester.getRect(glyph);
-        final cardRect = tester.getRect(card);
-        expect(
-          cardRect.contains(button.topLeft) &&
-              cardRect.contains(button.bottomRight),
-          isTrue,
-          reason:
-              '${mark.emoji} is clipped at 320dp '
-              '(button $button, card $cardRect)',
+          reason: '${mark.emoji} is not reachable at 320dp',
         );
       }
+      // An unmarked node has nothing to remove.
+      expect(find.text('Remove mark'), findsNothing);
     });
 
     testWidgets('setting a mark from a 320dp card works', (tester) async {
-      final card = await cardAt(tester, 320);
-      await tester.tap(
-        find.descendant(of: card, matching: find.text(NodeMark.flame.emoji)),
-      );
-      await tester.pumpAndSettle();
+      await cardAt(tester, 320);
+      await setMarkFromMenu(tester, 'Parent', NodeMark.flame);
 
       // It left the list for a pinned row, which is the whole point of it.
       expect(pinnedOrder(tester), ['Parent']);
@@ -962,6 +1002,134 @@ void main() {
           reason:
               'the swipe did not turn the card to its child page '
               'at ${width}dp',
+        );
+      }
+    });
+  });
+
+  group('the mark actions share the badge row with the others', () {
+    /// A level one step below a role, which is where a card carries every
+    /// action it can have: "move up one level" only exists when the node has
+    /// a grandparent, and a card with children is also the only kind that has
+    /// a page swipe to lose — the two conditions coincide, so this is the card
+    /// the row has to fit.
+    Future<Finder> subLevelCard(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      // The card is keyed by its node id, so a second screen at another width
+      // would reuse the same State and the page its last swipe left it on.
+      await tester.pumpWidget(const SizedBox());
+
+      final repository = await seeded([
+        node('Mid', createdOffset: 1),
+        node('Leaf', parent: 'Mid', createdOffset: 2),
+        node('Grand', parent: 'Leaf', createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mid'));
+      await tester.pumpAndSettle();
+
+      return find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Leaf',
+      );
+    }
+
+    testWidgets('every action is still reachable at 360dp', (tester) async {
+      // The row holds the four cells it has always held: move up, move into,
+      // edit and the overflow button that Delete moved into. The marks are
+      // entries in that menu, so the row cannot run out of width for them —
+      // the earlier placements put them in this row or the bottom one and
+      // pushed what was already there off a scrollable end.
+      final card = await subLevelCard(tester, 360);
+
+      for (final entry in {
+        'Move up one level': Icons.arrow_upward,
+        'Move into another node': Icons.move_to_inbox,
+        'Edit': Icons.edit_outlined,
+        'More actions': Icons.more_horiz,
+      }.entries) {
+        expect(
+          find
+              .descendant(of: card, matching: find.byIcon(entry.value))
+              .hitTestable(),
+          findsOneWidget,
+          reason: '"${entry.key}" is not tappable at 360dp',
+        );
+      }
+
+      // And what that last cell holds: both marks, and Delete.
+      await openCardMenu(tester, 'Leaf');
+      for (final mark in NodeMark.values) {
+        expect(
+          markMenuEntry(mark).hitTestable(),
+          findsOneWidget,
+          reason: '${mark.emoji} is not reachable at 360dp',
+        );
+      }
+      expect(find.text('Delete').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('the main screen keeps "move into" at 320dp', (tester) async {
+      // Not only the deeper levels: the role's own children carry one action
+      // fewer, and the row still runs out of width at 320dp — the width the
+      // group above declares as the narrowest the app is tested on.
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        app(
+          await seeded([
+            node('Parent', createdOffset: 1),
+            node('Kid', parent: 'Parent', createdOffset: 2),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byWidgetPredicate(
+        (widget) => widget is PriorityCard && widget.title == 'Parent',
+      );
+      expect(
+        find
+            .descendant(of: card, matching: find.byIcon(Icons.move_to_inbox))
+            .hitTestable(),
+        findsOneWidget,
+        reason: '"Move into another node" is not tappable at 320dp',
+      );
+    });
+
+    testWidgets('a sideways swipe over the badge row still turns the page', (
+      tester,
+    ) async {
+      // The card's second axis. Once the badge row has more than it can show,
+      // its scroller claims horizontal drags (a `ScrollPhysics` accepts them
+      // as soon as min != max) and beats the enclosing `PageView`, so the
+      // swipe is dead in the 40dp band the row occupies.
+      for (final width in [400.0, 360.0]) {
+        final card = await subLevelCard(tester, width);
+        final childPage = find.descendant(
+          of: card,
+          matching: find.text('Grand'),
+        );
+        expect(childPage, findsNothing, reason: 'at ${width}dp');
+
+        // Over the overflow button: in the badge row, well clear of the grip
+        // and of the back-gesture strip on the card's left edge.
+        await tester.drag(
+          find.descendant(of: card, matching: find.byIcon(Icons.more_horiz)),
+          const Offset(-250, 0),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          childPage,
+          findsOneWidget,
+          reason:
+              'a swipe over the badge row did not turn the card to its '
+              'child page at ${width}dp',
         );
       }
     });

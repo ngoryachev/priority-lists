@@ -100,11 +100,12 @@ void main() {
     }
 
     // The owner's own actions keep their room next to the dots' gutter.
+    // Delete is behind the overflow button, so that is the fourth cell.
     for (final icon in [
       Icons.arrow_upward,
       Icons.move_to_inbox,
       Icons.edit_outlined,
-      Icons.delete_outline,
+      Icons.more_horiz,
     ]) {
       expect(find.byIcon(icon).hitTestable(), findsOneWidget, reason: '$icon');
     }
@@ -256,6 +257,7 @@ void main() {
     for (final icon in [
       Icons.edit_outlined,
       Icons.delete_outline,
+      Icons.more_horiz,
       Icons.arrow_upward,
       Icons.move_to_inbox,
     ]) {

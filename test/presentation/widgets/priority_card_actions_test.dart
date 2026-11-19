@@ -32,11 +32,13 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+    // Four cells, as it has always been: Delete sits behind the overflow
+    // button now, with the marks, so the row's width is unchanged.
     for (final icon in [
       Icons.arrow_upward,
       Icons.move_to_inbox,
       Icons.edit_outlined,
-      Icons.delete_outline,
+      Icons.more_horiz,
     ]) {
       expect(find.byIcon(icon).hitTestable(), findsOneWidget,
           reason: '$icon must stay tappable at 360dp');
@@ -85,10 +87,11 @@ void main() {
     expect(moved, isTrue);
   });
 
-  group('the mark buttons', () {
+  group('the mark actions', () {
     Widget markableCard({
       NodeMark? current,
       required ValueChanged<NodeMark?> onSetMark,
+      VoidCallback? onDelete,
     }) => PriorityCard(
       title: 'Some item',
       badgeLabel: Priority.high.label,
@@ -97,87 +100,134 @@ void main() {
       currentPriority: Priority.high,
       currentMark: current,
       onSetMark: onSetMark,
+      onDelete: onDelete,
       onSetPriority: (_) {},
     );
 
-    testWidgets('each one fires with its own mark', (tester) async {
-      final picked = <NodeMark?>[];
-      await tester.pumpWidget(
-        wrap(markableCard(onSetMark: picked.add)),
-      );
+    /// Opens the badge row's overflow menu, where the marks live.
+    Future<void> openMenu(WidgetTester tester) async {
+      await tester.tap(find.byIcon(Icons.more_horiz));
+      await tester.pumpAndSettle();
+    }
 
-      await tester.tap(find.text(NodeMark.flame.emoji));
-      await tester.tap(find.text(NodeMark.ice.emoji));
+    testWidgets('each entry fires with its own mark', (tester) async {
+      final picked = <NodeMark?>[];
+      await tester.pumpWidget(wrap(markableCard(onSetMark: picked.add)));
+
+      for (final mark in NodeMark.values) {
+        await openMenu(tester);
+        await tester.tap(find.text('${mark.emoji} ${mark.label}'));
+        await tester.pumpAndSettle();
+      }
+
       expect(picked, [NodeMark.flame, NodeMark.ice]);
     });
 
-    testWidgets('tapping the active one asks for no mark at all',
-        (tester) async {
+    testWidgets('a marked node is offered "Remove mark", and its own entry '
+        'is shown but disabled', (tester) async {
       final picked = <NodeMark?>[];
       await tester.pumpWidget(
         wrap(markableCard(current: NodeMark.ice, onSetMark: picked.add)),
       );
+      await openMenu(tester);
 
-      await tester.tap(find.text(NodeMark.ice.emoji));
+      // Both marks are always listed, so the menu never changes shape; the
+      // one already set simply cannot be chosen again.
+      for (final mark in NodeMark.values) {
+        expect(find.text('${mark.emoji} ${mark.label}'), findsOneWidget);
+      }
+      // Choosing the one already set does nothing and leaves the menu open,
+      // which is what "disabled" means to the user.
+      await tester.tap(
+        find.text('${NodeMark.ice.emoji} ${NodeMark.ice.label}'),
+      );
+      await tester.pumpAndSettle();
+      expect(picked, isEmpty);
+      expect(find.text('Remove mark'), findsOneWidget);
+
+      await tester.tap(find.text('Remove mark'));
+      await tester.pumpAndSettle();
       expect(picked, [null]);
-
-      // The other one still sets itself; only the active button unmarks.
-      await tester.tap(find.text(NodeMark.flame.emoji));
-      expect(picked, [null, NodeMark.flame]);
     });
 
-    testWidgets('a card built without onSetMark shows neither', (tester) async {
-      await tester.pumpWidget(wrap(PriorityCard(
-        title: 'Some item',
-        badgeLabel: Priority.high.label,
-        color: Colors.orange,
-        fixedHeight: 400,
-        currentPriority: Priority.high,
-        currentMark: NodeMark.flame,
-        onSetPriority: (_) {},
-      )));
+    testWidgets('an unmarked node is offered no "Remove mark"', (tester) async {
+      await tester.pumpWidget(wrap(markableCard(onSetMark: (_) {})));
+      await openMenu(tester);
+
+      expect(find.text('Remove mark'), findsNothing);
+    });
+
+    testWidgets('Delete shares the menu and still fires', (tester) async {
+      var deleted = false;
+      await tester.pumpWidget(
+        wrap(markableCard(onSetMark: (_) {}, onDelete: () => deleted = true)),
+      );
+      await openMenu(tester);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(deleted, isTrue);
+    });
+
+    testWidgets('a card built without onSetMark offers only Delete', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          PriorityCard(
+            title: 'Some item',
+            badgeLabel: Priority.high.label,
+            color: Colors.orange,
+            fixedHeight: 400,
+            currentPriority: Priority.high,
+            currentMark: NodeMark.flame,
+            onDelete: () {},
+            onSetPriority: (_) {},
+          ),
+        ),
+      );
+      await openMenu(tester);
 
       for (final mark in NodeMark.values) {
-        expect(find.text(mark.emoji), findsNothing);
+        expect(find.text('${mark.emoji} ${mark.label}'), findsNothing);
       }
+      expect(find.text('Remove mark'), findsNothing);
+      expect(find.text('Delete'), findsOneWidget);
+    });
+
+    testWidgets('a card with neither has no overflow button at all', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          PriorityCard(
+            title: 'Some item',
+            badgeLabel: Priority.high.label,
+            color: Colors.orange,
+            fixedHeight: 400,
+            currentPriority: Priority.high,
+            onSetPriority: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.more_horiz), findsNothing);
       // The 1-4 row is still there on its own.
       expect(find.text('1'), findsOneWidget);
     });
 
-    testWidgets('both marks and all four levels stay tappable at 360dp',
-        (tester) async {
-      tester.view.physicalSize = const Size(360, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      await tester.pumpWidget(wrap(markableCard(onSetMark: (_) {})));
-      await tester.pump();
-
-      expect(tester.takeException(), isNull);
-      for (final mark in NodeMark.values) {
-        expect(find.text(mark.emoji).hitTestable(), findsOneWidget,
-            reason: '${mark.emoji} must stay tappable at 360dp');
-      }
-      for (final p in Priority.values) {
-        expect(find.text('${p.value}').hitTestable(), findsOneWidget,
-            reason: 'the 1-4 row must keep its room');
-      }
-    });
-
-    testWidgets('the marks never cost the grip or the 1-4 row their targets', (
-      tester,
-    ) async {
-      // The marks live in the badge row, not next to the 1-4 buttons, so the
-      // bottom of the card is exactly what it was before them: the drag grip
-      // and the four priority buttons, each with its whole touch target, and
-      // the strip the card keeps clear for the platform back swipe. This is
-      // the guard for that — the earlier placement squeezed all three.
+    testWidgets('the marks cost the card no width: the grip, the 1-4 row and '
+        'every action keep their targets', (tester) async {
+      // The marks are menu entries, so the badge row has the four cells it has
+      // always had and the bottom of the card is untouched. This is the guard
+      // for that: earlier attempts put the marks in one row or the other and
+      // squeezed the grip, the 1-4 buttons or the actions that were there.
       for (final width in [400.0, 360.0, 320.0]) {
         tester.view.physicalSize = Size(width, 700);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
+        await tester.pumpWidget(const SizedBox());
 
-        final picked = <NodeMark?>[];
         await tester.pumpWidget(
           wrap(
             ReorderableListView(
@@ -195,8 +245,6 @@ void main() {
                   fixedHeight: 120,
                   currentPriority: Priority.high,
                   dragIndex: 0,
-                  // A child page makes the card swipeable, which is what puts
-                  // the back-gesture gutter on its left edge.
                   childPages: [
                     PriorityCardPage(
                       id: 'kid',
@@ -206,7 +254,10 @@ void main() {
                       currentPriority: Priority.low,
                     ),
                   ],
-                  onSetMark: picked.add,
+                  onEdit: () {},
+                  onDelete: () {},
+                  onMoveInto: () {},
+                  onSetMark: (_) {},
                   onSetPriority: (_) {},
                 ),
               ],
@@ -249,7 +300,7 @@ void main() {
               '(grip $grip, gutter $gutter)',
         );
 
-        // All four priority buttons, and both marks in the row above.
+        // All four priority buttons, and every badge-row cell.
         for (final p in Priority.values) {
           expect(
             find.text('${p.value}').hitTestable(),
@@ -257,52 +308,58 @@ void main() {
             reason: 'the 1-4 row lost button ${p.value} $at',
           );
         }
-        for (final mark in NodeMark.values) {
+        for (final icon in [
+          Icons.move_to_inbox,
+          Icons.edit_outlined,
+          Icons.more_horiz,
+        ]) {
           expect(
-            find.text(mark.emoji).hitTestable(),
+            find.byIcon(icon).hitTestable(),
             findsOneWidget,
-            reason: '${mark.emoji} is not tappable $at',
+            reason: '$icon is not tappable $at',
           );
         }
-        await tester.tap(find.text(NodeMark.flame.emoji));
-        await tester.tap(find.text(NodeMark.ice.emoji));
-        expect(picked, [NodeMark.flame, NodeMark.ice], reason: at);
       }
     });
 
-    testWidgets('a child page carries no mark buttons', (tester) async {
-      await tester.pumpWidget(wrap(SizedBox(
-        width: 360,
-        child: PriorityCard(
-          title: 'Owner',
-          badgeLabel: Priority.high.label,
-          color: Colors.orange,
-          fixedHeight: 400,
-          currentPriority: Priority.high,
-          currentMark: NodeMark.flame,
-          onSetMark: (_) {},
-          onSetPriority: (_) {},
-          childPages: [
-            PriorityCardPage(
-              id: 'kid',
-              title: 'Kid',
-              badgeLabel: Priority.low.label,
-              color: Colors.green,
-              currentPriority: Priority.low,
+    testWidgets('a child page carries no overflow button', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          SizedBox(
+            width: 360,
+            child: PriorityCard(
+              title: 'Owner',
+              badgeLabel: Priority.high.label,
+              color: Colors.orange,
+              fixedHeight: 400,
+              currentPriority: Priority.high,
+              currentMark: NodeMark.flame,
+              onSetMark: (_) {},
+              onDelete: () {},
               onSetPriority: (_) {},
+              childPages: [
+                PriorityCardPage(
+                  id: 'kid',
+                  title: 'Kid',
+                  badgeLabel: Priority.low.label,
+                  color: Colors.green,
+                  currentPriority: Priority.low,
+                  onSetPriority: (_) {},
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      )));
+      );
       await tester.pumpAndSettle();
 
-      // The owner face has them; swiping to the child leaves them behind.
-      expect(find.text(NodeMark.flame.emoji), findsOneWidget);
+      // The owner face has it; swiping to the child leaves it behind.
+      expect(find.byIcon(Icons.more_horiz), findsOneWidget);
       await tester.drag(find.text('Owner'), const Offset(-400, 0));
       await tester.pumpAndSettle();
 
       expect(find.text('Kid'), findsOneWidget);
-      expect(find.text(NodeMark.flame.emoji), findsNothing);
+      expect(find.byIcon(Icons.more_horiz), findsNothing);
       expect(find.text('1'), findsOneWidget, reason: 'the 1-4 row rides along');
     });
   });

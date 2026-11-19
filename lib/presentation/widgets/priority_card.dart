@@ -61,7 +61,7 @@ class PriorityCard extends StatefulWidget {
   final Priority? currentPriority;
 
   /// The node's 🔥 / 🧊 mark, or null when it has none. Only read when
-  /// [onSetMark] is set, which is what makes the mark actions appear.
+  /// [onSetMark] is set, which is what puts the mark entries in the menu.
   final NodeMark? currentMark;
 
   /// Position in the enclosing [ReorderableListView]. When set, the card shows
@@ -92,14 +92,14 @@ class PriorityCard extends StatefulWidget {
   final VoidCallback? onDelete;
   final ValueChanged<Priority>? onSetPriority;
 
-  /// Sets the node's mark, or clears it when the active one is tapped again.
-  /// Null — on a child page, and on a role — leaves the two actions off.
+  /// Sets the node's mark, or clears it with null.
   ///
-  /// They live in the badge row with edit and delete rather than next to the
-  /// 1-4 buttons: that row already scrolls when it runs out of width, whereas
-  /// the bottom of the card is spoken for by the drag grip and the strip kept
-  /// clear for the platform back swipe, and a 320dp phone has no room for
-  /// six buttons between them.
+  /// Offered from the badge row's overflow menu rather than as buttons of its
+  /// own. The row has four cells and no width to spare — a fifth and sixth
+  /// would push the actions that were there off its scrollable end, and the
+  /// bottom of the card is spoken for by the drag grip, the 1-4 row and the
+  /// strip kept clear for the platform back swipe. The menu holds what is
+  /// rarely tapped twice in a row: the marks, and Delete.
   final ValueChanged<NodeMark?>? onSetMark;
 
   /// Lifts the node one level up, next to its current parent.
@@ -597,7 +597,8 @@ class _CardFace extends StatelessWidget {
   final Priority? currentPriority;
 
   /// The node's mark, and the callback that sets it. Null [onSetMark] leaves
-  /// the two actions out, which is every face but a level's own card.
+  /// the mark entries out of the overflow menu, which is every face but a
+  /// level's own card.
   final NodeMark? currentMark;
   final ValueChanged<NodeMark?>? onSetMark;
 
@@ -760,27 +761,16 @@ class _CardFace extends StatelessWidget {
                                     onPressed: onEdit,
                                     tooltip: 'Edit',
                                   ),
-                                if (onDelete != null)
-                                  _CardAction(
-                                    icon: Icons.delete_outline,
-                                    onPressed: onDelete,
-                                    tooltip: 'Delete',
+                                // Delete and the marks share one cell. The
+                                // row keeps the four it has always had, so
+                                // nothing that was one tap away stops being
+                                // one, and the row's width is unchanged.
+                                if (onDelete != null || onSetMark != null)
+                                  _CardOverflowAction(
+                                    currentMark: currentMark,
+                                    onSetMark: onSetMark,
+                                    onDelete: onDelete,
                                   ),
-                                // Last in the row, so the actions that were
-                                // here keep the places the muscle memory of
-                                // this app already has for them.
-                                if (onSetMark != null)
-                                  for (final mark in NodeMark.values)
-                                    _MarkAction(
-                                      mark: mark,
-                                      isActive: currentMark == mark,
-                                      // Tapping the active one takes the mark
-                                      // off, so one button both marks and
-                                      // unmarks.
-                                      onPressed: () => onSetMark!(
-                                        currentMark == mark ? null : mark,
-                                      ),
-                                    ),
                               ],
                             ),
                           ),
@@ -934,40 +924,77 @@ class _CardAction extends StatelessWidget {
   }
 }
 
-/// One of the two mark actions in a card's badge row: 🔥 "in progress" or
-/// 🧊 "blocked".
+/// What the node's 🔥 / 🧊 mark and Delete share: the last cell of the badge
+/// row, as a menu.
 ///
-/// Shaped like a [_CardAction] so the row reads as one strip — same
-/// `IconButton`, same compact density, so it costs the row the same width and
-/// the tile the same height — but its glyph is the mark's emoji rather than an
-/// icon, and the active one is tinted so a glance says which is set.
-class _MarkAction extends StatelessWidget {
-  final NodeMark mark;
-  final bool isActive;
-  final VoidCallback onPressed;
+/// Sized from the same [IconButton] settings as [_CardAction] so the row has
+/// exactly the four cells it had before marks existed — a fifth and a sixth
+/// would be clipped off the row's scrollable end, taking the actions that were
+/// already there with them, and a scroller that can actually scroll claims the
+/// horizontal drags the card needs for its child pages.
+///
+/// Both marks are always offered, so swapping 🔥 for 🧊 is one tap; "Remove
+/// mark" only appears when there is one to remove.
+class _CardOverflowAction extends StatelessWidget {
+  final NodeMark? currentMark;
+  final ValueChanged<NodeMark?>? onSetMark;
+  final VoidCallback? onDelete;
 
-  const _MarkAction({
-    required this.mark,
-    required this.isActive,
-    required this.onPressed,
+  const _CardOverflowAction({
+    required this.currentMark,
+    required this.onSetMark,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = markColor(mark);
-    return IconButton(
-      // Sized to match the 20dp icons beside it rather than left to the
-      // ambient text style, which would make the two rows disagree.
-      icon: Text(mark.emoji, style: const TextStyle(fontSize: 16, height: 1.2)),
-      onPressed: onPressed,
-      tooltip: isActive ? 'Remove the mark' : mark.label,
-      visualDensity: VisualDensity.compact,
-      style: isActive
-          ? IconButton.styleFrom(backgroundColor: color.withValues(alpha: 0.25))
-          : null,
+    return PopupMenuButton<_CardMenuItem>(
+      // Deliberately not `more_vert`: that is the swipe-dots hint's glyph on
+      // the other edge of this same card.
+      icon: const Icon(Icons.more_horiz, size: 20),
+      tooltip: 'More actions',
+      // The same cell a [_CardAction] occupies — same icon size, same padding,
+      // same compact density — so this row has exactly the four it had when
+      // Delete was a button of its own, and costs the card no extra width.
+      iconSize: 20,
+      style: IconButton.styleFrom(visualDensity: VisualDensity.compact),
+      onSelected: (item) => switch (item) {
+        _CardMenuItem.flame => onSetMark?.call(NodeMark.flame),
+        _CardMenuItem.ice => onSetMark?.call(NodeMark.ice),
+        _CardMenuItem.clearMark => onSetMark?.call(null),
+        _CardMenuItem.delete => onDelete?.call(),
+      },
+      itemBuilder: (context) => [
+        if (onSetMark != null) ...[
+          for (final mark in NodeMark.values)
+            PopupMenuItem<_CardMenuItem>(
+              value: mark == NodeMark.flame
+                  ? _CardMenuItem.flame
+                  : _CardMenuItem.ice,
+              // The one that is already set reads as set rather than being
+              // hidden, so the menu always has both and never moves.
+              enabled: currentMark != mark,
+              child: Text('${mark.emoji} ${mark.label}'),
+            ),
+          if (currentMark != null)
+            const PopupMenuItem<_CardMenuItem>(
+              value: _CardMenuItem.clearMark,
+              child: Text('Remove mark'),
+            ),
+        ],
+        if (onDelete != null) ...[
+          if (onSetMark != null) const PopupMenuDivider(),
+          const PopupMenuItem<_CardMenuItem>(
+            value: _CardMenuItem.delete,
+            child: Text('Delete'),
+          ),
+        ],
+      ],
     );
   }
 }
+
+enum _CardMenuItem { flame, ice, clearMark, delete }
 
 /// A marked node as it appears pinned above its level's card list: one compact
 /// line of emoji and title, and nothing else.
