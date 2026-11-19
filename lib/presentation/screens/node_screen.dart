@@ -366,12 +366,14 @@ class _NodeScreenState extends State<NodeScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 // Along the right edge of the whole list: today's time per
-                // role, in the roles' colours.
-                const Positioned(
-                  top: 0,
-                  bottom: 0,
-                  right: 0,
-                  child: RoleTimeStrip(),
+                // role, in the roles' colours. Laid over the whole body so
+                // the strip's duration label has room to its left; only the
+                // narrow band over the strip itself takes a pointer, the rest
+                // lets taps through to the list.
+                // The label keeps clear of the FAB's corner: this body has
+                // one.
+                const Positioned.fill(
+                  child: RoleTimeStrip(bottomInset: RoleTimeStrip.fabCorner),
                 ),
               ],
             ),
