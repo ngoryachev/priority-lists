@@ -1134,4 +1134,134 @@ void main() {
       }
     });
   });
+
+  group('the cell the marks share with Delete', () {
+    /// The badge row's horizontal scroller.
+    Finder badgeRowOf(Finder card) => find.descendant(
+      of: card,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.left,
+      ),
+    );
+
+    Finder buttonAround(Finder card, IconData icon) => find.ancestor(
+      of: find.descendant(of: card, matching: find.byIcon(icon)).first,
+      matching: find.byType(IconButton),
+    );
+
+    testWidgets('costs the row exactly what the Delete button did', (
+      tester,
+    ) async {
+      // The whole placement rests on this: the overflow button occupies one
+      // 40dp cell, like every [_CardAction] before it, so the row holds the
+      // same four cells and the same 160dp of content it held on the base
+      // branch. A fifth cell would push the leftmost action off the row's
+      // scrollable end and hand the row's `Scrollable` the horizontal drags
+      // the card needs for its child pages — which is how the two earlier
+      // placements of the marks broke.
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final repository = await seeded([
+        node('Mid', createdOffset: 1),
+        node('Leaf', parent: 'Mid', createdOffset: 2),
+        node('Grand', parent: 'Leaf', createdOffset: 3),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+      // One level below a role: the card that carries every action there is.
+      await tester.tap(find.text('Mid'));
+      await tester.pumpAndSettle();
+
+      final card = cardNamed('Leaf');
+      expect(
+        tester.getSize(buttonAround(card, Icons.more_horiz)),
+        tester.getSize(buttonAround(card, Icons.edit_outlined)),
+        reason: 'the overflow cell is not the size of an action cell',
+      );
+
+      final position = tester.state<ScrollableState>(badgeRowOf(card)).position;
+      expect(
+        position.viewportDimension + position.maxScrollExtent,
+        160,
+        reason:
+            'the badge row holds something other than four 40dp cells '
+            '(move up, move into, edit, overflow)',
+      );
+    });
+
+    testWidgets('its menu holds up at a doubled text scale', (tester) async {
+      // Every other surface of this card has a large-text guard; the menu is
+      // new and had none. The entries wrap rather than overflow, and the one
+      // that is tapped still marks the node.
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      final repository = await seeded([
+        node('Plain', createdOffset: 1),
+        node('Other', createdOffset: 2),
+      ]);
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+
+      await openCardMenu(tester, 'Plain');
+      expect(tester.takeException(), isNull);
+      for (final mark in NodeMark.values) {
+        expect(
+          markMenuEntry(mark).hitTestable(),
+          findsOneWidget,
+          reason: '${mark.emoji} is not reachable at a 2.0 text scale',
+        );
+      }
+
+      await tester.tap(markMenuEntry(NodeMark.flame));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(pinnedOrder(tester), ['Plain']);
+    });
+
+    testWidgets('a mark set on the node that is being moved keeps the move '
+        'alive', (tester) async {
+      // The menu stays open to the card while it is picked up, so a mark can
+      // land on the moving node. It leaves the list for a pinned row, and the
+      // move has to survive that: the banner stays, and dropping it still
+      // works and keeps the mark.
+      usePhoneSize(tester);
+      final repository = await seeded([
+        node('A', createdOffset: 1),
+        node('B', createdOffset: 2),
+      ]);
+      final vm = NodeTreeViewModel(repository);
+      await tester.pumpWidget(app(repository, vm: vm));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: cardNamed('A'),
+          matching: find.byIcon(Icons.move_to_inbox),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await setMarkFromMenu(tester, 'A', NodeMark.flame);
+      expect(pinnedOrder(tester), ['A']);
+      expect(
+        find.textContaining('Moving'),
+        findsWidgets,
+        reason: 'marking the picked-up node dropped the move',
+      );
+
+      await tester.tap(find.descendant(of: cardNamed('B'), matching: find.text('B')));
+      await tester.pumpAndSettle();
+
+      expect(vm.tree.nodeById('A')!.parentId, 'B');
+      expect(vm.tree.nodeById('A')!.mark, NodeMark.flame);
+      expect(find.textContaining('Moving'), findsNothing);
+    });
+  });
 }
